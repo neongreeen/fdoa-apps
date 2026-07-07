@@ -76,7 +76,31 @@
     padding:12px 22px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;transition:.25s;z-index:60;pointer-events:none}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-  @media(max-width:720px){.grid2{grid-template-columns:1fr}.clock{font-size:38px}}
+  /* JSが表を流し込むコンテナは横スクロール可能に */
+  #todayTable,#listTable,#expenseListTable,#billingSummary,#billingTable,#invoiceTable,
+  #customerTable,#propertyTable,#contentTable,#expTypeTable{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* タブレット以下：指で押しやすく・表は横スクロール */
+  @media(max-width:820px){
+    input,select,textarea{font-size:16px} /* iOSのフォーカス時自動ズーム防止 */
+    .btn{min-height:42px}
+    .btn.sm{min-height:34px}
+    .billchk,#billAll{width:24px;height:24px}
+    #todayTable td,#listTable td,#expenseListTable td,#billingSummary td,#billingTable td,#invoiceTable td,
+    #customerTable td,#propertyTable td,#contentTable td,#expTypeTable td{white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+  }
+  /* スマホ：フォームは縦積み全幅 */
+  @media(max-width:720px){
+    .grid2{grid-template-columns:1fr}
+    .clock{font-size:38px}
+    main{padding:16px 12px 60px}
+    .panel{padding:14px}
+    .head-in{padding:10px 12px}
+    .row select,.row input{width:100%!important}
+    .toolbar select,.toolbar input{flex:1 1 40%;min-width:130px;width:auto!important}
+    .timer-wrap>div{flex:1 1 100%!important;min-width:0}
+    #btnStart,#btnStop{flex:1;justify-content:center}
+    #ghTokenInput{width:100%!important}
+  }
   .danger-zone{border:1px dashed var(--warn);background:var(--warn-soft)}
   details summary{cursor:pointer;font-weight:600;color:var(--sub);font-size:13px}
   /* 請求チェックボックスを大きく・押しやすく */
