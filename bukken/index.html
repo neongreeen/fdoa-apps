@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>物件進捗管理</title>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#fff; --ink:#1f2430; --sub:#6b7280; --line:#e4e7ec;
+  --accent:#2f6fed; --danger:#e5484d; --warn:#f2a33c; --ok:#2fbf71;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+header{background:#1f2430;color:#fff;padding:10px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:50}
+header h1{font-size:16px;font-weight:700}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:transparent;color:#cbd2dd;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px}
+nav button.active{background:var(--accent);color:#fff}
+nav button:hover:not(.active){background:#333a48}
+main{max-width:1200px;margin:0 auto;padding:16px}
+section.tab{display:none}
+section.tab.active{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.card h2{font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h2 .count{font-size:11px;color:var(--sub);font-weight:normal}
+.frm{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
+.frm label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--sub)}
+input,select,textarea{border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px;font-family:inherit;background:#fff}
+input:focus,select:focus,textarea:focus{outline:2px solid #bcd0f7}
+textarea{width:100%;min-height:40px;resize:vertical}
+button.btn{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:7px 16px;cursor:pointer;font-size:13px}
+button.btn.gray{background:#8b93a1}
+button.btn.red{background:var(--danger)}
+button.btn.sm{padding:3px 8px;font-size:11px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;color:var(--sub);font-weight:normal;font-size:11px;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:6px 8px;border-bottom:1px solid #f0f1f4;vertical-align:top}
+tr:hover td{background:#f8f9fb}
+.badge{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;color:#fff;white-space:nowrap}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.memo-icon{cursor:help}
+.muted{color:var(--sub)}
+.done{opacity:.45;text-decoration:line-through}
+.overdue td{background:#fdecec}
+.soon td{background:#fef7e6}
+/* gantt */
+.gtoolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.gtoolbar .grp{display:flex;gap:4px;align-items:center;background:#eef0f4;border-radius:8px;padding:3px}
+.gtoolbar .grp button{border:none;background:transparent;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--sub)}
+.gtoolbar .grp button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.gwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+.gantt{min-width:760px}
+.grow{display:flex;border-bottom:1px solid #f0f1f4;min-height:30px}
+.grow.header{border-bottom:1px solid var(--line);background:#fafbfc;position:sticky;top:0}
+.grow.phead{background:#eef2f9;font-weight:700;font-size:12px}
+.glabel{flex:0 0 220px;padding:5px 8px;font-size:12px;border-right:1px solid var(--line);display:flex;align-items:center;gap:5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.gtrack{flex:1;position:relative}
+.gline{position:absolute;top:0;bottom:0;width:1px;background:#eceef2}
+.gline.month{background:#d6dae2}
+.gwe{position:absolute;top:0;bottom:0;background:rgba(120,130,150,.07)}
+.gtoday{position:absolute;top:0;bottom:0;width:2px;background:var(--danger);z-index:5}
+.gbar{position:absolute;top:5px;height:20px;border-radius:5px;opacity:.9;cursor:pointer;min-width:4px}
+.gbar.done{opacity:.3}
+.gpt{position:absolute;top:7px;width:14px;height:14px;transform:translateX(-7px) rotate(45deg);border-radius:3px;cursor:pointer;z-index:4}
+.gpt.circle{border-radius:50%;transform:translateX(-7px)}
+.gpt.done{opacity:.3}
+.gmon{position:absolute;top:0;font-size:11px;color:var(--sub);padding:4px 4px;white-space:nowrap;border-left:1px solid #d6dae2}
+.gday{position:absolute;bottom:0;font-size:10px;color:var(--sub);transform:translateX(2px);white-space:nowrap}
+.empty{padding:32px;text-align:center;color:var(--sub);font-size:13px}
+/* 締切ボード・チェックリスト */
+.dlboard{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.dlchip{border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;background:#fff;display:flex;gap:6px;align-items:center}
+.dlchip.near{background:#fef7e6;border-color:#f2c94c}
+.dlchip.over{background:#fdecec;border-color:var(--danger);color:var(--danger);font-weight:700}
+.chk{display:flex;align-items:center;gap:8px;padding:4px 6px;border-bottom:1px solid #f0f1f4}
+.chk input{width:16px;height:16px;flex:0 0 auto}
+.prog{font-size:11px;color:var(--sub)}
+.note{font-size:12px;color:var(--sub);line-height:1.7}
+.filerow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+@media(max-width:700px){.glabel{flex-basis:120px}.frm label{width:100%}.frm input,.frm select{width:100%}}
+</style>
+</head>
+<body>
+<header>
+  <h1>📐 物件進捗管理 <span id="syncBadge" title="クラウド同期の状態" style="font-size:11px;font-weight:normal;color:#cbd2dd"></span></h1>
+  <nav>
+    <button data-tab="schedule" class="active">📊 スケジュール確認</button>
+    <button data-tab="input">✏️ スケジュール入力</button>
+    <button data-tab="check">✅ チェックリスト</button>
+    <button data-tab="master">📋 マスター管理</button>
+    <button data-tab="data">💾 データ管理<span id="bakDot" style="display:none;color:#ff6b6b"> ●</span></button>
+  </nav>
+</header>
+<main>
+
+<!-- ===== スケジュール確認 ===== -->
+<section class="tab active" id="tab-schedule">
+  <div class="card">
+    <div id="dlBoard"></div>
+    <div class="gtoolbar">
+      <div class="grp" id="modeGrp">
+        <button data-mode="gantt" class="on">ガント</button>
+        <button data-mode="list">一覧表</button>
+      </div>
+      <div class="grp" id="periodGrp">
+        <button data-period="w1">週間</button>
+        <button data-period="w2">2週間</button>
+        <button data-period="m1" class="on">月間</button>
+        <button data-period="m2">2ヶ月</button>
+        <button data-period="m3">3ヶ月</button>
+        <button data-period="m6">6ヶ月</button>
+      </div>
+      <select id="scopeSel"><option value="all">全物件</option></select>
+      <div class="grp">
+        <button id="navPrev">◀</button>
+        <button id="navToday">今日</button>
+        <button id="navNext">▶</button>
+      </div>
+      <span id="rangeLabel" style="font-size:12px;color:var(--sub)"></span>
+      <label style="font-size:12px;display:flex;align-items:center;gap:4px;margin-left:auto">
+        <input type="checkbox" id="showDone" checked>完了も表示</label>
+    </div>
+    <div id="schedArea"></div>
+  </div>
+</section>
+
+<!-- ===== スケジュール入力 ===== -->
+<section class="tab" id="tab-input">
+  <div class="card">
+    <h2 id="itemFormTitle">✏️ 予定・締切の登録</h2>
+    <div class="frm">
+      <label>物件 *<select id="iProject"></select></label>
+      <label>種別 *<select id="iType"></select></label>
+      <label>タイトル *<input id="iTitle" placeholder="例：実施設計図書 提出" style="width:220px"></label>
+      <label>開始日 *<input type="date" id="iStart"></label>
+      <label>終了日（空欄=単日・締切）<input type="date" id="iEnd"></label>
+      <label>関係者区分<select id="iParty">
+        <option>FDOA</option><option>クライアント</option><option>業者</option><option>その他</option>
+      </select></label>
+      <label>関係者名（業者名等）<input id="iPartyName" placeholder="例：福田建装" style="width:130px"></label>
+      <label>ステータス<select id="iStatus">
+        <option>予定</option><option>進行中</option><option>完了</option>
+      </select></label>
+    </div>
+    <label style="font-size:11px;color:var(--sub)">備忘録メモ<textarea id="iMemo" placeholder="経緯・注意点・連絡内容など何でも"></textarea></label>
+    <div style="margin-top:10px;display:flex;gap:8px">
+      <button class="btn" id="itemSaveBtn">登録</button>
+      <button class="btn gray" id="itemCancelBtn" style="display:none">キャンセル</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>📄 登録済み一覧 <span class="count" id="itemCount"></span></h2>
+    <div class="filerow" style="margin-bottom:10px">
+      <select id="fProject"><option value="">全物件</option></select>
+      <select id="fType"><option value="">全種別</option></select>
+      <input id="fKw" placeholder="キーワード検索" style="width:160px">
+    </div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>開始</th><th>終了</th><th>物件</th><th>種別</th><th>タイトル</th><th>関係者</th><th>状態</th><th>メモ</th><th></th></tr></thead>
+      <tbody id="itemRows"></tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- ===== チェックリスト ===== -->
+<section class="tab" id="tab-check">
+  <div class="card">
+    <h2>✅ 提出物チェックリスト <span class="count" id="checkCount"></span></h2>
+    <p class="note" style="margin-bottom:10px">山場の物件だけ持つ。提出が済んだらリストごと捨てる（管理はこれだけ方式）。</p>
+    <div class="frm" style="align-items:flex-start">
+      <label>物件<select id="kProject"></select></label>
+      <label style="flex:1;min-width:240px">項目（改行で複数まとめて追加OK）<textarea id="kTitle" placeholder="平面図&#10;展開図&#10;建具表 …"></textarea></label>
+      <button class="btn" id="kAddBtn" style="margin-top:16px">追加</button>
+    </div>
+    <div id="checkArea"></div>
+  </div>
+</section>
+
+<!-- ===== マスター管理 ===== -->
+<section class="tab" id="tab-master">
+  <div class="card">
+    <h2>👤 クライアント <span class="count" id="clientCount"></span></h2>
+    <div class="frm">
+      <label>クライアント名 *<input id="cName" style="width:180px"></label>
+      <label>連絡先・担当者<input id="cContact" style="width:200px"></label>
+      <label>メモ<input id="cMemo" style="width:240px"></label>
+      <button class="btn" id="clientSaveBtn">追加</button>
+      <button class="btn gray" id="clientCancelBtn" style="display:none">キャンセル</button>
+    </div>
+    <table><thead><tr><th>名前</th><th>連絡先</th><th>メモ</th><th></th></tr></thead><tbody id="clientRows"></tbody></table>
+  </div>
+
+  <div class="card">
+    <h2>🏠 物件 <span class="count" id="projectCount"></span></h2>
+    <div class="frm">
+      <label>物件名 *<input id="pName" style="width:200px"></label>
+      <label>クライアント<select id="pClient"></select></label>
+      <label>状態<select id="pStatus"><option>進行中</option><option>保留</option><option>完了</option></select></label>
+      <label>表示色<input type="color" id="pColor" value="#2f6fed" style="padding:2px;width:44px;height:31px"></label>
+      <label>締め設定<input id="pShime" placeholder="例：月末締め翌月末払い" style="width:170px"></label>
+      <label>請求設定<input id="pSeikyu" placeholder="例：着手50%・完了50%" style="width:170px"></label>
+      <label>メモ<input id="pMemo" style="width:200px"></label>
+      <button class="btn" id="projectSaveBtn">追加</button>
+      <button class="btn gray" id="projectCancelBtn" style="display:none">キャンセル</button>
+    </div>
+    <table><thead><tr><th>物件名</th><th>クライアント</th><th>状態</th><th>締め設定</th><th>請求設定</th><th>メモ</th><th></th></tr></thead><tbody id="projectRows"></tbody></table>
+  </div>
+
+  <div class="card">
+    <h2>🏷️ 種別マスタ <span class="count" id="typeCount"></span></h2>
+    <p class="note" style="margin-bottom:8px">予定の分類。形＝「締切◆」「期間バー」「連絡●（アポ・メール・確認等の起点）」。自由に追加OK。</p>
+    <div class="frm">
+      <label>種別名 *<input id="tName" style="width:160px"></label>
+      <label>形<select id="tKind">
+        <option value="deadline">締切（◆）</option>
+        <option value="period">期間（バー）</option>
+        <option value="event">連絡・起点（●）</option>
+      </select></label>
+      <label>色<input type="color" id="tColor" value="#e5484d" style="padding:2px;width:44px;height:31px"></label>
+      <button class="btn" id="typeSaveBtn">追加</button>
+      <button class="btn gray" id="typeCancelBtn" style="display:none">キャンセル</button>
+    </div>
+    <table><thead><tr><th>種別</th><th>形</th><th></th></tr></thead><tbody id="typeRows"></tbody></table>
+  </div>
+</section>
+
+<!-- ===== データ管理 ===== -->
+<section class="tab" id="tab-data">
+  <div class="card">
+    <h2>☁️ クラウド同期（GitHub保存）</h2>
+    <p class="note" id="syncStatus" style="margin-bottom:10px">未設定（この端末のブラウザ内にだけ保存中）</p>
+    <div class="frm">
+      <label>アクセストークン<input type="password" id="ghTokenInput" placeholder="github_pat_…" style="width:280px"></label>
+      <button class="btn" id="ghConnectBtn">接続</button>
+      <button class="btn gray" id="ghSyncNowBtn">今すぐ同期</button>
+      <button class="btn red" id="ghDisconnectBtn">この端末から切断</button>
+    </div>
+    <p class="note">接続すると保存のたびにGitHubの非公開リポジトリ（neongreeen/fdoa-app-data の bukken.json）へ自動保存され、他の端末と共有される。トークンはこの端末のブラウザにだけ保存。オフライン時もそのまま使えて、復帰時に同期する。</p>
+  </div>
+  <div class="card">
+    <h2>💾 バックアップ・書き出し</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn" id="expJson">JSON書き出し（完全バックアップ）</button>
+      <button class="btn" id="expCsv">予定CSV書き出し</button>
+      <label class="btn gray" style="display:inline-block;cursor:pointer">JSON読み込み（復元）<input type="file" id="impJson" accept=".json" style="display:none"></label>
+    </div>
+    <p class="note" id="bakNote">⚠️ クラウド同期が未設定の間、データはこのブラウザのlocalStorageにだけ保存される。<b>節目ごとにJSON書き出し</b>して「バックアップ」フォルダへ。（同期接続後は全保存がGitHubに自動バックアップされるので、JSON書き出しは保険）</p>
+  </div>
+  <div class="card">
+    <h2>📈 現在のデータ</h2>
+    <p class="note" id="dataStats"></p>
+  </div>
+  <div class="card">
+    <h2>🧭 拡張ロードマップ（設計メモ）</h2>
+    <p class="note">
+      ・全データはスキーマバージョン付きJSON。全項目に <code>memo</code> と予備領域 <code>meta</code> を持たせてあり、項目追加はスキーマ移行で吸収できる。<br>
+      ・種別マスタは自由編集式なので、入力の分類は運用しながら育てられる。<br>
+      ・将来：時給プロジェクト管理と物件IDで連携（稼働記録⇄スケジュール突き合わせ）→ 最終的に合体も可。<br>
+      ・将来：クラウド保存（GitHub/サーバ）にしてiPhone・iPadから閲覧編集。JSON一本で持ち運べる設計にしてある。
+    </p>
+  </div>
+  <div class="card">
+    <h2>🗑️ 危険操作</h2>
+    <button class="btn red" id="wipeBtn">全データ消去</button>
+  </div>
+</section>
+
+</main>
+<script>
+'use strict';
+/* ========== 基盤 ========== */
+const KEY='fdoa_bukken_shinchoku_v1';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=p=>p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const pad=n=>String(n).padStart(2,'0');
+const fmt=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parse=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);};
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+const daysBetween=(a,b)=>Math.round((b-a)/864e5);
+const today=()=>{const n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate());};
+const WD=['日','月','火','水','木','金','土'];
+const disp=s=>{if(!s)return'';const d=parse(s);return (d.getMonth()+1)+'/'+d.getDate()+'('+WD[d.getDay()]+')';};
+const mondayOf=d=>addDays(d,-((d.getDay()+6)%7));
+
+function defaultTypes(){return[
+ {id:'t_zshime',name:'全体締切',kind:'deadline',color:'#e5484d',meta:{}},
+ {id:'t_fshime',name:'FDOA締切',kind:'deadline',color:'#f2a33c',meta:{}},
+ {id:'t_fwork',name:'FDOA作業',kind:'period',color:'#2f6fed',meta:{}},
+ {id:'t_gshime',name:'業者締切',kind:'deadline',color:'#b0578d',meta:{}},
+ {id:'t_gwork',name:'業者作業',kind:'period',color:'#2fbf71',meta:{}},
+ {id:'t_apo',name:'アポ・MTG',kind:'event',color:'#f2c94c',meta:{}},
+ {id:'t_mail',name:'メール・連絡',kind:'event',color:'#9b59b6',meta:{}},
+ {id:'t_kakunin',name:'確認・待ち',kind:'event',color:'#7f8c8d',meta:{}},
+];}
+function seed(){return{schemaVersion:1,clients:[],projects:[],types:defaultTypes(),items:[],checklists:[],settings:{},meta:{}};}
+function migrate(d){
+  const base=seed();
+  for(const k of Object.keys(base)) if(d[k]===undefined) d[k]=base[k];
+  return d;
+}
+let db;
+try{const raw=localStorage.getItem(KEY);db=raw?migrate(JSON.parse(raw)):seed();}catch(e){db=seed();}
+function persist(){localStorage.setItem(KEY,JSON.stringify(db));}
+function save(){db.settings.dirtyCount=(db.settings.dirtyCount||0)+1;db.meta.savedAt=new Date().toISOString();persist();renderAll();queueSync();}
+
+const view={mode:'gantt',scope:'all',period:'m1',anchor:today(),showDone:true,
+  editItem:null,editClient:null,editProject:null,editType:null};
+
+const clientById=id=>db.clients.find(c=>c.id===id);
+const projectById=id=>db.projects.find(p=>p.id===id);
+const typeById=id=>db.types.find(t=>t.id===id);
+const KINDLBL={deadline:'締切◆',period:'期間▬',event:'連絡●'};
+
+/* ========== タブ ========== */
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x===b));
+  document.querySelectorAll('section.tab').forEach(s=>s.classList.toggle('active',s.id==='tab-'+b.dataset.tab));
+});
+
+/* ========== マスター：クライアント ========== */
+$('clientSaveBtn').onclick=()=>{
+  const name=$('cName').value.trim();
+  if(!name)return alert('クライアント名を入れて');
+  if(view.editClient){const c=clientById(view.editClient);
+    Object.assign(c,{name,contact:$('cContact').value.trim(),memo:$('cMemo').value.trim()});
+  }else db.clients.push({id:uid('c'),name,contact:$('cContact').value.trim(),memo:$('cMemo').value.trim(),meta:{}});
+  cancelClient();save();
+};
+function cancelClient(){view.editClient=null;$('cName').value=$('cContact').value=$('cMemo').value='';
+  $('clientSaveBtn').textContent='追加';$('clientCancelBtn').style.display='none';}
+$('clientCancelBtn').onclick=cancelClient;
+function editClient(id){const c=clientById(id);if(!c)return;view.editClient=id;
+  $('cName').value=c.name;$('cContact').value=c.contact||'';$('cMemo').value=c.memo||'';
+  $('clientSaveBtn').textContent='更新';$('clientCancelBtn').style.display='';}
+function delClient(id){const used=db.projects.some(p=>p.clientId===id);
+  if(used)return alert('このクライアントの物件が残ってるから消せない。物件側を先に整理して。');
+  if(!confirm('削除する？'))return;db.clients=db.clients.filter(c=>c.id!==id);save();}
+
+/* ========== マスター：物件 ========== */
+const PALETTE=['#2f6fed','#e5484d','#2fbf71','#f2a33c','#9b59b6','#16a2b8','#b0578d','#6b7280'];
+$('projectSaveBtn').onclick=()=>{
+  const name=$('pName').value.trim();
+  if(!name)return alert('物件名を入れて');
+  const data={name,clientId:$('pClient').value||null,status:$('pStatus').value,color:$('pColor').value,
+    shime:$('pShime').value.trim(),seikyu:$('pSeikyu').value.trim(),memo:$('pMemo').value.trim()};
+  if(view.editProject)Object.assign(projectById(view.editProject),data);
+  else db.projects.push({id:uid('p'),...data,meta:{}});
+  cancelProject();save();
+};
+function cancelProject(){view.editProject=null;
+  $('pName').value=$('pShime').value=$('pSeikyu').value=$('pMemo').value='';
+  $('pClient').value='';$('pStatus').value='進行中';
+  $('pColor').value=PALETTE[db.projects.length%PALETTE.length];
+  $('projectSaveBtn').textContent='追加';$('projectCancelBtn').style.display='none';}
+$('projectCancelBtn').onclick=cancelProject;
+function editProject(id){const p=projectById(id);if(!p)return;view.editProject=id;
+  $('pName').value=p.name;$('pClient').value=p.clientId||'';$('pStatus').value=p.status;
+  $('pColor').value=p.color;$('pShime').value=p.shime||'';$('pSeikyu').value=p.seikyu||'';$('pMemo').value=p.memo||'';
+  $('projectSaveBtn').textContent='更新';$('projectCancelBtn').style.display='';}
+function delProject(id){const n=db.items.filter(i=>i.projectId===id).length;
+  if(!confirm('物件を削除する？'+(n?'（紐づく予定'+n+'件も消える）':'')))return;
+  db.projects=db.projects.filter(p=>p.id!==id);db.items=db.items.filter(i=>i.projectId!==id);save();}
+
+/* ========== マスター：種別 ========== */
+$('typeSaveBtn').onclick=()=>{
+  const name=$('tName').value.trim();
+  if(!name)return alert('種別名を入れて');
+  const data={name,kind:$('tKind').value,color:$('tColor').value};
+  if(view.editType)Object.assign(typeById(view.editType),data);
+  else db.types.push({id:uid('t'),...data,meta:{}});
+  cancelType();save();
+};
+function cancelType(){view.editType=null;$('tName').value='';$('tKind').value='deadline';
+  $('typeSaveBtn').textContent='追加';$('typeCancelBtn').style.display='none';}
+$('typeCancelBtn').onclick=cancelType;
+function editType(id){const t=typeById(id);if(!t)return;view.editType=id;
+  $('tName').value=t.name;$('tKind').value=t.kind;$('tColor').value=t.color;
+  $('typeSaveBtn').textContent='更新';$('typeCancelBtn').style.display='';}
+function delType(id){const used=db.items.some(i=>i.typeId===id);
+  if(used)return alert('この種別を使ってる予定があるから消せない。');
+  if(!confirm('削除する？'))return;db.types=db.types.filter(t=>t.id!==id);save();}
+
+/* ========== 予定入力 ========== */
+$('itemSaveBtn').onclick=()=>{
+  const projectId=$('iProject').value, typeId=$('iType').value, title=$('iTitle').value.trim(), start=$('iStart').value;
+  if(!projectId)return alert('物件を選んで（マスター管理で物件を先に登録）');
+  if(!typeId)return alert('種別を選んで');
+  if(!title)return alert('タイトルを入れて');
+  if(!start)return alert('開始日を入れて');
+  let end=$('iEnd').value||'';
+  if(end&&end<start)return alert('終了日が開始日より前になってる');
+  const data={projectId,typeId,title,start,end,party:$('iParty').value,
+    partyName:$('iPartyName').value.trim(),status:$('iStatus').value,memo:$('iMemo').value.trim()};
+  if(view.editItem)Object.assign(db.items.find(i=>i.id===view.editItem),data,{updatedAt:fmt(today())});
+  else db.items.push({id:uid('i'),...data,createdAt:fmt(today()),meta:{}});
+  cancelItem();save();
+};
+function cancelItem(){view.editItem=null;
+  $('iTitle').value=$('iStart').value=$('iEnd').value=$('iPartyName').value=$('iMemo').value='';
+  $('iParty').value='FDOA';$('iStatus').value='予定';
+  $('itemFormTitle').textContent='✏️ 予定・締切の登録';
+  $('itemSaveBtn').textContent='登録';$('itemCancelBtn').style.display='none';}
+$('itemCancelBtn').onclick=cancelItem;
+function editItem(id){const i=db.items.find(x=>x.id===id);if(!i)return;
+  document.querySelector('nav button[data-tab="input"]').click();
+  view.editItem=id;
+  $('iProject').value=i.projectId;$('iType').value=i.typeId;$('iTitle').value=i.title;
+  $('iStart').value=i.start;$('iEnd').value=i.end||'';$('iParty').value=i.party||'FDOA';
+  $('iPartyName').value=i.partyName||'';$('iStatus').value=i.status||'予定';$('iMemo').value=i.memo||'';
+  $('itemFormTitle').textContent='✏️ 予定の編集中';
+  $('itemSaveBtn').textContent='更新';$('itemCancelBtn').style.display='';
+  window.scrollTo({top:0,behavior:'smooth'});}
+function delItem(id){if(!confirm('この予定を削除する？'))return;
+  db.items=db.items.filter(i=>i.id!==id);save();}
+function toggleDone(id){const i=db.items.find(x=>x.id===id);if(!i)return;
+  i.status=i.status==='完了'?'予定':'完了';save();}
+
+/* ========== チェックリスト ========== */
+$('kAddBtn').onclick=()=>{
+  const pid=$('kProject').value;
+  if(!pid)return alert('物件を選んで');
+  const lines=$('kTitle').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!lines.length)return alert('項目を入れて');
+  for(const l of lines)db.checklists.push({id:uid('k'),projectId:pid,title:l,done:false,meta:{}});
+  $('kTitle').value='';save();
+};
+function toggleCheck(id){const k=db.checklists.find(x=>x.id===id);if(k){k.done=!k.done;save();}}
+function delCheck(id){db.checklists=db.checklists.filter(x=>x.id!==id);save();}
+function clearDone(pid){if(!confirm('チェック済みを消す？'))return;
+  db.checklists=db.checklists.filter(k=>!(k.projectId===pid&&k.done));save();}
+function delList(pid){if(!confirm('この物件のリストを丸ごと捨てる？'))return;
+  db.checklists=db.checklists.filter(k=>k.projectId!==pid);save();}
+function renderCheck(){
+  const byP={};
+  for(const k of db.checklists)(byP[k.projectId]=byP[k.projectId]||[]).push(k);
+  const rest=db.checklists.filter(k=>!k.done).length;
+  $('checkCount').textContent=db.checklists.length?('残 '+rest+'件'):'';
+  $('checkArea').innerHTML=Object.keys(byP).map(pid=>{
+    const p=projectById(pid),ks=byP[pid],done=ks.filter(k=>k.done).length;
+    return '<div style="margin-bottom:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><b>'+(p?'<span class="dot" style="background:'+esc(p.color)+'"></span>'+esc(p.name):'（削除済み物件）')+'</b><span class="prog">'+done+'/'+ks.length+'</span><button class="btn sm gray" onclick="clearDone(\''+pid+'\')">✔を一掃</button><button class="btn sm red" onclick="delList(\''+pid+'\')">リストごと捨てる</button></div>'
+      +ks.map(k=>'<div class="chk"><input type="checkbox" '+(k.done?'checked':'')+' onchange="toggleCheck(\''+k.id+'\')"><span class="'+(k.done?'done':'')+'">'+esc(k.title)+'</span><button class="btn sm red" style="margin-left:auto" onclick="delCheck(\''+k.id+'\')">×</button></div>').join('')
+      +'</div>';
+  }).join('')||'<div class="empty">チェックリストなし。山場の物件だけ作る。</div>';
+}
+
+/* ========== 直近の締切ボード ========== */
+function renderDlBoard(){
+  const t0=today();
+  const dls=db.items
+    .filter(i=>{const t=typeById(i.typeId);return t&&t.kind==='deadline'&&i.status!=='完了';})
+    .map(i=>({i,due:parse(i.end||i.start)}))
+    .filter(x=>daysBetween(t0,x.due)<=14)
+    .sort((a,b)=>a.due-b.due);
+  if(!dls.length){$('dlBoard').innerHTML='';return;}
+  $('dlBoard').innerHTML='<div class="dlboard">'+dls.map(({i,due})=>{
+    const p=projectById(i.projectId);
+    const n=daysBetween(t0,due);
+    const cls=n<0?'over':(n<=7?'near':'');
+    const rest=n<0?('超過'+(-n)+'日'):(n===0?'今日！':'あと'+n+'日');
+    return '<div class="dlchip '+cls+'" onclick="editItem(\''+i.id+'\')" title="'+esc(i.memo||'')+'">◆ '+disp(i.end||i.start)+'｜'+(p?esc(p.name):'?')+'｜'+esc(i.title)+'｜<b>'+rest+'</b></div>';
+  }).join('')+'</div>';
+}
+
+/* ========== 描画 ========== */
+function opt(v,t,sel){return '<option value="'+esc(v)+'"'+(sel===v?' selected':'')+'>'+esc(t)+'</option>';}
+function fillSelects(){
+  const pOpts=db.projects.filter(p=>p.status!=='完了').map(p=>opt(p.id,p.name)).join('');
+  const pAll=db.projects.map(p=>opt(p.id,p.name)).join('');
+  const keep=(el,html,first)=>{const v=el.value;el.innerHTML=first+html;if([...el.options].some(o=>o.value===v))el.value=v;};
+  keep($('iProject'),pOpts,'<option value="">— 物件 —</option>');
+  keep($('kProject'),pOpts,'<option value="">— 物件 —</option>');
+  keep($('iType'),db.types.map(t=>opt(t.id,t.name)).join(''),'<option value="">— 種別 —</option>');
+  keep($('fProject'),pAll,'<option value="">全物件</option>');
+  keep($('fType'),db.types.map(t=>opt(t.id,t.name)).join(''),'<option value="">全種別</option>');
+  keep($('pClient'),db.clients.map(c=>opt(c.id,c.name)).join(''),'<option value="">—</option>');
+  keep($('scopeSel'),db.projects.filter(p=>p.status!=='完了').map(p=>opt(p.id,p.name)).join(''),'<option value="all">全物件</option>');
+}
+function renderMaster(){
+  $('clientCount').textContent=db.clients.length+'件';
+  $('clientRows').innerHTML=db.clients.map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.contact||'')+'</td><td class="muted">'+esc(c.memo||'')+'</td><td style="white-space:nowrap"><button class="btn sm gray" onclick="editClient(\''+c.id+'\')">編集</button> <button class="btn sm red" onclick="delClient(\''+c.id+'\')">削除</button></td></tr>').join('')||'<tr><td colspan="4" class="muted">まだ登録なし</td></tr>';
+  $('projectCount').textContent=db.projects.length+'件';
+  $('projectRows').innerHTML=db.projects.map(p=>{
+    const c=clientById(p.clientId);
+    return '<tr><td><span class="dot" style="background:'+esc(p.color)+'"></span>'+esc(p.name)+'</td><td>'+esc(c?c.name:'')+'</td><td>'+esc(p.status)+'</td><td class="muted">'+esc(p.shime||'')+'</td><td class="muted">'+esc(p.seikyu||'')+'</td><td class="muted">'+esc(p.memo||'')+'</td><td style="white-space:nowrap"><button class="btn sm gray" onclick="editProject(\''+p.id+'\')">編集</button> <button class="btn sm red" onclick="delProject(\''+p.id+'\')">削除</button></td></tr>';
+  }).join('')||'<tr><td colspan="7" class="muted">まだ登録なし</td></tr>';
+  $('typeCount').textContent=db.types.length+'件';
+  $('typeRows').innerHTML=db.types.map(t=>'<tr><td><span class="badge" style="background:'+esc(t.color)+'">'+esc(t.name)+'</span></td><td>'+KINDLBL[t.kind]+'</td><td style="white-space:nowrap"><button class="btn sm gray" onclick="editType(\''+t.id+'\')">編集</button> <button class="btn sm red" onclick="delType(\''+t.id+'\')">削除</button></td></tr>').join('');
+}
+function renderItems(){
+  const fp=$('fProject').value,ft=$('fType').value,kw=$('fKw').value.trim();
+  let list=db.items.slice().sort((a,b)=>a.start<b.start?-1:1);
+  if(fp)list=list.filter(i=>i.projectId===fp);
+  if(ft)list=list.filter(i=>i.typeId===ft);
+  if(kw)list=list.filter(i=>(i.title+(i.memo||'')+(i.partyName||'')).includes(kw));
+  $('itemCount').textContent=list.length+'件';
+  const t0=fmt(today());
+  $('itemRows').innerHTML=list.map(i=>{
+    const p=projectById(i.projectId),t=typeById(i.typeId);
+    const isDone=i.status==='完了';
+    const endOr=i.end||i.start;
+    let cls='';
+    if(!isDone&&t&&t.kind==='deadline'){if(endOr<t0)cls='overdue';else if(daysBetween(today(),parse(endOr))<=7)cls='soon';}
+    return '<tr class="'+cls+'"><td>'+disp(i.start)+'</td><td>'+(i.end?disp(i.end):'')+'</td><td>'+(p?'<span class="dot" style="background:'+esc(p.color)+'"></span>'+esc(p.name):'?')+'</td><td>'+(t?'<span class="badge" style="background:'+esc(t.color)+'">'+esc(t.name)+'</span>':'?')+'</td><td class="'+(isDone?'done':'')+'">'+esc(i.title)+'</td><td class="muted">'+esc(i.party||'')+(i.partyName?'：'+esc(i.partyName):'')+'</td><td>'+esc(i.status)+'</td><td class="muted" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(i.memo||'')+'">'+esc(i.memo||'')+'</td><td style="white-space:nowrap"><button class="btn sm gray" onclick="editItem(\''+i.id+'\')">編集</button> <button class="btn sm" style="background:'+(isDone?'#8b93a1':'var(--ok)')+'" onclick="toggleDone(\''+i.id+'\')">'+(isDone?'戻す':'完了')+'</button> <button class="btn sm red" onclick="delItem(\''+i.id+'\')">削除</button></td></tr>';
+  }).join('')||'<tr><td colspan="9" class="muted">該当なし</td></tr>';
+}
+['fProject','fType'].forEach(id=>$(id).onchange=renderItems);
+$('fKw').oninput=renderItems;
+
+/* ========== スケジュール確認 ========== */
+function calcRange(){
+  const a=view.anchor;
+  if(view.period==='w1'){const s=mondayOf(a);return[s,addDays(s,6)];}
+  if(view.period==='w2'){const s=mondayOf(a);return[s,addDays(s,13)];}
+  const n=Number(view.period.slice(1));
+  const s=new Date(a.getFullYear(),a.getMonth(),1);
+  return[s,new Date(a.getFullYear(),a.getMonth()+n,0)];
+}
+$('modeGrp').querySelectorAll('button').forEach(b=>b.onclick=()=>{view.mode=b.dataset.mode;
+  $('modeGrp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderSchedule();});
+$('periodGrp').querySelectorAll('button').forEach(b=>b.onclick=()=>{view.period=b.dataset.period;
+  $('periodGrp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderSchedule();});
+$('scopeSel').onchange=e=>{view.scope=e.target.value;renderSchedule();};
+$('showDone').onchange=e=>{view.showDone=e.target.checked;renderSchedule();};
+$('navToday').onclick=()=>{view.anchor=today();renderSchedule();};
+$('navPrev').onclick=()=>nav(-1);
+$('navNext').onclick=()=>nav(1);
+function nav(dir){
+  if(view.period==='w1')view.anchor=addDays(view.anchor,7*dir);
+  else if(view.period==='w2')view.anchor=addDays(view.anchor,14*dir);
+  else{const n=Number(view.period.slice(1));const a=view.anchor;
+    view.anchor=new Date(a.getFullYear(),a.getMonth()+n*dir,1);}
+  renderSchedule();
+}
+function itemsInRange(rs,re){
+  let list=db.items.filter(i=>{
+    const s=parse(i.start),e=parse(i.end||i.start);
+    return s<=re&&e>=rs;
+  });
+  if(view.scope!=='all')list=list.filter(i=>i.projectId===view.scope);
+  if(!view.showDone)list=list.filter(i=>i.status!=='完了');
+  return list.sort((a,b)=>a.start<b.start?-1:1);
+}
+function renderSchedule(){
+  const[rs,re]=calcRange();
+  $('rangeLabel').textContent=fmt(rs).replaceAll('-','/')+' 〜 '+fmt(re).replaceAll('-','/');
+  const list=itemsInRange(rs,re);
+  if(db.projects.length===0){$('schedArea').innerHTML='<div class="empty">まず「マスター管理」で物件を登録 →「スケジュール入力」で予定を入れてね</div>';return;}
+  if(view.mode==='list')renderListView(list,rs,re);
+  else renderGantt(list,rs,re);
+}
+function renderListView(list){
+  if(!list.length){$('schedArea').innerHTML='<div class="empty">この期間に予定なし</div>';return;}
+  const t0=fmt(today());
+  let html='<table><thead><tr><th>開始</th><th>終了</th><th>物件</th><th>種別</th><th>タイトル</th><th>関係者</th><th>状態</th><th>メモ</th></tr></thead><tbody>';
+  html+=list.map(i=>{
+    const p=projectById(i.projectId),t=typeById(i.typeId);
+    const isDone=i.status==='完了';const endOr=i.end||i.start;
+    let cls='';
+    if(!isDone&&t&&t.kind==='deadline'){if(endOr<t0)cls='overdue';else if(daysBetween(today(),parse(endOr))<=7)cls='soon';}
+    return '<tr class="'+cls+'" style="cursor:pointer" onclick="editItem(\''+i.id+'\')"><td>'+disp(i.start)+'</td><td>'+(i.end?disp(i.end):'')+'</td><td>'+(p?'<span class="dot" style="background:'+esc(p.color)+'"></span>'+esc(p.name):'')+'</td><td>'+(t?'<span class="badge" style="background:'+esc(t.color)+'">'+esc(t.name)+'</span>':'')+'</td><td class="'+(isDone?'done':'')+'">'+esc(i.title)+'</td><td class="muted">'+esc(i.party||'')+(i.partyName?'：'+esc(i.partyName):'')+'</td><td>'+esc(i.status)+'</td><td class="muted">'+esc(i.memo||'')+'</td></tr>';
+  }).join('');
+  $('schedArea').innerHTML=html+'</tbody></table>';
+}
+function renderGantt(list,rs,re){
+  const total=daysBetween(rs,re)+1;
+  const pct=d=>(daysBetween(rs,d)/total*100);
+  const wpct=n=>(n/total*100);
+  /* 背景（ヘッダー・グリッド・週末・今日線） */
+  let grid='',we='',dayLbls='',monLbls='';
+  for(let i=0;i<total;i++){
+    const d=addDays(rs,i);
+    if(d.getDate()===1&&i>0)grid+='<div class="gline month" style="left:'+wpct(i)+'%"></div>';
+    else if(total<=35)grid+='<div class="gline" style="left:'+wpct(i)+'%"></div>';
+    else if(d.getDay()===1)grid+='<div class="gline" style="left:'+wpct(i)+'%"></div>';
+    if(total<=35&&(d.getDay()===0||d.getDay()===6))we+='<div class="gwe" style="left:'+wpct(i)+'%;width:'+wpct(1)+'%"></div>';
+    if(total<=14)dayLbls+='<div class="gday" style="left:'+wpct(i)+'%">'+d.getDate()+'('+WD[d.getDay()]+')</div>';
+    else if(total<=35)dayLbls+=(d.getDate()%2===1?'<div class="gday" style="left:'+wpct(i)+'%">'+d.getDate()+'</div>':'');
+    else if(d.getDay()===1)dayLbls+='<div class="gday" style="left:'+wpct(i)+'%">'+(d.getMonth()+1)+'/'+d.getDate()+'</div>';
+    if(d.getDate()===1||i===0)monLbls+='<div class="gmon" style="left:'+wpct(i)+'%">'+d.getFullYear()+'年'+(d.getMonth()+1)+'月</div>';
+  }
+  const t0=today();
+  const todayLine=(t0>=rs&&t0<=re)?'<div class="gtoday" style="left:'+(pct(t0)+wpct(.5))+'%"></div>':'';
+  const bg=grid+we+todayLine;
+  /* 行 */
+  let projs=view.scope==='all'?db.projects.filter(p=>p.status!=='完了'):db.projects.filter(p=>p.id===view.scope);
+  if(view.scope==='all'){
+    // 未完了の締切が近い物件を上に（締切なしは下・元の順）
+    const due={},t0s=fmt(today());
+    for(const i of db.items){
+      const t=typeById(i.typeId);
+      if(!t||t.kind!=='deadline'||i.status==='完了')continue;
+      const d=i.end||i.start;
+      if(d>=t0s&&(!due[i.projectId]||d<due[i.projectId]))due[i.projectId]=d;
+    }
+    projs=projs.slice().sort((a,b)=>((due[a.id]||'9999')<(due[b.id]||'9999')?-1:1));
+  }
+  let rows='<div class="grow header"><div class="glabel muted">物件／予定</div><div class="gtrack" style="height:40px">'+grid+monLbls+dayLbls+'</div></div>';
+  let any=false;
+  for(const p of projs){
+    const pi=list.filter(i=>i.projectId===p.id);
+    if(!pi.length)continue;
+    any=true;
+    rows+='<div class="grow phead"><div class="glabel"><span class="dot" style="background:'+esc(p.color)+'"></span>'+esc(p.name)+'</div><div class="gtrack">'+bg+'</div></div>';
+    for(const i of pi){
+      const t=typeById(i.typeId)||{kind:'period',color:'#888',name:'?'};
+      const isDone=i.status==='完了';
+      const s=parse(i.start),e=parse(i.end||i.start);
+      const cs=s<rs?rs:s, ce=e>re?re:e;
+      let mark='';
+      const tip=esc(i.title)+'｜'+disp(i.start)+(i.end?'〜'+disp(i.end):'')+(i.memo?'\n📝'+esc(i.memo):'');
+      if(t.kind==='deadline'&&!i.end){
+        mark='<div class="gpt'+(isDone?' done':'')+'" style="left:'+(pct(cs)+wpct(.5))+'%;background:'+esc(t.color)+'" title="'+tip+'" onclick="editItem(\''+i.id+'\')"></div>';
+      }else if(t.kind==='event'&&!i.end){
+        mark='<div class="gpt circle'+(isDone?' done':'')+'" style="left:'+(pct(cs)+wpct(.5))+'%;background:'+esc(t.color)+'" title="'+tip+'" onclick="editItem(\''+i.id+'\')"></div>';
+      }else{
+        mark='<div class="gbar'+(isDone?' done':'')+'" style="left:'+pct(cs)+'%;width:'+wpct(daysBetween(cs,ce)+1)+'%;background:'+esc(t.color)+'" title="'+tip+'" onclick="editItem(\''+i.id+'\')"></div>';
+      }
+      rows+='<div class="grow"><div class="glabel"><span class="badge" style="background:'+esc(t.color)+'">'+esc(t.name)+'</span><span class="'+(isDone?'done':'')+'" style="overflow:hidden;text-overflow:ellipsis">'+esc(i.title)+'</span>'+(i.memo?'<span class="memo-icon" title="'+esc(i.memo)+'">📝</span>':'')+'</div><div class="gtrack">'+bg+mark+'</div></div>';
+    }
+  }
+  if(!any)rows+='<div class="empty">この期間に予定なし</div>';
+  $('schedArea').innerHTML='<div class="gwrap"><div class="gantt">'+rows+'</div></div>';
+}
+
+/* ========== データ管理 ========== */
+$('expJson').onclick=()=>{
+  const blob=new Blob([JSON.stringify(db,null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='物件進捗バックアップ_'+fmt(today())+'.json';a.click();
+  db.settings.dirtyCount=0;db.settings.lastExportAt=fmt(today());persist();renderAll();
+};
+$('expCsv').onclick=()=>{
+  const head=['開始','終了','物件','クライアント','種別','タイトル','関係者区分','関係者名','ステータス','メモ'];
+  const q=s=>'"'+String(s??'').replaceAll('"','""')+'"';
+  const rows=db.items.slice().sort((a,b)=>a.start<b.start?-1:1).map(i=>{
+    const p=projectById(i.projectId),c=p?clientById(p.clientId):null,t=typeById(i.typeId);
+    return [i.start,i.end||'',p?p.name:'',c?c.name:'',t?t.name:'',i.title,i.party||'',i.partyName||'',i.status,i.memo||''].map(q).join(',');
+  });
+  const blob=new Blob(['﻿'+head.map(q).join(',')+'\n'+rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='物件進捗予定_'+fmt(today())+'.csv';a.click();
+};
+$('impJson').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(!d.schemaVersion||!Array.isArray(d.items))throw new Error('形式が違う');
+      if(!confirm('現在のデータを読み込んだ内容で置き換える。いい？'))return;
+      db=migrate(d);save();alert('読み込み完了');
+    }catch(err){alert('読み込み失敗：'+err.message);}
+    e.target.value='';
+  };
+  r.readAsText(f);
+};
+$('wipeBtn').onclick=()=>{
+  if(!confirm('全データを消す。JSONバックアップは取った？'))return;
+  if(!confirm('本当に消すよ？'))return;
+  db=seed();save();
+};
+function renderData(){
+  const dirty=db.settings.dirtyCount||0;
+  $('bakDot').style.display=dirty>=20?'':'none';
+  $('dataStats').innerHTML='クライアント '+db.clients.length+'件 ／ 物件 '+db.projects.length+'件 ／ 種別 '+db.types.length+'件 ／ 予定 '+db.items.length+'件 ／ チェック項目 '+db.checklists.length+'件<br>スキーマ v'+db.schemaVersion+' ／ 保存先：このブラウザのlocalStorage（キー: '+KEY+'）＋クラウド同期 '+(ghToken?'ON（GitHub: '+GH.owner+'/'+GH.repo+'/'+GH.path+'）':'未設定')+'<br>前回JSON書き出し：'+(db.settings.lastExportAt||'まだ')+'（それ以降の変更 '+dirty+'回'+(dirty>=20?' ⚠️ そろそろ書き出して':'')+'）';
+}
+
+/* ========== クラウド同期（GitHub Contents API） ========== */
+const GH={owner:'neongreeen',repo:'fdoa-app-data',path:'bukken.json',branch:'main'};
+const TKEY='fdoa_bukken_gh_token';
+let ghToken=localStorage.getItem(TKEY)||'';
+let ghSha=null;      // 最後に確認したリモートファイルのSHA（上書き事故防止）
+let ghStamp=null;    // 最後に同期したリモートのsavedAt（他端末保存の検知用）
+let syncTimer=null,pushing=false,pendingPush=false;
+
+const SYNC_LBL={
+  off:['','未設定（この端末のブラウザ内にだけ保存中）'],
+  loading:['☁️…','クラウドから読み込み中…'],
+  dirty:['☁️●','変更あり・まもなく自動保存'],
+  saving:['☁️↑','クラウドへ保存中…'],
+  saved:['☁️✓','同期済み'],
+  offline:['☁️⚠','オフライン。復帰したら自動で同期する'],
+  error:['☁️✕','同期エラー'],
+};
+function setSync(state,msg){
+  const[badge,label]=SYNC_LBL[state]||['',''];
+  $('syncBadge').textContent=badge;
+  $('syncStatus').textContent=label+(msg?'：'+msg:'')+(state==='saved'?'（'+new Date().toLocaleTimeString('ja-JP')+'）':'');
+  $('syncStatus').style.color=state==='error'?'var(--danger)':state==='offline'?'var(--warn)':'var(--sub)';
+}
+function b64enc(s){const b=new TextEncoder().encode(s);let bin='';for(let i=0;i<b.length;i+=0x8000)bin+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(bin);}
+function b64dec(s){const bin=atob(s.replace(/\s/g,''));const b=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)b[i]=bin.charCodeAt(i);return new TextDecoder().decode(b);}
+function ghApi(method,body){
+  const url='https://api.github.com/repos/'+GH.owner+'/'+GH.repo+'/contents/'+GH.path+(method==='GET'?'?ref='+GH.branch+'&_='+Date.now():'');
+  return fetch(url,{method,cache:'no-store',
+    headers:{'Authorization':'Bearer '+ghToken,'Accept':'application/vnd.github+json'},
+    body:body?JSON.stringify(body):undefined});
+}
+async function ghPull(){ // リモート取得（ghShaも更新）
+  const res=await ghApi('GET');
+  if(res.status===404)return{missing:true};
+  if(res.status===401)throw new Error('トークンが無効（401）');
+  if(!res.ok)throw new Error('GitHub応答 '+res.status);
+  const j=await res.json();
+  ghSha=j.sha;
+  let data=null;
+  try{data=JSON.parse(b64dec(j.content));}catch(e){}
+  return{data};
+}
+function adoptRemote(data){ // リモートをこの端末に採用
+  db=migrate(data);ghStamp=(data.meta&&data.meta.savedAt)||null;persist();renderAll();setSync('saved');
+}
+function queueSync(){ // save()から呼ばれる：少し待ってまとめてpush
+  if(!ghToken)return;
+  setSync('dirty');clearTimeout(syncTimer);syncTimer=setTimeout(ghPush,1500);
+}
+async function ghPush(){
+  if(!ghToken)return;
+  if(pushing){pendingPush=true;return;}
+  pushing=true;setSync('saving');
+  try{
+    const cur=await ghPull(); // 最新SHA取得＋他端末保存の検知
+    const remoteStamp=(cur.data&&cur.data.meta&&cur.data.meta.savedAt)||null;
+    if(remoteStamp&&ghStamp!==null&&remoteStamp!==ghStamp){
+      if(confirm('他の端末で保存されたデータがクラウドにある。\nOK＝クラウドの内容を読み込む（この端末の直近の変更は消える）\nキャンセル＝この端末の内容でクラウドを上書き')){
+        adoptRemote(cur.data);pushing=false;pendingPush=false;return;
+      }
+    }
+    const body={message:'保存：物件進捗 '+new Date().toLocaleString('ja-JP'),content:b64enc(JSON.stringify(db,null,1)),branch:GH.branch};
+    if(ghSha)body.sha=ghSha;
+    const res=await ghApi('PUT',body);
+    if(!res.ok)throw new Error('保存失敗（'+res.status+'）');
+    const j=await res.json();
+    ghSha=j.content.sha;ghStamp=db.meta.savedAt||null;
+    setSync('saved');
+  }catch(e){
+    setSync(navigator.onLine?'error':'offline',navigator.onLine?e.message:'');
+  }
+  pushing=false;
+  if(pendingPush){pendingPush=false;ghPush();}
+}
+async function ghInit(){ // 起動時：新しい方を採用
+  if(!ghToken){setSync('off');return;}
+  setSync('loading');
+  try{
+    const r=await ghPull();
+    if(r.missing||!r.data||!r.data.schemaVersion){ghPush();return;} // クラウドが空→ローカルを上げる
+    const remoteStamp=(r.data.meta&&r.data.meta.savedAt)||'';
+    const localStamp=(db.meta&&db.meta.savedAt)||'';
+    if(remoteStamp>localStamp)adoptRemote(r.data);
+    else if(localStamp>remoteStamp){ghStamp=remoteStamp;ghPush();}
+    else{ghStamp=remoteStamp;setSync('saved');}
+  }catch(e){setSync(navigator.onLine?'error':'offline',navigator.onLine?e.message:'');}
+}
+$('ghConnectBtn').onclick=()=>{
+  const t=$('ghTokenInput').value.trim();
+  if(!t)return alert('トークンを貼り付けて');
+  ghToken=t;localStorage.setItem(TKEY,t);$('ghTokenInput').value='';
+  ghSha=null;ghStamp=null;ghInit();renderData();
+};
+$('ghSyncNowBtn').onclick=()=>{
+  if(!ghToken)return alert('先にトークンを設定して');
+  ghInit();
+};
+$('ghDisconnectBtn').onclick=()=>{
+  if(!confirm('この端末をクラウド同期から切断する？（クラウド上のデータは残る）'))return;
+  ghToken='';localStorage.removeItem(TKEY);ghSha=null;ghStamp=null;setSync('off');renderData();
+};
+window.addEventListener('online',()=>{if(ghToken)ghPush();});
+
+/* ========== 全体描画 ========== */
+function renderAll(){fillSelects();renderMaster();renderItems();renderSchedule();renderCheck();renderDlBoard();renderData();}
+window.toggleCheck=toggleCheck;window.delCheck=delCheck;window.clearDone=clearDone;window.delList=delList;
+window.editClient=editClient;window.delClient=delClient;
+window.editProject=editProject;window.delProject=delProject;
+window.editType=editType;window.delType=delType;
+window.editItem=editItem;window.delItem=delItem;window.toggleDone=toggleDone;
+$('pColor').value=PALETTE[db.projects.length%PALETTE.length];
+renderAll();
+ghInit();
+</script>
+</body>
+</html>
