@@ -88,13 +88,21 @@
     #todayTable td,#listTable td,#expenseListTable td,#billingSummary td,#billingTable td,#invoiceTable td,
     #customerTable td,#propertyTable td,#contentTable td,#expTypeTable td{white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis}
   }
-  /* スマホ：フォームは縦積み全幅 */
+  /* スマホ：フォームは縦積み全幅・メニューは1行横スクロール・全体を一段コンパクトに */
   @media(max-width:720px){
     .grid2{grid-template-columns:1fr}
     .clock{font-size:38px}
     main{padding:16px 12px 60px}
     .panel{padding:14px}
-    .head-in{padding:10px 12px}
+    body{font-size:14px}
+    h2{font-size:16px}
+    input,select,textarea{padding:8px 10px}
+    .btn{min-height:40px}
+    .head-in{padding:8px 12px;flex-wrap:nowrap;flex-direction:column;align-items:stretch;gap:5px}
+    .logo{font-size:15px}
+    nav{margin:0 -12px;padding:0 12px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    nav::-webkit-scrollbar{display:none}
+    nav button{white-space:nowrap;flex:0 0 auto;padding:6px 12px;font-size:13px}
     .row select,.row input{width:100%!important}
     .toolbar select,.toolbar input{flex:1 1 40%;min-width:130px;width:auto!important}
     .timer-wrap>div{flex:1 1 100%!important;min-width:0}

@@ -91,11 +91,17 @@ tr:hover td{background:#f8f9fb}
   .chk input{width:20px;height:20px}
   .tblwrap td{white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis}
 }
-/* スマホ：フォームは縦積み全幅 */
+/* スマホ：フォームは縦積み全幅・メニューは1行横スクロール */
 @media(max-width:700px){
   main{padding:10px}
   .card{padding:12px}
-  header{padding:8px 10px;gap:8px}
+  header{padding:8px 10px;gap:5px;flex-wrap:nowrap;flex-direction:column;align-items:stretch}
+  header h1{font-size:15px}
+  nav{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -10px;padding:0 10px}
+  nav::-webkit-scrollbar{display:none}
+  nav button{white-space:nowrap;flex:0 0 auto;padding:6px 11px;font-size:12.5px}
+  .gtoolbar{gap:6px}
+  .gtoolbar .grp button{padding:7px 8px;font-size:12px}
   .glabel{flex-basis:110px;font-size:11px}
   .frm label{width:100%}
   .frm input:not([type=color]),.frm select,.frm textarea{width:100%!important}
