@@ -668,8 +668,8 @@ function renderData(){
 
 /* ========== クラウド同期（GitHub Contents API） ========== */
 const GH={owner:'neongreeen',repo:'fdoa-app-data',path:'bukken.json',branch:'main'};
-const TKEY='fdoa_bukken_gh_token';
-let ghToken=localStorage.getItem(TKEY)||'';
+const TKEY='fdoa_gh_token'; // 2アプリ共通キー（時給と共有・旧キーからも読む）
+let ghToken=localStorage.getItem(TKEY)||localStorage.getItem('fdoa_bukken_gh_token')||'';
 let ghSha=null;      // 最後に確認したリモートファイルのSHA（上書き事故防止）
 let ghStamp=null;    // 最後に同期したリモートのsavedAt（他端末保存の検知用）
 let syncTimer=null,pushing=false,pendingPush=false;
@@ -765,7 +765,7 @@ $('ghSyncNowBtn').onclick=()=>{
 };
 $('ghDisconnectBtn').onclick=()=>{
   if(!confirm('この端末をクラウド同期から切断する？（クラウド上のデータは残る）'))return;
-  ghToken='';localStorage.removeItem(TKEY);ghSha=null;ghStamp=null;setSync('off');renderData();
+  ghToken='';localStorage.removeItem(TKEY);localStorage.removeItem('fdoa_bukken_gh_token');ghSha=null;ghStamp=null;setSync('off');renderData();
 };
 window.addEventListener('online',()=>{if(ghToken)ghPush();});
 

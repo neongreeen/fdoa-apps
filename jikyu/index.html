@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>時給プロジェクト管理</title>
+<style>
+  :root{
+    --bg:#f5f5f3; --panel:#ffffff; --ink:#1d1d1f; --sub:#6e6e73;
+    --line:#e3e3e0; --accent:#2f6f5e; --accent-soft:#e7f1ed;
+    --warn:#b4533b; --warn-soft:#fbe9e4; --ok:#2f6f5e;
+    --radius:14px; --shadow:0 1px 3px rgba(0,0,0,.06),0 6px 20px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+    background:var(--bg);color:var(--ink);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  header{position:sticky;top:0;z-index:20;background:rgba(245,245,243,.85);backdrop-filter:saturate(180%) blur(12px);
+    border-bottom:1px solid var(--line)}
+  .head-in{max-width:1080px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .logo{font-weight:700;font-size:17px;letter-spacing:.02em}
+  .logo small{font-weight:400;color:var(--sub);font-size:12px;margin-left:8px}
+  nav{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+  nav button{border:none;background:transparent;color:var(--sub);padding:8px 14px;border-radius:999px;
+    font-size:14px;cursor:pointer;font-weight:600}
+  nav button.active{background:var(--ink);color:#fff}
+  nav button:hover:not(.active){background:#eaeae7}
+  main{max-width:1080px;margin:0 auto;padding:24px 20px 80px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:22px;margin-bottom:20px;box-shadow:var(--shadow)}
+  h2{font-size:18px;margin:0 0 4px}
+  h3{font-size:14px;color:var(--sub);font-weight:600;margin:0 0 14px;letter-spacing:.02em}
+  .muted{color:var(--sub);font-size:13px}
+  .view{display:none}
+  .view.active{display:block}
+  label{display:block;font-size:12px;color:var(--sub);font-weight:600;margin:0 0 5px}
+  input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
+    font-size:15px;font-family:inherit;background:#fff;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  textarea{resize:vertical;min-height:64px}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .row>div{flex:1;min-width:140px}
+  .btn{border:none;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;
+    background:var(--ink);color:#fff;display:inline-flex;align-items:center;gap:7px}
+  .btn:hover{opacity:.9}
+  .btn.sec{background:#ececea;color:var(--ink)}
+  .btn.ghost{background:transparent;color:var(--accent);padding:6px 10px}
+  .btn.warn{background:var(--warn)}
+  .btn.sm{padding:6px 12px;font-size:13px}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{font-size:12px;color:var(--sub);font-weight:600;white-space:nowrap}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr:hover td{background:#fafaf8}
+  .pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600}
+  .pill.unbilled{background:var(--warn-soft);color:var(--warn)}
+  .pill.billed{background:var(--accent-soft);color:var(--accent)}
+  .timer-wrap{display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap}
+  .timer-wrap>div{flex:1;min-width:200px}
+  .clock{font-size:46px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em;line-height:1.1}
+  .clock.run{color:var(--accent)}
+  .stat{display:flex;gap:24px;flex-wrap:wrap;margin-top:4px}
+  .stat .k{font-size:12px;color:var(--sub)}
+  .stat .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+  .empty{text-align:center;color:var(--sub);padding:30px 0;font-size:14px}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .toolbar .spacer{margin-left:auto}
+  .chip{font-size:12px;background:#ececea;border-radius:999px;padding:4px 10px;color:var(--sub)}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.32);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal-bg.show{display:flex}
+  .modal{background:#fff;border-radius:16px;max-width:480px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:90vh;overflow:auto}
+  .modal h3{color:var(--ink);font-size:17px;margin-bottom:16px}
+  .modal .row{margin-bottom:12px}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;
+    padding:12px 22px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;transition:.25s;z-index:60;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}.clock{font-size:38px}}
+  .danger-zone{border:1px dashed var(--warn);background:var(--warn-soft)}
+  details summary{cursor:pointer;font-weight:600;color:var(--sub);font-size:13px}
+  /* 請求チェックボックスを大きく・押しやすく */
+  .billchk,#billAll{width:22px;height:22px;cursor:pointer;accent-color:var(--accent);margin:0}
+  #billingTable td:first-child,#billingTable th:first-child{text-align:center;padding-left:6px;padding-right:6px}
+  #billSel{font-weight:700;color:var(--ink);font-size:15px}
+</style>
+</head>
+<body>
+<header>
+  <div class="head-in">
+    <div class="logo">時給プロジェクト管理 <small id="syncBadge" title="クラウド同期の状態">ローカル保存版</small></div>
+    <nav id="nav">
+      <button data-view="record" class="active">記録</button>
+      <button data-view="list">記録一覧</button>
+      <button data-view="billing">請求管理</button>
+      <button data-view="master">マスター管理</button>
+      <button data-view="export">書き出し</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- ===== 記録 ===== -->
+  <section id="view-record" class="view active">
+    <div class="panel">
+      <h2>稼働タイマー</h2>
+      <h3>物件と内容を選んでスタート／ストップ（内容は後からでもOK）</h3>
+      <div class="timer-wrap">
+        <div>
+          <label>物件</label>
+          <select id="timerProperty"></select>
+        </div>
+        <div>
+          <label>稼働内容(任意)</label>
+          <select id="timerContent"></select>
+        </div>
+        <div style="flex:0 0 auto">
+          <div class="clock" id="clock">00:00:00</div>
+          <div class="muted" id="clockSub">待機中</div>
+        </div>
+        <div style="flex:0 0 auto;display:flex;gap:10px">
+          <button class="btn" id="btnStart">▶ スタート</button>
+          <button class="btn warn" id="btnStop" disabled>■ ストップ</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>手入力で追加</h2>
+      <h3>タイマーを使わず直接記録（後からの修正は記録一覧で）</h3>
+      <div class="row">
+        <div><label>開始日</label><input type="date" id="mDate"></div>
+        <div><label>物件</label><select id="mProperty"></select></div>
+        <div style="flex:0 0 auto"><label>開始(任意)</label>
+          <div style="display:flex;gap:6px"><select id="mStartH" style="width:auto"></select><select id="mStartM" style="width:auto"></select></div></div>
+        <div><label>終了日</label><input type="date" id="mEndDate"></div>
+        <div style="flex:0 0 auto"><label>終了(任意)</label>
+          <div style="display:flex;gap:6px"><select id="mEndH" style="width:auto"></select><select id="mEndM" style="width:auto"></select></div></div>
+        <div style="flex:0 0 auto"><label>稼働時間(分)</label><input type="number" id="mMinutes" min="0" step="5" placeholder="例 90" style="width:110px"></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div style="flex:3"><label>稼働内容</label><select id="mContent"></select></div>
+        <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="btn" id="btnManualAdd">追加</button></div>
+      </div>
+      <div class="muted" style="margin-top:8px">開始・終了を選ぶと分は自動計算。分を直接入れてもOK。稼働内容は「マスター管理」で追加できます。</div>
+    </div>
+
+    <div class="panel">
+      <h2>経費を追加</h2>
+      <h3>交通費・宿泊費などの実費を記録（時給とは別枠で請求にまとめられます）</h3>
+      <div class="row">
+        <div style="flex:0 0 auto"><label>日付</label><input type="date" id="xDate"></div>
+        <div><label>物件</label><select id="xProperty"></select></div>
+        <div style="flex:0 0 auto"><label>種別</label><select id="xType" style="width:150px"></select></div>
+        <div style="flex:0 0 auto"><label>金額(円)</label><input type="number" id="xAmount" min="0" step="10" placeholder="例 3400" style="width:120px"></div>
+        <div style="flex:2"><label>メモ(任意)</label><input type="text" id="xMemo" placeholder="例 芦屋打合せ 新幹線往復"></div>
+        <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="btn" id="btnExpenseAdd">追加</button></div>
+      </div>
+      <div class="muted" style="margin-top:8px">入力した経費は「記録一覧」ページで確認・編集できます。種別は「マスター管理」で追加できます。</div>
+    </div>
+
+    <div class="panel">
+      <h2>今日の記録</h2>
+      <div id="todayTable"></div>
+    </div>
+  </section>
+
+  <!-- ===== 記録一覧 ===== -->
+  <section id="view-list" class="view">
+    <div class="panel">
+      <h2>記録一覧・編集</h2>
+      <div class="toolbar">
+        <select id="fProperty" style="width:auto"><option value="">全物件</option></select>
+        <select id="fBilled" style="width:auto">
+          <option value="">請求状態：すべて</option>
+          <option value="unbilled">未請求のみ</option>
+          <option value="billed">請求済のみ</option>
+        </select>
+        <input type="month" id="fMonth" style="width:auto">
+        <button class="btn sec sm" id="fClear">条件クリア</button>
+        <span class="chip" id="lPeriod" style="display:none"></span>
+        <div class="spacer"></div>
+        <span class="chip" id="listSummary"></span>
+      </div>
+      <div id="listTable"></div>
+    </div>
+    <div class="panel">
+      <h2>経費一覧・編集</h2>
+      <div class="toolbar">
+        <span class="muted">上の絞り込み（物件・請求状態・月）がこの一覧にも効きます</span>
+        <div class="spacer"></div>
+        <span class="chip" id="expListSummary"></span>
+      </div>
+      <div id="expenseListTable"></div>
+    </div>
+  </section>
+
+  <!-- ===== 請求管理 ===== -->
+  <section id="view-billing" class="view">
+    <div class="panel">
+      <h2>未請求サマリー</h2>
+      <h3>物件ごとの未請求 稼働時間と金額（請求タイプも表示）</h3>
+      <div id="billingSummary"></div>
+    </div>
+    <div class="panel">
+      <h2>請求にまとめる</h2>
+      <h3>請求するログにチェック → まとめて1件の請求に。月でも一式でも、3分割・いったんここまで、も自由</h3>
+      <p class="muted" style="margin:-6px 0 12px">ヘッダのチェックで全選択／全解除。1件チェック後、別の行をShift＋クリックでその間をまとめて選択できます。</p>
+      <div class="toolbar">
+        <select id="bProperty" style="width:auto"><option value="">全物件</option></select>
+        <input type="month" id="bMonth" style="width:auto">
+        <button class="btn sec sm" id="bClear">絞り込みクリア</button>
+        <span class="chip" id="bPeriod" style="display:none"></span>
+        <div class="spacer"></div>
+        <span class="muted" id="billSel"></span>
+      </div>
+      <div id="billingTable"></div>
+      <div class="row" style="margin-top:16px;align-items:flex-end">
+        <div style="flex:0 0 auto"><label>請求日</label><input type="date" id="bDate"></div>
+        <div style="flex:2"><label>請求ラベル(任意)</label><input type="text" id="bLabel" placeholder="例 6月分 / 第1回 / 一式"></div>
+        <div style="flex:0 0 auto"><button class="btn" id="btnMakeInvoice">選択を請求にまとめる</button></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>請求履歴</h2>
+      <h3>確定した請求の一覧。明細の確認や取り消しができます</h3>
+      <div id="invoiceTable"></div>
+    </div>
+  </section>
+
+  <!-- ===== マスター管理 ===== -->
+  <section id="view-master" class="view">
+    <div class="grid2">
+      <div class="panel">
+        <h2>顧客</h2>
+        <div class="row" style="margin-bottom:14px">
+          <div style="flex:3"><label>顧客名</label><input type="text" id="cName" placeholder="例 株式会社○○"></div>
+          <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="btn" id="btnAddCustomer">追加</button></div>
+        </div>
+        <div id="customerTable"></div>
+      </div>
+      <div class="panel">
+        <h2>物件</h2>
+        <div class="row" style="margin-bottom:8px">
+          <div><label>物件名</label><input type="text" id="pName" placeholder="例 COMMECA"></div>
+          <div><label>顧客</label><select id="pCustomer"></select></div>
+          <div style="flex:0 0 auto"><label>状態</label><select id="pStatus" style="width:auto"><option>未着手</option><option>稼働中</option><option>完了</option><option>停止</option></select></div>
+        </div>
+        <div class="row" style="margin-bottom:14px">
+          <div><label>時間単価(円)</label><input type="number" id="pRate" min="0" step="100" placeholder="例 5000"></div>
+          <div><label>請求タイプ(任意)</label><input type="text" id="pBillType" list="billTypeList" placeholder="例 毎月 / 一式 / 3分割"></div>
+          <div style="flex:0 0 auto"><label>締め日(毎月の場合)</label><select id="pCloseDay" style="width:auto"></select></div>
+          <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="btn" id="btnAddProperty">追加</button></div>
+        </div>
+        <datalist id="billTypeList"><option value="毎月"></option><option value="一式"></option><option value="2分割"></option><option value="3分割"></option><option value="都度"></option></datalist>
+        <div class="toolbar"><span class="muted">表示：</span><select id="pFilter" style="width:auto"><option value="">全部</option><option>未着手</option><option>稼働中</option><option>完了</option><option>停止</option></select></div>
+        <div id="propertyTable"></div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <h2>稼働内容</h2>
+        <h3>記録時にプルダウンから選べる作業内容を登録</h3>
+        <div class="row" style="margin-bottom:14px">
+          <div style="flex:3"><label>稼働内容</label><input type="text" id="wName" placeholder="例 現地調査 / 図面修正 / 打合せ"></div>
+          <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="btn" id="btnAddContent">追加</button></div>
+        </div>
+        <div id="contentTable"></div>
+      </div>
+      <div class="panel">
+        <h2>経費種別</h2>
+        <h3>経費入力時にプルダウンから選べる種別を登録</h3>
+        <div class="row" style="margin-bottom:14px">
+          <div style="flex:3"><label>経費種別</label><input type="text" id="xtName" placeholder="例 交通費 / 宿泊費 / 駐車場代"></div>
+          <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="btn" id="btnAddExpType">追加</button></div>
+        </div>
+        <div id="expTypeTable"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 書き出し ===== -->
+  <section id="view-export" class="view">
+    <div class="panel">
+      <h2>☁️ クラウド同期（GitHub保存）</h2>
+      <h3 id="syncStatus">未設定（この端末のブラウザ内にだけ保存中）</h3>
+      <div class="row">
+        <div><label>アクセストークン</label><input type="password" id="ghTokenInput" placeholder="github_pat_…" style="width:280px"></div>
+        <div style="flex:0 0 auto"><button class="btn" id="ghConnectBtn">接続</button></div>
+        <div style="flex:0 0 auto"><button class="btn sec" id="ghSyncNowBtn">今すぐ同期</button></div>
+        <div style="flex:0 0 auto"><button class="btn warn sm" id="ghDisconnectBtn">この端末から切断</button></div>
+      </div>
+      <p class="muted" style="margin-top:10px">接続すると保存のたびにGitHubの非公開リポジトリ（neongreeen/fdoa-app-data の jikyu.json）へ自動保存され、他の端末と共有される。物件進捗管理と同じトークンでOK（同じ端末で接続済みなら自動でつながる）。オフライン時もそのまま使えて、復帰時に同期する。</p>
+    </div>
+    <div class="panel">
+      <h2>シート書き出し（バックアップ）</h2>
+      <h3>WEBが使えない時の確認用。Numbers / Googleシート / Excel で開けます</h3>
+      <div class="row">
+        <div style="flex:0 0 auto"><button class="btn" id="btnExportFolder">4点を日付フォルダで書き出す</button></div>
+      </div>
+      <p class="muted" style="margin-top:10px">「時給データ_YYYY-MM-DD」フォルダに 記録・経費・請求・マスター の4CSVをまとめたZIPを書き出します。Macは解凍するとそのままフォルダになります（Safariは自動解凍）。</p>
+      <details style="margin-top:12px"><summary>個別に書き出す（任意）</summary>
+        <div class="row" style="margin-top:12px">
+          <div style="flex:0 0 auto"><button class="btn sec sm" id="btnCsvRecords">記録CSV</button></div>
+          <div style="flex:0 0 auto"><button class="btn sec sm" id="btnCsvExpenses">経費CSV</button></div>
+          <div style="flex:0 0 auto"><button class="btn sec sm" id="btnCsvInvoices">請求CSV</button></div>
+          <div style="flex:0 0 auto"><button class="btn sec sm" id="btnCsvMaster">マスターCSV</button></div>
+        </div>
+        <p class="muted" style="margin-top:10px">記録CSVは1ログ単位（適用時給・金額入り）。請求CSVは請求単位で 明細合計・調整額・請求合計 まで入ります。</p>
+      </details>
+    </div>
+    <div class="panel">
+      <h2>完全バックアップ / 復元</h2>
+      <h3>全データをJSONで保存。機種変更や別Macへの移行に</h3>
+      <div class="row">
+        <div style="flex:0 0 auto"><button class="btn" id="btnJsonExport">JSONバックアップを書き出す</button></div>
+        <div style="flex:0 0 auto">
+          <label class="btn sec" style="cursor:pointer;margin:0">JSONから復元<input type="file" id="jsonImport" accept=".json" style="display:none"></label>
+        </div>
+      </div>
+      <p class="muted" style="margin-top:12px">復元すると現在のデータは上書きされます。先に書き出しておくと安心です。</p>
+    </div>
+    <div class="panel danger-zone">
+      <h2>全データ削除</h2>
+      <p class="muted">この端末のブラウザに保存された全記録・マスターを消します。元に戻せません。</p>
+      <button class="btn warn sm" id="btnWipe">全データを削除</button>
+    </div>
+  </section>
+</main>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modalBox"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   時給プロジェクト管理 — 単一HTMLアプリ（ローカルlocalStorage保存）
+   データ構造（将来の項目追加もしやすいようオブジェクトで保持）
+   ------------------------------------------------------------
+   customers : [{id, name}]
+   properties: [{id, name, customerId, rate, active, note, billType}]
+                billType = 請求タイプの自由ラベル（毎月/一式/3分割/都度…目安のみ）
+   contents  : [{id, name}]   ← 稼働内容マスター（プルダウン候補）
+   invoices  : [{id, date, label, createdAt}]   ← 請求（ログを束ねた単位）
+   records   : [{id, propertyId, date, start, end, minutes, content, billed, invoiceId, createdAt}]
+                invoiceId が入れば「その請求に含まれる＝請求済」。
+                請求の区切りは月でも一式でも3分割でも自由（選んだログを束ねるだけ）。
+   expenses  : [{id, propertyId, date, type, amount, memo, billed, invoiceId, createdAt}]
+                経費（交通費など実費）。時給ログと同様、請求にまとめられる。金額は税込実額。
+   expTypes  : [{id, name}]   ← 経費種別マスター（プルダウン候補）
+   running   : {propertyId, startTs} | null   ← 稼働中タイマー
+   ============================================================ */
+const KEY = "jikyu_app_v1";
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const uid = ()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const yen = n => "¥"+Math.round(n).toLocaleString("ja-JP");
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+
+/* ---------- クラウド同期（GitHub Contents API・物件進捗管理と同方式） ---------- */
+const GH={owner:'neongreeen',repo:'fdoa-app-data',path:'jikyu.json',branch:'main'};
+const TKEY='fdoa_gh_token'; // 2アプリ共通キー（物件進捗管理の旧キーからも読む）
+let ghToken=localStorage.getItem(TKEY)||localStorage.getItem('fdoa_bukken_gh_token')||'';
+let ghSha=null;      // 最後に確認したリモートファイルのSHA（上書き事故防止）
+let ghStamp=null;    // 最後に同期したリモートのsavedAt（他端末保存の検知用）
+let syncTimer=null,pushing=false,pendingPush=false;
+const SYNC_LBL={
+  off:['ローカル保存版','未設定（この端末のブラウザ内にだけ保存中）'],
+  loading:['☁️…','クラウドから読み込み中…'],
+  dirty:['☁️●','変更あり・まもなく自動保存'],
+  saving:['☁️↑','クラウドへ保存中…'],
+  saved:['☁️✓','同期済み'],
+  offline:['☁️⚠','オフライン。復帰したら自動で同期する'],
+  error:['☁️✕','同期エラー'],
+};
+function setSync(state,msg){
+  const[badge,label]=SYNC_LBL[state]||['',''];
+  $('#syncBadge').textContent=badge;
+  $('#syncStatus').textContent=label+(msg?'：'+msg:'')+(state==='saved'?'（'+new Date().toLocaleTimeString('ja-JP')+'）':'');
+  $('#syncStatus').style.color=state==='error'?'#c0392b':state==='offline'?'#b26a00':'';
+}
+function b64enc(s){const b=new TextEncoder().encode(s);let bin='';for(let i=0;i<b.length;i+=0x8000)bin+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(bin);}
+function b64dec(s){const bin=atob(s.replace(/\s/g,''));const b=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)b[i]=bin.charCodeAt(i);return new TextDecoder().decode(b);}
+function ghApi(method,body){
+  const url='https://api.github.com/repos/'+GH.owner+'/'+GH.repo+'/contents/'+GH.path+(method==='GET'?'?ref='+GH.branch+'&_='+Date.now():'');
+  return fetch(url,{method,cache:'no-store',
+    headers:{'Authorization':'Bearer '+ghToken,'Accept':'application/vnd.github+json'},
+    body:body?JSON.stringify(body):undefined});
+}
+async function ghPull(){ // リモート取得（ghShaも更新）
+  const res=await ghApi('GET');
+  if(res.status===404)return{missing:true};
+  if(res.status===401)throw new Error('トークンが無効（401）');
+  if(!res.ok)throw new Error('GitHub応答 '+res.status);
+  const j=await res.json();
+  ghSha=j.sha;
+  let data=null;
+  try{data=JSON.parse(b64dec(j.content));}catch(e){}
+  return{data};
+}
+function adoptRemote(data){ // リモートをこの端末に採用
+  DB=data; DB.running=DB.running||null; DB.contents=DB.contents||[]; DB.invoices=DB.invoices||[]; DB.expenses=DB.expenses||[]; DB.expTypes=DB.expTypes||[]; DB.meta=DB.meta||{};
+  ghStamp=DB.meta.savedAt||null;
+  localStorage.setItem(KEY,JSON.stringify(DB));
+  stopTick(); renderAll(); if(DB.running) startTick(); else updateClock();
+  setSync('saved');
+}
+function queueSync(){ // save()から呼ばれる：少し待ってまとめてpush
+  if(!ghToken)return;
+  setSync('dirty');clearTimeout(syncTimer);syncTimer=setTimeout(ghPush,1500);
+}
+async function ghPush(){
+  if(!ghToken)return;
+  if(pushing){pendingPush=true;return;}
+  pushing=true;setSync('saving');
+  try{
+    const cur=await ghPull(); // 最新SHA取得＋他端末保存の検知
+    const remoteStamp=(cur.data&&cur.data.meta&&cur.data.meta.savedAt)||null;
+    if(remoteStamp&&ghStamp!==null&&remoteStamp!==ghStamp){
+      if(confirm('他の端末で保存されたデータがクラウドにある。\nOK＝クラウドの内容を読み込む（この端末の直近の変更は消える）\nキャンセル＝この端末の内容でクラウドを上書き')){
+        adoptRemote(cur.data);pushing=false;pendingPush=false;return;
+      }
+    }
+    const body={message:'保存：時給 '+new Date().toLocaleString('ja-JP'),content:b64enc(JSON.stringify(DB,null,1)),branch:GH.branch};
+    if(ghSha)body.sha=ghSha;
+    const res=await ghApi('PUT',body);
+    if(!res.ok)throw new Error('保存失敗（'+res.status+'）');
+    const j=await res.json();
+    ghSha=j.content.sha;ghStamp=(DB.meta&&DB.meta.savedAt)||null;
+    setSync('saved');
+  }catch(e){
+    setSync(navigator.onLine?'error':'offline',navigator.onLine?e.message:'');
+  }
+  pushing=false;
+  if(pendingPush){pendingPush=false;ghPush();}
+}
+async function ghInit(){ // 起動時：新しい方を採用
+  if(!ghToken){setSync('off');return;}
+  // 旧データ互換：実データがあるのにタイムスタンプ未付与なら今付ける（初回接続で確実にクラウドへ上がるように）
+  if(!(DB.meta&&DB.meta.savedAt)&&(DB.customers.length||DB.properties.length||DB.records.length)){
+    DB.meta=DB.meta||{};DB.meta.savedAt=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(DB));
+  }
+  setSync('loading');
+  try{
+    const r=await ghPull();
+    if(r.missing||!r.data||!r.data.customers){ghPush();return;} // クラウドが空→ローカルを上げる
+    const remoteStamp=(r.data.meta&&r.data.meta.savedAt)||'';
+    const localStamp=(DB.meta&&DB.meta.savedAt)||'';
+    if(remoteStamp>localStamp)adoptRemote(r.data);
+    else if(localStamp>remoteStamp){ghStamp=remoteStamp;ghPush();}
+    else{ghStamp=remoteStamp;setSync('saved');}
+  }catch(e){setSync(navigator.onLine?'error':'offline',navigator.onLine?e.message:'');}
+}
+
+let DB = load();
+if(!DB.contents) DB.contents=[];   // 旧データ互換：稼働内容マスター
+if(!DB.invoices) DB.invoices=[];   // 旧データ互換：請求
+if(!DB.expenses) DB.expenses=[];   // 旧データ互換：経費
+if(!DB.expTypes) DB.expTypes=["交通費","宿泊費","駐車場代","立替購入","その他"].map(n=>({id:uid()+n.length,name:n}));   // 経費種別マスター（初期値つき）
+// 旧データ互換：時給スナップショットが無い記録は、現在の物件単価で確定させる（以後ぶれない）
+(function migrateRates(){
+  let changed=false;
+  DB.records.forEach(r=>{
+    if(r.rate==null){ const p=DB.properties.find(x=>x.id===r.propertyId); r.rate=p?(p.rate||0):0; changed=true; }
+  });
+  // 旧データ互換：物件の状態(未着手/稼働中/完了/停止)。旧active から引き継ぐ
+  DB.properties.forEach(p=>{ if(!p.status){ p.status=(p.active===false?"停止":"稼働中"); changed=true; } });
+  if(changed) save();
+})();
+
+function load(){
+  try{
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if(d && d.customers) return d;
+  }catch(e){}
+  return {version:1, customers:[], properties:[], contents:[], invoices:[], records:[], expenses:[], expTypes:null, running:null};
+}
+function save(){ DB.meta=DB.meta||{}; DB.meta.savedAt=new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(DB)); queueSync(); }
+
+function propById(id){ return DB.properties.find(p=>p.id===id); }
+function custById(id){ return DB.customers.find(c=>c.id===id); }
+function custOfProp(p){ return p ? custById(p.customerId) : null; }
+/* 物件の状態：未着手/稼働中/完了/停止。記録の候補に出すのは未着手・稼働中のみ */
+const PROP_STATUSES=["未着手","稼働中","完了","停止"];
+function propStatus(p){ return (p&&p.status)? p.status : (p&&p.active===false?"停止":"稼働中"); }
+function isSelectable(p){ const s=propStatus(p); return s==="未着手"||s==="稼働中"; }
+function statusChip(s){
+  const col={"未着手":"#8a8a8e","稼働中":"var(--accent)","完了":"#3a6ea5","停止":"var(--warn)"}[s]||"#8a8a8e";
+  const bg ={"未着手":"#ececea","稼働中":"var(--accent-soft)","完了":"#e7eef6","停止":"var(--warn-soft)"}[s]||"#ececea";
+  return '<span class="pill" style="background:'+bg+';color:'+col+'">'+esc(s)+'</span>';
+}
+/* 初めて記録したら 未着手 → 稼働中 に自動で切替（完了・停止はそのまま） */
+function activateIfPending(pid){
+  const p=propById(pid);
+  if(p && propStatus(p)==="未着手"){ p.status="稼働中"; p.active=true; return true; }
+  return false;
+}
+/* 時給はログに保存した値（スナップショット）を優先。無ければ物件マスターの現単価。
+   → マスターの時給を変えても過去の確定額は動かない（今後の新規記録だけに反映） */
+function recRate(r){
+  if(r.rate!=null) return r.rate;
+  const p=propById(r.propertyId); return p?(p.rate||0):0;
+}
+function amountOf(rec){ return (rec.minutes/60)*recRate(rec); }
+/* 請求ごとの「時給上書き」を反映した1ログの金額 */
+function invRecAmount(r, inv){
+  const rate=(inv && inv.overrideRate!=null)? inv.overrideRate : recRate(r);
+  return (r.minutes/60)*rate;
+}
+/* 一覧表示用：請求に属していればその上書きを反映、未請求なら素の時給 */
+function displayAmount(r){
+  const inv=r.invoiceId? invoiceById(r.invoiceId):null;
+  return invRecAmount(r, inv);
+}
+function appliedRate(r){
+  const inv=r.invoiceId? invoiceById(r.invoiceId):null;
+  return (inv && inv.overrideRate!=null)? inv.overrideRate : recRate(r);
+}
+/* 請求の金額（稼働明細合計／経費合計／調整額／最終合計） */
+function invoiceBase(inv){ return DB.records.filter(r=>r.invoiceId===inv.id).reduce((s,r)=>s+invRecAmount(r,inv),0); }
+function invoiceExpenses(inv){ return DB.expenses.filter(x=>x.invoiceId===inv.id).reduce((s,x)=>s+(x.amount||0),0); }
+function invoiceTotal(inv){ return invoiceBase(inv)+invoiceExpenses(inv)+(inv.adjust||0); }
+function fmtMin(m){
+  m = Math.round(m);
+  const h = Math.floor(m/60), mm = m%60;
+  return (h>0? h+"時間 ":"") + mm + "分";
+}
+function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+/* プルダウン用オプション生成（時=0-23 / 分=5分刻み / 稼働内容=マスター） */
+function hourOptions(sel){
+  let o='<option value="">時</option>';
+  for(let h=0;h<24;h++){ const v=String(h).padStart(2,"0"); o+='<option value="'+v+'"'+(sel===v?" selected":"")+'>'+v+'</option>'; }
+  return o;
+}
+function minOptions(sel){
+  let mins=[]; for(let m=0;m<60;m+=5) mins.push(String(m).padStart(2,"0"));
+  if(sel && mins.indexOf(sel)<0){ mins.push(sel); mins.sort(); }   // タイマー由来の端数も表示
+  let o='<option value="">分</option>';
+  mins.forEach(m=>o+='<option value="'+m+'"'+(sel===m?" selected":"")+'>'+m+'</option>');
+  return o;
+}
+function contentOptions(sel){
+  let names=DB.contents.map(c=>c.name);
+  if(sel && names.indexOf(sel)<0) names=[sel].concat(names);   // 既存記録の値が未登録でも表示
+  let o='<option value="">（未選択）</option>';
+  names.forEach(n=>o+='<option value="'+esc(n)+'"'+(sel===n?" selected":"")+'>'+esc(n)+'</option>');
+  return o;
+}
+function expTypeOptions(sel){
+  let names=DB.expTypes.map(t=>t.name);
+  if(sel && names.indexOf(sel)<0) names=[sel].concat(names);   // 既存経費の値が未登録でも表示
+  let o='<option value="">（種別を選択）</option>';
+  names.forEach(n=>o+='<option value="'+esc(n)+'"'+(sel===n?" selected":"")+'>'+esc(n)+'</option>');
+  return o;
+}
+function readTime(hSel,mSel){ const h=$(hSel).value,m=$(mSel).value; return (h&&m)? h+":"+m : ""; }
+function invoiceById(id){ return DB.invoices.find(i=>i.id===id); }
+function isBilled(r){ return !!(r.invoiceId || r.billed); }   // 請求に含まれる or 手動請求済
+function toast(msg){
+  const t=$("#toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900);
+}
+
+function openModal(html){ $("#modalBox").innerHTML=html; $("#modalBg").classList.add("show"); }
+function closeModal(){ $("#modalBg").classList.remove("show"); }
+$("#modalBg").addEventListener("click",e=>{ if(e.target.id==="modalBg") closeModal(); });
+function confirmBox(msg, onYes, yesLabel, warn){
+  yesLabel=yesLabel||"削除"; warn=(warn!==false);
+  openModal('<h3>確認</h3><p style="margin:0 0 4px">'+esc(msg)+'</p>'+
+    '<div class="modal-actions">'+
+      '<button class="btn sec" onclick="closeModal()">キャンセル</button>'+
+      '<button class="btn '+(warn?'warn':'')+'" id="confirmYes">'+esc(yesLabel)+'</button>'+
+    '</div>');
+  $("#confirmYes").onclick=function(){ closeModal(); onYes(); };
+}
+
+/* ---------- タイマー ---------- */
+let tickTimer=null;
+function startTick(){ stopTick(); tickTimer=setInterval(updateClock,1000); updateClock(); }
+function stopTick(){ if(tickTimer){clearInterval(tickTimer);tickTimer=null;} }
+function updateClock(){
+  const c=$("#clock");
+  if(DB.running){
+    const sec=Math.floor((Date.now()-DB.running.startTs)/1000);
+    const h=String(Math.floor(sec/3600)).padStart(2,"0");
+    const m=String(Math.floor(sec%3600/60)).padStart(2,"0");
+    const s=String(sec%60).padStart(2,"0");
+    c.textContent=h+":"+m+":"+s; c.classList.add("run");
+    const p=propById(DB.running.propertyId);
+    $("#clockSub").textContent = "稼働中："+(p?p.name:"(物件削除済)")+(DB.running.content?"｜"+DB.running.content:"");
+  }else{
+    c.textContent="00:00:00"; c.classList.remove("run");
+    $("#clockSub").textContent="待機中";
+  }
+}
+function startTimer(){
+  const pid=$("#timerProperty").value;
+  if(!pid){ toast("物件を選んでください"); return; }
+  DB.running={propertyId:pid, content:$("#timerContent").value, startTs:Date.now()};
+  const flipped=activateIfPending(pid); save();
+  syncTimerUI(); startTick();
+  if(flipped){ renderMaster(); toast("稼働開始（状態を稼働中に）"); }
+}
+function stopTimer(){
+  if(!DB.running) return;
+  const sec=Math.floor((Date.now()-DB.running.startTs)/1000);
+  const minutes=Math.max(1,Math.round(sec/60));
+  const start=new Date(DB.running.startTs), end=new Date();
+  const hm=d=>String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  const dstr=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const rp=propById(DB.running.propertyId);
+  const sameDay=dstr(start)===dstr(end);
+  const rec={id:uid(),propertyId:DB.running.propertyId,date:dstr(start),
+    start:hm(start),end:hm(end),endDate:(sameDay?"":dstr(end)),minutes:minutes,content:(DB.running.content||""),rate:rp?(rp.rate||0):0,billed:false,invoiceId:null,createdAt:Date.now()};
+  DB.records.push(rec); DB.running=null; save();
+  $("#timerContent").value="";   // 次回に前回の内容を引きずらない
+  syncTimerUI(); stopTick(); updateClock(); renderAll();
+  if(!rec.content) editRecord(rec.id, true);   // スタート時に内容を選んでいれば入力モーダルは省略
+  toast("記録しました（"+fmtMin(minutes)+"）");
+}
+function syncTimerUI(){
+  const run=!!DB.running;
+  $("#btnStart").disabled=run; $("#btnStop").disabled=!run;
+  $("#timerProperty").disabled=run;
+  $("#timerContent").disabled=run;
+  if(run){ $("#timerProperty").value=DB.running.propertyId; $("#timerContent").value=DB.running.content||""; }
+}
+
+/* ---------- セレクト再構築 ---------- */
+function fillPropertySelects(){
+  const opts = DB.properties.filter(isSelectable)
+    .map(p=>'<option value="'+p.id+'">'+esc(p.name)+(custOfProp(p)?" 〔"+esc(custOfProp(p).name)+"〕":"")+'</option>').join("");
+  const ph = '<option value="">物件を選択…</option>';
+  ["#timerProperty","#mProperty","#xProperty"].forEach(sel=>{
+    const el=$(sel), cur=el.value; el.innerHTML=ph+opts; el.value=cur;
+  });
+  const all = DB.properties.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join("");
+  const fp=$("#fProperty"), curf=fp.value; fp.innerHTML='<option value="">全物件</option>'+all; fp.value=curf;
+  const bp=$("#bProperty"), curbp=bp.value; bp.innerHTML='<option value="">全物件</option>'+all; bp.value=curbp;
+  const cs=$("#pCustomer"), curc=cs.value;
+  cs.innerHTML='<option value="">顧客を選択…</option>'+DB.customers.map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join("");
+  cs.value=curc;
+  const mc=$("#mContent"), curmc=mc.value; mc.innerHTML=contentOptions(curmc); mc.value=curmc;
+  const tc=$("#timerContent"), curtc=tc.value; tc.innerHTML=contentOptions(curtc); tc.value=curtc;
+  const xt=$("#xType"), curxt=xt.value; xt.innerHTML=expTypeOptions(curxt); xt.value=curxt;
+}
+
+/* ---------- テーブル描画 ---------- */
+function recordRow(r, opts){
+  opts=opts||{};
+  const p=propById(r.propertyId); const c=custOfProp(p);
+  const inv = r.invoiceId? invoiceById(r.invoiceId):null;
+  const pill = isBilled(r)
+    ? '<span class="pill billed">請求済</span>'+(inv?'<div class="muted" style="font-size:11px">'+esc(inv.date)+(inv.label?' '+esc(inv.label):'')+'</div>':'')
+    : '<span class="pill unbilled">未請求</span>';
+  const chk = opts.check?'<td><input type="checkbox" class="billchk" value="'+r.id+'"></td>':"";
+  return '<tr>'+chk+
+    '<td>'+esc(r.date)+(r.endDate&&r.endDate!==r.date?'<div class="muted" style="font-size:11px">→'+esc(r.endDate)+'</div>':'')+'</td>'+
+    '<td>'+(p?esc(p.name):'<span class="muted">削除済</span>')+'</td>'+
+    '<td class="muted">'+(c?esc(c.name):"")+'</td>'+
+    '<td class="num">'+fmtMin(r.minutes)+'</td>'+
+    '<td class="num">'+yen(displayAmount(r))+'</td>'+
+    '<td>'+(esc(r.content)||'<span class="muted">—</span>')+'</td>'+
+    '<td>'+pill+'</td>'+
+    '<td class="num" style="white-space:nowrap">'+
+      '<button class="btn ghost sm" onclick="editRecord(\''+r.id+'\')">編集</button>'+
+      '<button class="btn ghost sm" style="color:var(--warn)" onclick="delRecord(\''+r.id+'\')">削除</button>'+
+    '</td></tr>';
+}
+function tableWrap(head, rows, emptyMsg){
+  if(!rows) return '<div class="empty">'+emptyMsg+'</div>';
+  return '<table><thead><tr>'+head+'</tr></thead><tbody>'+rows+'</tbody></table>';
+}
+function renderToday(){
+  const rs=DB.records.filter(r=>r.date===todayStr()).sort((a,b)=>b.createdAt-a.createdAt);
+  const head='<th>日付</th><th>物件</th><th>顧客</th><th class="num">稼働</th><th class="num">金額</th><th>内容</th><th>請求</th><th></th>';
+  $("#todayTable").innerHTML = tableWrap(head, rs.map(r=>recordRow(r)).join(""), "今日の記録はまだありません");
+}
+function getListFilters(){ return {prop:$("#fProperty").value, billed:$("#fBilled").value, month:$("#fMonth").value}; }
+function renderList(){
+  const f=getListFilters();
+  let rs=DB.records.slice();
+  if(f.prop) rs=rs.filter(r=>r.propertyId===f.prop);
+  if(f.billed==="unbilled") rs=rs.filter(r=>!isBilled(r));
+  if(f.billed==="billed") rs=rs.filter(r=>isBilled(r));
+  const lprop=f.prop?propById(f.prop):null;
+  if(f.month) rs=rs.filter(r=>inPeriod(r,f.month,lprop));
+  setPeriodChip("#lPeriod", f.month, lprop);
+  rs.sort((a,b)=> a.date<b.date?1:a.date>b.date?-1:b.createdAt-a.createdAt);
+  const head='<th>日付</th><th>物件</th><th>顧客</th><th class="num">稼働</th><th class="num">金額</th><th>内容</th><th>請求</th><th></th>';
+  $("#listTable").innerHTML=tableWrap(head, rs.map(r=>recordRow(r)).join(""), "該当する記録がありません");
+  const totMin=rs.reduce((s,r)=>s+r.minutes,0), totAmt=rs.reduce((s,r)=>s+displayAmount(r),0);
+  $("#listSummary").textContent=rs.length+"件 / "+fmtMin(totMin)+" / "+yen(totAmt);
+  renderExpenses();   // 経費一覧も同じ絞り込みで更新
+}
+function renderBilling(){
+  const unbilledAll=DB.records.filter(r=>!isBilled(r));
+  const unbilledExpAll=DB.expenses.filter(x=>!isBilledExp(x));
+  // ---- サマリー（全未請求・物件ごと、稼働＋経費） ----
+  const byProp={};
+  const slot=k=>{ if(!byProp[k]) byProp[k]={min:0,amt:0,exp:0,n:0}; return byProp[k]; };
+  unbilledAll.forEach(r=>{ const d=slot(r.propertyId); d.min+=r.minutes; d.amt+=amountOf(r); d.n++; });
+  unbilledExpAll.forEach(x=>{ const d=slot(x.propertyId); d.exp+=(x.amount||0); d.n++; });
+  const keys=Object.keys(byProp);
+  if(!keys.length){
+    $("#billingSummary").innerHTML='<div class="empty">未請求の記録はありません 🎉</div>';
+  }else{
+    const rows=keys.map(k=>{ const p=propById(k), c=custOfProp(p), d=byProp[k];
+      const bt=(p&&p.billType)?' <span class="chip">'+esc(p.billType)+'</span>':'';
+      return '<tr><td>'+(c?esc(c.name):"")+'</td><td>'+(p?esc(p.name):'削除済')+bt+'</td>'+
+        '<td class="num">'+d.n+'件</td><td class="num">'+fmtMin(d.min)+'</td><td class="num">'+yen(d.amt)+'</td>'+
+        '<td class="num">'+(d.exp?yen(d.exp):'<span class="muted">—</span>')+'</td><td class="num"><strong>'+yen(d.amt+d.exp)+'</strong></td></tr>';
+    }).join("");
+    const tMin=unbilledAll.reduce((s,r)=>s+r.minutes,0), tAmt=unbilledAll.reduce((s,r)=>s+amountOf(r),0);
+    const tExp=unbilledExpAll.reduce((s,x)=>s+(x.amount||0),0);
+    $("#billingSummary").innerHTML='<table><thead><tr><th>顧客</th><th>物件</th><th class="num">件数</th><th class="num">稼働</th><th class="num">稼働額</th><th class="num">経費</th><th class="num">未請求合計</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody><tfoot><tr><td colspan="2"><strong>合計</strong></td><td class="num">'+(unbilledAll.length+unbilledExpAll.length)+'件</td>'+
+      '<td class="num"><strong>'+fmtMin(tMin)+'</strong></td><td class="num"><strong>'+yen(tAmt)+'</strong></td><td class="num"><strong>'+yen(tExp)+'</strong></td><td class="num"><strong>'+yen(tAmt+tExp)+'</strong></td></tr></tfoot></table>';
+  }
+  // ---- 請求にまとめる：絞り込み後の未請求ログ＋経費 ----
+  const fp=$("#bProperty").value, fm=$("#bMonth").value;
+  const bprop=fp?propById(fp):null;
+  let list=unbilledAll.slice();
+  if(fp) list=list.filter(r=>r.propertyId===fp);
+  if(fm) list=list.filter(r=>inPeriod(r,fm,bprop));
+  let expList=unbilledExpAll.slice();
+  if(fp) expList=expList.filter(x=>x.propertyId===fp);
+  if(fm) expList=expList.filter(x=>inPeriod(x,fm,bprop));
+  setPeriodChip("#bPeriod", fm, bprop);
+  const merged=list.map(r=>({d:r.date,t:r.createdAt,html:recordRow(r,{check:true})}))
+    .concat(expList.map(x=>({d:x.date,t:x.createdAt,html:expenseRow(x,{check:true})})));
+  merged.sort((a,b)=> a.d<b.d?1:a.d>b.d?-1:b.t-a.t);
+  const head='<th><input type="checkbox" id="billAll" title="表示中をすべて選択／解除"></th><th>日付</th><th>物件</th><th>顧客</th><th class="num">稼働/種別</th><th class="num">金額</th><th>内容/メモ</th><th>請求</th><th></th>';
+  $("#billingTable").innerHTML=tableWrap(head, merged.map(m=>m.html).join(""), "対象の未請求ログはありません");
+  bindBillChecks();
+  renderInvoices();
+}
+/* チェック操作：全選択 / Shift+クリックの範囲選択 */
+let _lastBillIdx=-1;
+function bindBillChecks(){
+  const boxes=$$(".billchk");
+  _lastBillIdx=-1;
+  boxes.forEach((cb,i)=>{
+    cb.addEventListener("change",updateBillSel);
+    cb.addEventListener("click",e=>{
+      if(e.shiftKey && _lastBillIdx>=0){
+        const a=Math.min(_lastBillIdx,i), b=Math.max(_lastBillIdx,i);
+        for(let j=a;j<=b;j++) boxes[j].checked=cb.checked;   // 範囲をまとめてON/OFF
+      }
+      _lastBillIdx=i;
+      syncBillAll(); updateBillSel();
+    });
+  });
+  const all=$("#billAll");
+  if(all){
+    all.checked=false;
+    all.addEventListener("change",()=>{ boxes.forEach(cb=>cb.checked=all.checked); updateBillSel(); });
+  }
+  updateBillSel();
+}
+function syncBillAll(){
+  const boxes=$$(".billchk"), all=$("#billAll"); if(!all) return;
+  const checked=boxes.filter(cb=>cb.checked).length;
+  all.checked = boxes.length>0 && checked===boxes.length;
+  all.indeterminate = checked>0 && checked<boxes.length;
+}
+function splitBillIds(vals){
+  return {
+    recIds: vals.filter(v=>v.indexOf("e:")!==0),
+    expIds: vals.filter(v=>v.indexOf("e:")===0).map(v=>v.slice(2))
+  };
+}
+function updateBillSel(){
+  syncBillAll();
+  const checked=$$(".billchk:checked");
+  if(!checked.length){ $("#billSel").textContent=""; return; }
+  const ids=splitBillIds(checked.map(cb=>cb.value));
+  const sel=DB.records.filter(r=>ids.recIds.indexOf(r.id)>=0);
+  const selX=DB.expenses.filter(x=>ids.expIds.indexOf(x.id)>=0);
+  const min=sel.reduce((s,r)=>s+r.minutes,0);
+  const amt=sel.reduce((s,r)=>s+amountOf(r),0)+selX.reduce((s,x)=>s+(x.amount||0),0);
+  $("#billSel").textContent=checked.length+"件 選択中 / "+fmtMin(min)+(selX.length?"（経費"+selX.length+"件含む）":"")+" / "+yen(amt);
+}
+function renderInvoices(){
+  if(!DB.invoices.length){ $("#invoiceTable").innerHTML='<div class="empty">まだ請求はありません</div>'; return; }
+  const rows=DB.invoices.slice().sort((a,b)=> a.date<b.date?1:-1).map(inv=>{
+    const recs=DB.records.filter(r=>r.invoiceId===inv.id);
+    const exps=DB.expenses.filter(x=>x.invoiceId===inv.id);
+    const min=recs.reduce((s,r)=>s+r.minutes,0);
+    const base=invoiceBase(inv), expAmt=invoiceExpenses(inv), total=invoiceTotal(inv);
+    const props=Array.from(new Set(recs.concat(exps).map(r=>{const p=propById(r.propertyId);return p?p.name:"削除済";}))).join("・");
+    let note="";
+    if(inv.overrideRate!=null) note+='<div class="muted" style="font-size:11px">時給上書 '+yen(inv.overrideRate)+'/h</div>';
+    if(expAmt) note+='<div class="muted" style="font-size:11px">経費 '+yen(expAmt)+'（'+exps.length+'件）</div>';
+    if(inv.adjust) note+='<div class="muted" style="font-size:11px">明細'+yen(base+expAmt)+' 調整'+(inv.adjust>0?"+":"")+yen(inv.adjust)+'</div>';
+    return '<tr><td>'+esc(inv.date)+'</td><td>'+(esc(inv.label)||'<span class="muted">—</span>')+'</td>'+
+      '<td class="muted">'+esc(props)+'</td><td class="num">'+(recs.length+exps.length)+'件</td><td class="num">'+fmtMin(min)+'</td>'+
+      '<td class="num"><strong>'+yen(total)+'</strong>'+note+'</td>'+
+      '<td class="num" style="white-space:nowrap">'+
+      '<button class="btn ghost sm" onclick="viewInvoice(\''+inv.id+'\')">明細・調整</button>'+
+      '<button class="btn ghost sm" style="color:var(--warn)" onclick="cancelInvoice(\''+inv.id+'\')">取消</button></td></tr>';
+  }).join("");
+  $("#invoiceTable").innerHTML='<table><thead><tr><th>請求日</th><th>ラベル</th><th>物件</th><th class="num">件数</th><th class="num">稼働</th><th class="num">請求額</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+function makeInvoice(){
+  const vals=$$(".billchk:checked").map(cb=>cb.value);
+  if(!vals.length){ toast("請求するログを選んでください"); return; }
+  const ids=splitBillIds(vals);
+  const date=$("#bDate").value||todayStr();
+  const label=$("#bLabel").value.trim();
+  const amt=DB.records.filter(r=>ids.recIds.indexOf(r.id)>=0).reduce((s,r)=>s+amountOf(r),0)
+          +DB.expenses.filter(x=>ids.expIds.indexOf(x.id)>=0).reduce((s,x)=>s+(x.amount||0),0);
+  const expNote=ids.expIds.length?("（うち経費"+ids.expIds.length+"件）"):"";
+  confirmBox(vals.length+"件"+expNote+"（"+yen(amt)+"）を請求にまとめます。請求日 "+date+(label?" / "+label:"")+" でよろしいですか？", ()=>{
+    const inv={id:uid(),date:date,label:label,adjust:0,adjustNote:"",overrideRate:null,createdAt:Date.now()};
+    DB.invoices.push(inv);
+    DB.records.forEach(r=>{ if(ids.recIds.indexOf(r.id)>=0){ r.invoiceId=inv.id; r.billed=true; } });
+    DB.expenses.forEach(x=>{ if(ids.expIds.indexOf(x.id)>=0){ x.invoiceId=inv.id; x.billed=true; } });
+    save(); $("#bLabel").value=""; renderAll(); toast("請求にまとめました");
+  }, "請求にまとめる", false);
+}
+function viewInvoice(id){
+  const inv=invoiceById(id); if(!inv) return;
+  const recs=DB.records.filter(r=>r.invoiceId===id).sort((a,b)=> a.date<b.date?-1:1);
+  const exps=DB.expenses.filter(x=>x.invoiceId===id).sort((a,b)=> a.date<b.date?-1:1);
+  const expSum=exps.reduce((s,x)=>s+(x.amount||0),0);
+  const expRowsHtml=exps.map(x=>{ const p=propById(x.propertyId);
+    return '<tr><td>'+esc(x.date)+'</td><td>'+(p?esc(p.name):'削除済')+'</td><td class="num"><span class="chip">'+esc(x.type||"経費")+'</span></td>'+
+      '<td class="num">'+yen(x.amount||0)+'</td><td>'+(esc(x.memo)||'—')+'</td></tr>'; }).join("");
+  const rowsHtml=(tmp)=>recs.map(r=>{ const p=propById(r.propertyId);
+    return '<tr><td>'+esc(r.date)+'</td><td>'+(p?esc(p.name):'削除済')+'</td><td class="num">'+fmtMin(r.minutes)+'</td>'+
+      '<td class="num">'+yen(invRecAmount(r,tmp||inv))+'</td><td>'+(esc(r.content)||'—')+'</td></tr>'; }).join("")+expRowsHtml;
+  openModal('<h3>請求の確認・調整　'+esc(inv.date)+(inv.label?'　'+esc(inv.label):'')+'</h3>'+
+    '<div style="max-height:34vh;overflow:auto;margin-bottom:14px">'+
+    '<table><thead><tr><th>日付</th><th>物件</th><th class="num">稼働/種別</th><th class="num">金額</th><th>内容/メモ</th></tr></thead><tbody id="iv_rows">'+rowsHtml()+'</tbody></table></div>'+
+    '<div class="row"><div><label>時給上書き(円/h・空欄=各ログのまま)</label><input type="number" id="iv_override" step="100" placeholder="上書きしない" value="'+(inv.overrideRate!=null?inv.overrideRate:"")+'"></div>'+
+      '<div><label>調整額(円・±)</label><input type="number" id="iv_adjust" step="100" value="'+(inv.adjust||0)+'"></div></div>'+
+    '<div class="row"><div><label>請求ラベル</label><input type="text" id="iv_label" value="'+esc(inv.label||"")+'" placeholder="例 6月分 / 第1回 / 一式"></div>'+
+      '<div><label>調整メモ(任意)</label><input type="text" id="iv_note" value="'+esc(inv.adjustNote||"")+'" placeholder="例 端数調整 / 値引き"></div></div>'+
+    '<div class="panel" style="margin:14px 0 0;padding:14px;box-shadow:none">'+
+      '<div style="display:flex;justify-content:space-between"><span class="muted">稼働明細合計</span><span id="iv_base" class="num">—</span></div>'+
+      '<div style="display:flex;justify-content:space-between"><span class="muted">経費合計</span><span id="iv_exp" class="num">—</span></div>'+
+      '<div style="display:flex;justify-content:space-between"><span class="muted">調整額</span><span id="iv_adj" class="num">—</span></div>'+
+      '<div style="display:flex;justify-content:space-between;font-weight:700;font-size:18px;margin-top:6px"><span>請求合計</span><span id="iv_total" class="num">—</span></div>'+
+    '</div>'+
+    '<div class="modal-actions"><button class="btn sec" onclick="closeModal()">閉じる</button><button class="btn" id="iv_save">調整を保存</button></div>');
+  const preview=()=>{
+    const ov=$("#iv_override").value.trim();
+    const tmp={overrideRate: ov===""?null:Math.max(0,parseInt(ov,10)||0)};
+    const base=recs.reduce((s,r)=>s+invRecAmount(r,tmp),0);
+    const adj=parseInt($("#iv_adjust").value||"0",10)||0;
+    $("#iv_base").textContent=yen(base);
+    $("#iv_exp").textContent=yen(expSum);
+    $("#iv_adj").textContent=(adj>0?"+":"")+yen(adj);
+    $("#iv_total").textContent=yen(base+expSum+adj);
+    $("#iv_rows").innerHTML=rowsHtml(tmp);
+  };
+  ["#iv_override","#iv_adjust"].forEach(s=>$(s).addEventListener("input",preview));
+  preview();
+  $("#iv_save").onclick=()=>{
+    const ov=$("#iv_override").value.trim();
+    inv.overrideRate = ov===""? null : Math.max(0,parseInt(ov,10)||0);
+    inv.adjust = parseInt($("#iv_adjust").value||"0",10)||0;
+    inv.adjustNote = $("#iv_note").value.trim();
+    inv.label = $("#iv_label").value.trim();
+    save(); closeModal(); renderAll(); toast("調整を保存しました");
+  };
+}
+function cancelInvoice(id){
+  const n=DB.records.filter(r=>r.invoiceId===id).length + DB.expenses.filter(x=>x.invoiceId===id).length;
+  confirmBox("この請求を取り消しますか？ "+n+"件のログ・経費は未請求に戻ります。", ()=>{
+    DB.records.forEach(r=>{ if(r.invoiceId===id){ r.invoiceId=null; r.billed=false; } });
+    DB.expenses.forEach(x=>{ if(x.invoiceId===id){ x.invoiceId=null; x.billed=false; } });
+    DB.invoices=DB.invoices.filter(i=>i.id!==id);
+    save(); renderAll(); toast("請求を取り消しました");
+  });
+}
+function renderMaster(){
+  const cRows=DB.customers.map(c=>{
+    const n=DB.properties.filter(p=>p.customerId===c.id).length;
+    return '<tr><td>'+esc(c.name)+'</td><td class="muted num">'+n+'物件</td>'+
+      '<td class="num" style="white-space:nowrap">'+
+      '<button class="btn ghost sm" onclick="editCustomer(\''+c.id+'\')">編集</button>'+
+      '<button class="btn ghost sm" style="color:var(--warn)" onclick="delCustomer(\''+c.id+'\')">削除</button></td></tr>';
+  }).join("");
+  $("#customerTable").innerHTML=tableWrap('<th>顧客名</th><th class="num">物件数</th><th></th>',cRows,"顧客がまだありません");
+  const pf=$("#pFilter")?$("#pFilter").value:"";
+  const props=DB.properties.filter(p=>!pf||propStatus(p)===pf);
+  const pRows=props.map(p=>{
+    const c=custOfProp(p); const st=propStatus(p); const dim=(st==="完了"||st==="停止");
+    return '<tr'+(dim?' style="opacity:.55"':'')+'>'+
+      '<td>'+esc(p.name)+'</td>'+
+      '<td class="muted">'+(c?esc(c.name):"—")+'</td>'+
+      '<td class="num">'+yen(p.rate||0)+'</td>'+
+      '<td class="muted">'+((esc(p.billType||"")||"—")+(p.billType==="毎月"?"・"+closeLabel(p.closeDay)+"締":""))+'</td>'+
+      '<td>'+statusChip(st)+'</td>'+
+      '<td class="num" style="white-space:nowrap">'+
+      '<button class="btn ghost sm" onclick="editProperty(\''+p.id+'\')">編集</button>'+
+      '<button class="btn ghost sm" style="color:var(--warn)" onclick="delProperty(\''+p.id+'\')">削除</button></td></tr>';
+  }).join("");
+  $("#propertyTable").innerHTML=tableWrap('<th>物件名</th><th>顧客</th><th class="num">時間単価</th><th>請求タイプ</th><th>状態</th><th></th>',pRows,"該当する物件がありません");
+  const wRows=DB.contents.map(c=>'<tr><td>'+esc(c.name)+'</td>'+
+      '<td class="num" style="white-space:nowrap">'+
+      '<button class="btn ghost sm" onclick="editContent(\''+c.id+'\')">編集</button>'+
+      '<button class="btn ghost sm" style="color:var(--warn)" onclick="delContent(\''+c.id+'\')">削除</button></td></tr>').join("");
+  $("#contentTable").innerHTML=tableWrap('<th>稼働内容</th><th></th>',wRows,"稼働内容がまだありません");
+  const xtRows=DB.expTypes.map(t=>'<tr><td>'+esc(t.name)+'</td>'+
+      '<td class="num" style="white-space:nowrap">'+
+      '<button class="btn ghost sm" onclick="editExpType(\''+t.id+'\')">編集</button>'+
+      '<button class="btn ghost sm" style="color:var(--warn)" onclick="delExpType(\''+t.id+'\')">削除</button></td></tr>').join("");
+  $("#expTypeTable").innerHTML=tableWrap('<th>経費種別</th><th></th>',xtRows,"経費種別がまだありません");
+}
+function renderAll(){ fillPropertySelects(); renderToday(); renderList(); renderBilling(); renderMaster(); syncTimerUI(); }
+
+/* ---------- 記録 追加/編集/削除 ---------- */
+function resetManualInputs(){
+  $("#mStartH").value="09"; $("#mStartM").value="00";
+  $("#mEndH").value="09";  $("#mEndM").value="00";
+  $("#mMinutes").value=""; $("#mContent").value="";
+  $("#mEndDate").value=$("#mDate").value;   // 終了日は開始日に合わせる
+}
+function recalcManual(){
+  const st=readTime("#mStartH","#mStartM"), en=readTime("#mEndH","#mEndM");
+  const d1=$("#mDate").value, d2=$("#mEndDate").value||d1;
+  if(st && en && !(d1===d2 && st===en)){ const m=spanMin(d1,st,d2,en); if(m>0) $("#mMinutes").value=m; }
+}
+function manualAdd(){
+  const pid=$("#mProperty").value;
+  if(!pid){ toast("物件を選んでください"); return; }
+  const date=$("#mDate").value||todayStr();
+  const endDate=$("#mEndDate").value||date;
+  let start=readTime("#mStartH","#mStartM"), end=readTime("#mEndH","#mEndM");
+  let minutes=parseInt($("#mMinutes").value||"0",10);
+  const sameMoment=(date===endDate && start===end);   // 09:00→09:00のような未指定状態は時刻なし扱い
+  let recEndDate="";
+  if(start && end && !sameMoment){
+    if(!minutes||minutes<=0) minutes=spanMin(date,start,endDate,end);
+    recEndDate=endDate;
+  } else { start=""; end=""; }   // 時刻指定なし＝分のみで記録
+  if(!minutes||minutes<=0){ toast("稼働時間（分）か 開始・終了 を入力してください"); return; }
+  const mp=propById(pid);
+  DB.records.push({id:uid(),propertyId:pid,date:date,start:start||"",end:end||"",endDate:recEndDate,minutes:minutes,
+    content:$("#mContent").value,rate:mp?(mp.rate||0):0,billed:false,invoiceId:null,createdAt:Date.now()});
+  activateIfPending(pid);   // 初記録なら未着手→稼働中
+  save();
+  resetManualInputs();
+  renderAll(); toast("追加しました");
+}
+function diffMin(s,e){
+  const a=s.split(":").map(Number), b=e.split(":").map(Number);
+  let d=(b[0]*60+b[1])-(a[0]*60+a[1]); if(d<0) d+=24*60; return d;
+}
+/* 日付をまたぐ稼働時間（開始日時→終了日時の分） */
+function spanMin(d1,t1,d2,t2){
+  const a=new Date(d1+"T"+t1+":00"), b=new Date(d2+"T"+t2+":00");
+  if(isNaN(a.getTime())||isNaN(b.getTime())) return 0;
+  return Math.round((b-a)/60000);
+}
+/* ---- 締め日（毎月の物件）関連 ---- */
+function _pad(n){ return String(n).padStart(2,"0"); }
+function fmtYMD(d){ return d.getFullYear()+"-"+_pad(d.getMonth()+1)+"-"+_pad(d.getDate()); }
+function closeLabel(cd){ cd=cd||31; return (cd>=31)?"末日":(cd+"日"); }
+function closeDayOptions(sel){
+  sel=sel||31;
+  let o='<option value="31"'+(sel>=31?" selected":"")+'>末日</option>';
+  for(let d=1;d<=30;d++) o+='<option value="'+d+'"'+(sel===d?" selected":"")+'>'+d+'日</option>';
+  return o;
+}
+/* 締め月(YYYY-MM)＋締め日 → 集計対象の期間[start,end]（短い月は月末にクランプ） */
+function monthPeriod(ym, closeDay){
+  const y=+ym.slice(0,4), m=+ym.slice(5,7);   // m:1-12
+  const cd=closeDay||31;
+  const ld=new Date(y,m,0).getDate();         // 当月の末日
+  if(cd>=ld){ return {start:fmtYMD(new Date(y,m-1,1)), end:fmtYMD(new Date(y,m-1,ld))}; }  // 末日締め＝暦月
+  const end=new Date(y,m-1,cd);
+  const prevLd=new Date(y,m-1,0).getDate();   // 前月の末日
+  const prevClose=Math.min(cd, prevLd);
+  const start=new Date(y,m-2,prevClose+1);    // 前月の締め日翌日（末日なら当月1日へ繰上）
+  return {start:fmtYMD(start), end:fmtYMD(end)};
+}
+/* 記録rがフィルタ(締め月ym・物件prop)に含まれるか。毎月＋締め日なら締め期間、それ以外は暦月 */
+function inPeriod(r, ym, prop){
+  if(!ym) return true;
+  if(prop && prop.billType==="毎月" && prop.closeDay){
+    const per=monthPeriod(ym, prop.closeDay);
+    return r.date>=per.start && r.date<=per.end;
+  }
+  return r.date.indexOf(ym)===0;
+}
+function setPeriodChip(sel, ym, prop){
+  const el=$(sel); if(!el) return;
+  if(ym && prop && prop.billType==="毎月" && prop.closeDay){
+    const per=monthPeriod(ym, prop.closeDay);
+    el.textContent="締め期間 "+per.start+"〜"+per.end+"（"+closeLabel(prop.closeDay)+"締）";
+    el.style.display="";
+  } else { el.style.display="none"; }
+}
+function editRecord(id, fromTimer){
+  const r=DB.records.find(x=>x.id===id); if(!r) return;
+  const opts=DB.properties.map(p=>'<option value="'+p.id+'" '+(p.id===r.propertyId?"selected":"")+'>'+esc(p.name)+(custOfProp(p)?" 〔"+esc(custOfProp(p).name)+"〕":"")+'</option>').join("");
+  const sh=(r.start||"").split(":")[0]||"", sm=(r.start||"").split(":")[1]||"";
+  const eh=(r.end||"").split(":")[0]||"", em=(r.end||"").split(":")[1]||"";
+  openModal('<h3>'+(fromTimer?"稼働内容を入力":"記録を編集")+'</h3>'+
+    '<div class="row"><div><label>開始日</label><input type="date" id="e_date" value="'+r.date+'"></div>'+
+      '<div><label>物件</label><select id="e_prop">'+opts+'</select></div></div>'+
+    '<div class="row"><div><label>開始</label><div style="display:flex;gap:6px"><select id="e_startH">'+hourOptions(sh)+'</select><select id="e_startM">'+minOptions(sm)+'</select></div></div>'+
+      '<div><label>終了日</label><input type="date" id="e_endDate" value="'+(r.endDate||r.date)+'"></div>'+
+      '<div><label>終了</label><div style="display:flex;gap:6px"><select id="e_endH">'+hourOptions(eh)+'</select><select id="e_endM">'+minOptions(em)+'</select></div></div>'+
+      '<div><label>稼働時間(分)</label><input type="number" id="e_min" value="'+r.minutes+'" min="0" step="5"></div></div>'+
+    '<div class="row"><div><label>稼働内容</label><select id="e_content">'+contentOptions(r.content)+'</select></div>'+
+      '<div><label>このログの時給(円)</label><input type="number" id="e_rate" value="'+recRate(r)+'" step="100"></div></div>'+
+    '<div class="row"><div><label>請求状態</label><select id="e_billed">'+
+      '<option value="0" '+(!isBilled(r)?"selected":"")+'>未請求</option>'+
+      '<option value="1" '+(isBilled(r)?"selected":"")+'>請求済</option></select>'+
+      ((r.invoiceId&&invoiceById(r.invoiceId))?'<div class="muted" style="margin-top:6px">請求［'+esc(invoiceById(r.invoiceId).date)+(invoiceById(r.invoiceId).label?' '+esc(invoiceById(r.invoiceId).label):'')+'］に含まれています。「未請求」に戻すとこの請求から外れます。</div>':'')+
+      '</div></div>'+
+    '<div class="modal-actions">'+
+      '<button class="btn sec" onclick="closeModal()">キャンセル</button>'+
+      '<button class="btn" id="e_save">保存</button></div>');
+  const recalc=()=>{ const s=readTime("#e_startH","#e_startM"),e=readTime("#e_endH","#e_endM");
+    const d1=$("#e_date").value,d2=$("#e_endDate").value||d1;
+    if(s&&e && !(d1===d2&&s===e)){ const m=spanMin(d1,s,d2,e); if(m>0) $("#e_min").value=m; } };
+  ["#e_startH","#e_startM","#e_endH","#e_endM","#e_date","#e_endDate"].forEach(id=>$(id).addEventListener("change",recalc));
+  $("#e_save").onclick=()=>{
+    r.date=$("#e_date").value; r.propertyId=$("#e_prop").value;
+    r.start=readTime("#e_startH","#e_startM"); r.end=readTime("#e_endH","#e_endM");
+    const ed=$("#e_endDate").value||r.date; r.endDate=(r.start&&r.end&&ed!==r.date)?ed:"";
+    r.minutes=Math.max(1,parseInt($("#e_min").value||"1",10));
+    r.content=$("#e_content").value;
+    r.rate=Math.max(0,parseInt($("#e_rate").value||"0",10));
+    if($("#e_billed").value==="1"){ r.billed=true; }
+    else { r.billed=false; r.invoiceId=null; }   // 未請求に戻す＝請求から外す
+    save(); closeModal(); renderAll(); toast("保存しました");
+  };
+}
+function delRecord(id){
+  const r=DB.records.find(x=>x.id===id); if(!r) return;
+  confirmBox("この記録を削除しますか？", ()=>{ DB.records=DB.records.filter(x=>x.id!==id); save(); renderAll(); toast("削除しました"); });
+}
+
+/* ---------- 経費 ---------- */
+function isBilledExp(x){ return !!(x.invoiceId || x.billed); }
+function expenseRow(x, opts){
+  opts=opts||{};
+  const p=propById(x.propertyId); const c=custOfProp(p);
+  const inv=x.invoiceId? invoiceById(x.invoiceId):null;
+  const pill=isBilledExp(x)
+    ? '<span class="pill billed">請求済</span>'+(inv?'<div class="muted" style="font-size:11px">'+esc(inv.date)+(inv.label?' '+esc(inv.label):'')+'</div>':'')
+    : '<span class="pill unbilled">未請求</span>';
+  const chk=opts.check?'<td><input type="checkbox" class="billchk" value="e:'+x.id+'"></td>':"";
+  return '<tr>'+chk+
+    '<td>'+esc(x.date)+'</td>'+
+    '<td>'+(p?esc(p.name):'<span class="muted">削除済</span>')+'</td>'+
+    '<td class="muted">'+(c?esc(c.name):"")+'</td>'+
+    '<td class="num"><span class="chip">'+esc(x.type||"経費")+'</span></td>'+
+    '<td class="num">'+yen(x.amount||0)+'</td>'+
+    '<td>'+(esc(x.memo)||'<span class="muted">—</span>')+'</td>'+
+    '<td>'+pill+'</td>'+
+    '<td class="num" style="white-space:nowrap">'+
+      '<button class="btn ghost sm" onclick="editExpense(\''+x.id+'\')">編集</button>'+
+      '<button class="btn ghost sm" style="color:var(--warn)" onclick="delExpense(\''+x.id+'\')">削除</button>'+
+    '</td></tr>';
+}
+function renderExpenses(){
+  const f=getListFilters();
+  let xs=DB.expenses.slice();
+  if(f.prop) xs=xs.filter(x=>x.propertyId===f.prop);
+  if(f.billed==="unbilled") xs=xs.filter(x=>!isBilledExp(x));
+  if(f.billed==="billed") xs=xs.filter(x=>isBilledExp(x));
+  const lprop=f.prop?propById(f.prop):null;
+  if(f.month) xs=xs.filter(x=>inPeriod(x,f.month,lprop));
+  xs.sort((a,b)=> a.date<b.date?1:a.date>b.date?-1:b.createdAt-a.createdAt);
+  const head='<th>日付</th><th>物件</th><th>顧客</th><th class="num">種別</th><th class="num">金額</th><th>メモ</th><th>請求</th><th></th>';
+  $("#expenseListTable").innerHTML=tableWrap(head, xs.map(x=>expenseRow(x)).join(""), "該当する経費がありません");
+  const tot=xs.reduce((s,x)=>s+(x.amount||0),0);
+  $("#expListSummary").textContent=xs.length+"件 / "+yen(tot);
+}
+function expenseAdd(){
+  const pid=$("#xProperty").value;
+  if(!pid){ toast("物件を選んでください"); return; }
+  const amt=parseInt($("#xAmount").value||"0",10);
+  if(!amt||amt<=0){ toast("金額を入力してください"); return; }
+  DB.expenses.push({id:uid(),propertyId:pid,date:$("#xDate").value||todayStr(),
+    type:$("#xType").value.trim()||"経費",amount:amt,memo:$("#xMemo").value.trim(),billed:false,invoiceId:null,createdAt:Date.now()});
+  activateIfPending(pid);
+  save();
+  $("#xAmount").value=""; $("#xMemo").value="";
+  renderAll(); toast("経費を追加しました");
+}
+function editExpense(id){
+  const x=DB.expenses.find(v=>v.id===id); if(!x) return;
+  const opts=DB.properties.map(p=>'<option value="'+p.id+'" '+(p.id===x.propertyId?"selected":"")+'>'+esc(p.name)+(custOfProp(p)?" 〔"+esc(custOfProp(p).name)+"〕":"")+'</option>').join("");
+  openModal('<h3>経費を編集</h3>'+
+    '<div class="row"><div><label>日付</label><input type="date" id="x_date" value="'+x.date+'"></div>'+
+      '<div><label>物件</label><select id="x_prop">'+opts+'</select></div></div>'+
+    '<div class="row"><div><label>種別</label><select id="x_type">'+expTypeOptions(x.type)+'</select></div>'+
+      '<div><label>金額(円)</label><input type="number" id="x_amount" value="'+(x.amount||0)+'" step="10"></div></div>'+
+    '<div class="row"><div><label>メモ(任意)</label><input id="x_memo" value="'+esc(x.memo||"")+'"></div></div>'+
+    '<div class="row"><div><label>請求状態</label><select id="x_billed">'+
+      '<option value="0" '+(!isBilledExp(x)?"selected":"")+'>未請求</option>'+
+      '<option value="1" '+(isBilledExp(x)?"selected":"")+'>請求済</option></select>'+
+      ((x.invoiceId&&invoiceById(x.invoiceId))?'<div class="muted" style="margin-top:6px">請求［'+esc(invoiceById(x.invoiceId).date)+(invoiceById(x.invoiceId).label?' '+esc(invoiceById(x.invoiceId).label):'')+'］に含まれています。「未請求」に戻すとこの請求から外れます。</div>':'')+
+      '</div></div>'+
+    '<div class="modal-actions"><button class="btn sec" onclick="closeModal()">キャンセル</button><button class="btn" id="x_save">保存</button></div>');
+  $("#x_save").onclick=()=>{
+    x.date=$("#x_date").value||x.date; x.propertyId=$("#x_prop").value;
+    x.type=$("#x_type").value.trim()||"経費";
+    x.amount=Math.max(0,parseInt($("#x_amount").value||"0",10));
+    x.memo=$("#x_memo").value.trim();
+    if($("#x_billed").value==="1"){ x.billed=true; } else { x.billed=false; x.invoiceId=null; }
+    save(); closeModal(); renderAll(); toast("保存しました");
+  };
+}
+function delExpense(id){
+  confirmBox("この経費を削除しますか？", ()=>{ DB.expenses=DB.expenses.filter(x=>x.id!==id); save(); renderAll(); toast("削除しました"); });
+}
+
+/* ---------- マスター ---------- */
+function addCustomer(){
+  const name=$("#cName").value.trim(); if(!name){ toast("顧客名を入力してください"); return; }
+  DB.customers.push({id:uid(),name:name}); save(); $("#cName").value=""; renderAll(); toast("顧客を追加しました");
+}
+function editCustomer(id){
+  const c=custById(id); if(!c) return;
+  openModal('<h3>顧客を編集</h3><div class="row"><div><label>顧客名</label><input id="ec_name" value="'+esc(c.name)+'"></div></div>'+
+    '<div class="modal-actions"><button class="btn sec" onclick="closeModal()">キャンセル</button><button class="btn" id="ec_save">保存</button></div>');
+  $("#ec_save").onclick=()=>{ const v=$("#ec_name").value.trim(); if(!v) return; c.name=v; save(); closeModal(); renderAll(); toast("保存しました"); };
+}
+function delCustomer(id){
+  const props=DB.properties.filter(p=>p.customerId===id);
+  const msg = props.length? "この顧客には"+props.length+"件の物件が紐づいています。顧客を削除すると物件の顧客欄が空になります。続けますか？" : "この顧客を削除しますか？";
+  confirmBox(msg, ()=>{ DB.customers=DB.customers.filter(c=>c.id!==id); DB.properties.forEach(p=>{ if(p.customerId===id) p.customerId=""; }); save(); renderAll(); toast("削除しました"); });
+}
+function addProperty(){
+  const name=$("#pName").value.trim(); if(!name){ toast("物件名を入力してください"); return; }
+  const rate=parseInt($("#pRate").value||"0",10);
+  const st=$("#pStatus").value||"未着手";
+  DB.properties.push({id:uid(),name:name,customerId:$("#pCustomer").value||"",rate:rate,status:st,active:(st==="未着手"||st==="稼働中"),note:"",billType:$("#pBillType").value.trim(),closeDay:parseInt($("#pCloseDay").value||"31",10)});
+  save(); $("#pName").value="";$("#pRate").value="";$("#pBillType").value="";$("#pStatus").value="未着手";$("#pCloseDay").value="31"; renderAll(); toast("物件を追加しました");
+}
+function editProperty(id){
+  const p=propById(id); if(!p) return;
+  const opts=DB.customers.map(c=>'<option value="'+c.id+'" '+(c.id===p.customerId?"selected":"")+'>'+esc(c.name)+'</option>').join("");
+  openModal('<h3>物件を編集</h3>'+
+    '<div class="row"><div><label>物件名</label><input id="ep_name" value="'+esc(p.name)+'"></div></div>'+
+    '<div class="row"><div><label>顧客</label><select id="ep_cust"><option value="">未設定</option>'+opts+'</select></div>'+
+      '<div><label>時間単価(円)</label><input type="number" id="ep_rate" value="'+(p.rate||0)+'" step="100"></div></div>'+
+    '<div class="row"><div><label>請求タイプ(任意)</label><input id="ep_billType" list="billTypeList" value="'+esc(p.billType||"")+'" placeholder="毎月 / 一式 / 3分割 など自由"></div>'+
+      '<div><label>締め日(毎月の場合)</label><select id="ep_closeDay">'+closeDayOptions(p.closeDay)+'</select></div></div>'+
+    '<div class="row"><div><label>状態</label><select id="ep_status">'+
+      PROP_STATUSES.map(s=>'<option '+(propStatus(p)===s?"selected":"")+'>'+s+'</option>').join("")+
+      '</select><div class="muted" style="margin-top:6px">未着手・稼働中は記録の物件候補に表示。完了・停止は候補から外れます。</div></div></div>'+
+    '<div class="row"><div><label>メモ(任意)</label><input id="ep_note" value="'+esc(p.note||"")+'"></div></div>'+
+    '<div class="modal-actions"><button class="btn sec" onclick="closeModal()">キャンセル</button><button class="btn" id="ep_save">保存</button></div>');
+  $("#ep_save").onclick=()=>{
+    p.name=$("#ep_name").value.trim()||p.name; p.customerId=$("#ep_cust").value;
+    p.rate=parseInt($("#ep_rate").value||"0",10); p.note=$("#ep_note").value.trim();
+    p.status=$("#ep_status").value; p.active=(p.status==="未着手"||p.status==="稼働中");
+    p.billType=$("#ep_billType").value.trim();
+    p.closeDay=parseInt($("#ep_closeDay").value||"31",10);
+    save(); closeModal(); renderAll(); toast("保存しました");
+  };
+}
+function delProperty(id){
+  const recs=DB.records.filter(r=>r.propertyId===id);
+  if(recs.length){ toast("この物件には"+recs.length+"件の記録があります。先に編集で「停止」にするか記録を移してください"); return; }
+  confirmBox("この物件を削除しますか？", ()=>{ DB.properties=DB.properties.filter(p=>p.id!==id); save(); renderAll(); toast("削除しました"); });
+}
+
+/* ---------- 稼働内容マスター ---------- */
+function addContent(){
+  const name=$("#wName").value.trim(); if(!name){ toast("稼働内容を入力してください"); return; }
+  if(DB.contents.some(c=>c.name===name)){ toast("同じ内容が既にあります"); return; }
+  DB.contents.push({id:uid(),name:name}); save(); $("#wName").value=""; renderAll(); toast("稼働内容を追加しました");
+}
+function editContent(id){
+  const c=DB.contents.find(x=>x.id===id); if(!c) return;
+  openModal('<h3>稼働内容を編集</h3><div class="row"><div><label>稼働内容</label><input id="ew_name" value="'+esc(c.name)+'"></div></div>'+
+    '<div class="modal-actions"><button class="btn sec" onclick="closeModal()">キャンセル</button><button class="btn" id="ew_save">保存</button></div>');
+  $("#ew_save").onclick=()=>{ const v=$("#ew_name").value.trim(); if(!v) return; c.name=v; save(); closeModal(); renderAll(); toast("保存しました"); };
+}
+function delContent(id){
+  confirmBox("この稼働内容を削除しますか？（既存の記録の文字はそのまま残ります）", ()=>{ DB.contents=DB.contents.filter(c=>c.id!==id); save(); renderAll(); toast("削除しました"); });
+}
+
+/* ---------- 経費種別マスター ---------- */
+function addExpType(){
+  const name=$("#xtName").value.trim(); if(!name){ toast("経費種別を入力してください"); return; }
+  if(DB.expTypes.some(t=>t.name===name)){ toast("同じ種別が既にあります"); return; }
+  DB.expTypes.push({id:uid(),name:name}); save(); $("#xtName").value=""; renderAll(); toast("経費種別を追加しました");
+}
+function editExpType(id){
+  const t=DB.expTypes.find(x=>x.id===id); if(!t) return;
+  openModal('<h3>経費種別を編集</h3><div class="row"><div><label>経費種別</label><input id="ext_name" value="'+esc(t.name)+'"></div></div>'+
+    '<div class="modal-actions"><button class="btn sec" onclick="closeModal()">キャンセル</button><button class="btn" id="ext_save">保存</button></div>');
+  $("#ext_save").onclick=()=>{ const v=$("#ext_name").value.trim(); if(!v) return; t.name=v; save(); closeModal(); renderAll(); toast("保存しました"); };
+}
+function delExpType(id){
+  confirmBox("この経費種別を削除しますか？（既存の経費の文字はそのまま残ります）", ()=>{ DB.expTypes=DB.expTypes.filter(t=>t.id!==id); save(); renderAll(); toast("削除しました"); });
+}
+
+/* ---------- CSV / JSON ---------- */
+function downloadBlob(filename, blob){
+  const url=URL.createObjectURL(blob); const a=document.createElement("a");
+  a.href=url; a.download=filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },100);
+}
+function download(filename, text, mime){
+  mime=mime||"text/csv";
+  downloadBlob(filename, new Blob([text],{type:mime+";charset=utf-8"}));
+}
+/* ---- 外部ライブラリ不使用の最小ZIP生成（無圧縮store・UTF-8ファイル名） ---- */
+const _crcTable=(function(){ let t=[]; for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1); t[n]=c>>>0;} return t; })();
+function crc32(bytes){ let c=0xFFFFFFFF; for(let i=0;i<bytes.length;i++) c=_crcTable[(c^bytes[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function _concat(arrs){ let len=0; arrs.forEach(a=>len+=a.length); let out=new Uint8Array(len),p=0; arrs.forEach(a=>{out.set(a,p);p+=a.length;}); return out; }
+function makeZip(files){
+  const enc=new TextEncoder();
+  const u16=n=>new Uint8Array([n&0xFF,(n>>8)&0xFF]);
+  const u32=n=>new Uint8Array([n&0xFF,(n>>8)&0xFF,(n>>16)&0xFF,(n>>>24)&0xFF]);
+  const now=new Date();
+  const dosTime=((now.getHours()&0x1F)<<11)|((now.getMinutes()&0x3F)<<5)|((Math.floor(now.getSeconds()/2))&0x1F);
+  const dosDate=(((now.getFullYear()-1980)&0x7F)<<9)|(((now.getMonth()+1)&0x0F)<<5)|(now.getDate()&0x1F);
+  let locals=[], centrals=[], offset=0;
+  files.forEach(f=>{
+    const nameB=enc.encode(f.name), data=f.data, crc=crc32(data);
+    const local=_concat([u32(0x04034b50),u16(20),u16(0x0800),u16(0),u16(dosTime),u16(dosDate),
+      u32(crc),u32(data.length),u32(data.length),u16(nameB.length),u16(0),nameB,data]);
+    locals.push(local);
+    centrals.push(_concat([u32(0x02014b50),u16(20),u16(20),u16(0x0800),u16(0),u16(dosTime),u16(dosDate),
+      u32(crc),u32(data.length),u32(data.length),u16(nameB.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(offset),nameB]));
+    offset+=local.length;
+  });
+  const centralData=_concat(centrals);
+  const end=_concat([u32(0x06054b50),u16(0),u16(0),u16(files.length),u16(files.length),
+    u32(centralData.length),u32(offset),u16(0)]);
+  return new Blob([_concat(locals),centralData,end],{type:"application/zip"});
+}
+function csvCell(v){ v=String(v==null?"":v); return /[",\n]/.test(v)? '"'+v.replace(/"/g,'""')+'"' : v; }
+function toCsv(head, rows){ return "﻿"+[head].concat(rows).map(r=>r.map(csvCell).join(",")).join("\r\n"); }
+/* 各CSVは「中身を組み立てる」builderに分離（個別DLでも日付フォルダZIPでも再利用） */
+function buildRecordsCsv(){
+  const head=["開始日","顧客","物件","時間単価","稼働時間(分)","稼働時間(時間)","金額(円)","稼働内容","請求状態","請求日","請求ラベル","開始","終了日","終了"];
+  const rows=DB.records.slice().sort((a,b)=>a.date<b.date?-1:1).map(r=>{
+    const p=propById(r.propertyId), c=custOfProp(p), inv=r.invoiceId?invoiceById(r.invoiceId):null;
+    return [r.date, c?c.name:"", p?p.name:"(削除済)", appliedRate(r), r.minutes,
+      (r.minutes/60).toFixed(2), Math.round(displayAmount(r)), r.content, isBilled(r)?"請求済":"未請求",
+      inv?inv.date:"", inv?inv.label:"", r.start||"", r.endDate||"", r.end||""];
+  });
+  return {name:"記録_"+todayStr()+".csv", text:toCsv(head,rows)};
+}
+function buildInvoicesCsv(){
+  const head=["請求日","ラベル","物件","件数","稼働時間(時間)","時給上書き","稼働明細合計(円)","経費合計(円)","調整額(円)","請求合計(円)","調整メモ"];
+  const rows=DB.invoices.slice().sort((a,b)=>a.date<b.date?-1:1).map(inv=>{
+    const recs=DB.records.filter(r=>r.invoiceId===inv.id);
+    const exps=DB.expenses.filter(x=>x.invoiceId===inv.id);
+    const min=recs.reduce((s,r)=>s+r.minutes,0);
+    const props=Array.from(new Set(recs.concat(exps).map(r=>{const p=propById(r.propertyId);return p?p.name:"削除済";}))).join("・");
+    return [inv.date, inv.label||"", props, recs.length+exps.length, (min/60).toFixed(2),
+      inv.overrideRate!=null?inv.overrideRate:"", Math.round(invoiceBase(inv)), Math.round(invoiceExpenses(inv)), inv.adjust||0, Math.round(invoiceTotal(inv)), inv.adjustNote||""];
+  });
+  return {name:"請求_"+todayStr()+".csv", text:toCsv(head,rows)};
+}
+function buildExpensesCsv(){
+  const head=["日付","顧客","物件","種別","金額(円)","メモ","請求状態","請求日","請求ラベル"];
+  const rows=DB.expenses.slice().sort((a,b)=>a.date<b.date?-1:1).map(x=>{
+    const p=propById(x.propertyId), c=custOfProp(p), inv=x.invoiceId?invoiceById(x.invoiceId):null;
+    return [x.date, c?c.name:"", p?p.name:"(削除済)", x.type||"経費", x.amount||0, x.memo||"",
+      isBilledExp(x)?"請求済":"未請求", inv?inv.date:"", inv?inv.label:""];
+  });
+  return {name:"経費_"+todayStr()+".csv", text:toCsv(head,rows)};
+}
+function buildMasterCsv(){
+  const head=["種別","名前","顧客/単価","状態","メモ","請求タイプ","締め日"];
+  const cust=DB.customers.map(c=>["顧客",c.name,"","","","",""]);
+  const prop=DB.properties.map(p=>["物件",p.name,(custOfProp(p)?custOfProp(p).name+" / ":"")+ (p.rate||0)+"円", propStatus(p), p.note||"", p.billType||"", p.billType==="毎月"?closeLabel(p.closeDay):""]);
+  return {name:"マスター_"+todayStr()+".csv", text:toCsv(head,cust.concat(prop))};
+}
+function csvRecords(){ const f=buildRecordsCsv(); download(f.name,f.text); toast("記録CSVを書き出しました"); }
+function csvInvoices(){ const f=buildInvoicesCsv(); download(f.name,f.text); toast("請求CSVを書き出しました"); }
+function csvMaster(){ const f=buildMasterCsv(); download(f.name,f.text); toast("マスターCSVを書き出しました"); }
+function csvExpenses(){ const f=buildExpensesCsv(); download(f.name,f.text); toast("経費CSVを書き出しました"); }
+/* 4点を「時給データ_日付」フォルダにまとめてZIP書き出し */
+function exportDatedFolder(){
+  const folder="時給データ_"+todayStr();
+  const enc=new TextEncoder();
+  const files=[buildRecordsCsv(),buildExpensesCsv(),buildInvoicesCsv(),buildMasterCsv()]
+    .map(f=>({name:folder+"/"+f.name, data:enc.encode(f.text)}));
+  downloadBlob(folder+".zip", makeZip(files));
+  toast("4点を「"+folder+"」フォルダにまとめました");
+}
+function jsonExport(){
+  download("時給バックアップ_"+todayStr()+".json", JSON.stringify(DB,null,2), "application/json");
+  toast("JSONバックアップを書き出しました");
+}
+function jsonImport(file){
+  const fr=new FileReader();
+  fr.onload=()=>{
+    try{
+      const d=JSON.parse(fr.result);
+      if(!d.customers||!d.properties||!d.records) throw new Error("形式が違います");
+      confirmBox("現在のデータを、選んだバックアップで上書きします。よろしいですか？", ()=>{
+        DB=d; DB.running=DB.running||null; DB.contents=DB.contents||[]; DB.invoices=DB.invoices||[]; DB.expenses=DB.expenses||[]; save(); stopTick(); renderAll(); startTick(); toast("復元しました");
+      }, "上書きして復元");
+    }catch(e){ toast("読み込めませんでした："+e.message); }
+  };
+  fr.readAsText(file);
+}
+function wipeAll(){
+  confirmBox("本当に全データを削除しますか？元に戻せません。", ()=>{
+    confirmBox("最終確認：全記録・全マスターを削除します。", ()=>{
+      DB={version:1,customers:[],properties:[],contents:[],invoices:[],records:[],expenses:[],running:null}; save(); stopTick(); renderAll(); updateClock(); toast("全データを削除しました");
+    });
+  });
+}
+
+/* ---------- ナビ ---------- */
+function switchView(name){
+  $$("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===name));
+  $$(".view").forEach(v=>v.classList.remove("active"));
+  $("#view-"+name).classList.add("active");
+  if(name==="billing") renderBilling();
+  if(name==="list") renderList();
+}
+$$("#nav button").forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.view)));
+$("#btnStart").onclick=startTimer;
+$("#btnStop").onclick=stopTimer;
+$("#btnManualAdd").onclick=manualAdd;
+$("#btnExpenseAdd").onclick=expenseAdd;
+["#mStartH","#mStartM","#mEndH","#mEndM","#mEndDate"].forEach(s=>$(s).addEventListener("change",recalcManual));
+$("#mDate").addEventListener("change",()=>{ $("#mEndDate").value=$("#mDate").value; recalcManual(); });
+$("#btnAddCustomer").onclick=addCustomer;
+$("#btnAddProperty").onclick=addProperty;
+$("#pFilter").addEventListener("change",renderMaster);
+$("#btnAddContent").onclick=addContent;
+$("#btnAddExpType").onclick=addExpType;
+["#fProperty","#fBilled","#fMonth"].forEach(s=>$(s).addEventListener("change",renderList));
+$("#fClear").onclick=()=>{ $("#fProperty").value="";$("#fBilled").value="";$("#fMonth").value=""; renderList(); };
+["#bProperty","#bMonth"].forEach(s=>$(s).addEventListener("change",renderBilling));
+$("#bClear").onclick=()=>{ $("#bProperty").value="";$("#bMonth").value=""; renderBilling(); };
+$("#btnMakeInvoice").onclick=makeInvoice;
+$("#btnExportFolder").onclick=exportDatedFolder;
+$("#btnCsvRecords").onclick=csvRecords;
+$("#btnCsvExpenses").onclick=csvExpenses;
+$("#btnCsvInvoices").onclick=csvInvoices;
+$("#btnCsvMaster").onclick=csvMaster;
+$("#btnJsonExport").onclick=jsonExport;
+$("#jsonImport").addEventListener("change",e=>{ if(e.target.files[0]) jsonImport(e.target.files[0]); e.target.value=""; });
+$("#btnWipe").onclick=wipeAll;
+$("#ghConnectBtn").onclick=()=>{
+  const t=$("#ghTokenInput").value.trim();
+  if(!t){ toast("トークンを貼り付けてください"); return; }
+  ghToken=t;localStorage.setItem(TKEY,t);$("#ghTokenInput").value="";
+  ghSha=null;ghStamp=null;ghInit();
+};
+$("#ghSyncNowBtn").onclick=()=>{ if(!ghToken){ toast("先にトークンを設定してください"); return; } ghInit(); };
+$("#ghDisconnectBtn").onclick=()=>{
+  confirmBox("この端末をクラウド同期から切断しますか？（クラウド上のデータは残ります）", ()=>{
+    ghToken="";localStorage.removeItem(TKEY);localStorage.removeItem('fdoa_bukken_gh_token');ghSha=null;ghStamp=null;setSync('off');toast("切断しました");
+  });
+};
+window.addEventListener('online',()=>{if(ghToken)ghPush();});
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
+
+$("#mDate").value=todayStr();
+$("#mEndDate").value=todayStr();
+$("#xDate").value=todayStr();
+$("#bDate").value=todayStr();
+$("#mStartH").innerHTML=hourOptions("09"); $("#mStartM").innerHTML=minOptions("00");
+$("#mEndH").innerHTML=hourOptions("09"); $("#mEndM").innerHTML=minOptions("00");
+$("#pCloseDay").innerHTML=closeDayOptions(31);
+renderAll();
+if(DB.running) startTick(); else updateClock();
+ghInit();
+</script>
+</body>
+</html>
