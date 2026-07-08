@@ -64,9 +64,18 @@ textarea{width:100%;min-height:40px;resize:vertical}
   @page{size:A4 landscape}
   #printSheet .gwrap{overflow:visible;border:none;border-radius:0}
   #printSheet .gantt{min-width:0}
-  #printSheet .grow{break-inside:avoid}
+  #printSheet .grow{break-inside:avoid;min-height:18px}
   #printSheet .grow.header{position:static}
-  #printSheet .glabel{flex-basis:250px}
+  #printSheet .grow.header .gtrack{height:26px!important}
+  #printSheet .grow.phead{font-size:9px}
+  #printSheet .glabel{flex-basis:200px;font-size:9px;padding:2px 6px;gap:4px}
+  #printSheet .gbar{height:11px;top:3px;border-radius:3px}
+  #printSheet .gpt{width:9px;height:9px;top:4px;transform:translateX(-5px) rotate(45deg);border-radius:2px}
+  #printSheet .gpt.circle{transform:translateX(-5px)}
+  #printSheet .gmon{font-size:8px;padding:2px 3px}
+  #printSheet .gday{font-size:7px}
+  #printSheet .dot{width:7px;height:7px}
+  #printSheet .memo-icon{font-size:8px}
   #printSheet .tblwrap{overflow:visible}
 }
 /* スマホ（共通分はbase.css） */

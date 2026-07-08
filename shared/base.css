@@ -110,22 +110,25 @@ tr:hover td{background:#fafaf8}
    ブラウザの印刷画面で「PDFとして保存」（iPhoneは共有→"PDFを作成"）。 */
 #printSheet{display:none}
 #printSheet .pt-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
-  border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:16px}
-#printSheet .pt-title{font-size:19px;font-weight:700;letter-spacing:.02em}
-#printSheet .pt-to{font-size:14px;margin-top:4px}
-#printSheet .pt-sub{font-size:12px;color:var(--sub);text-align:right;line-height:1.7;flex:0 0 auto}
-#printSheet .pt-total{margin-top:14px;border-top:2px solid var(--ink);padding-top:10px;margin-left:auto;max-width:340px}
-#printSheet .pt-total .trow{display:flex;justify-content:space-between;gap:16px;font-size:13px;padding:2px 0}
-#printSheet .pt-total .trow.grand{font-weight:700;font-size:16px;margin-top:4px}
-#printSheet .pt-foot{margin-top:16px;font-size:11px;color:var(--sub)}
+  border-bottom:1.5px solid var(--ink);padding-bottom:6px;margin-bottom:10px}
+#printSheet .pt-title{font-size:14px;font-weight:700;letter-spacing:.02em}
+#printSheet .pt-to{font-size:11px;margin-top:2px}
+#printSheet .pt-sub{font-size:9px;color:var(--sub);text-align:right;line-height:1.5;flex:0 0 auto}
+#printSheet .pt-total{margin-top:8px;border-top:1.5px solid var(--ink);padding-top:6px;margin-left:auto;max-width:300px}
+#printSheet .pt-total .trow{display:flex;justify-content:space-between;gap:16px;font-size:10px;padding:1px 0}
+#printSheet .pt-total .trow.grand{font-weight:700;font-size:12px;margin-top:3px}
+#printSheet .pt-foot{margin-top:10px;font-size:8px;color:var(--sub)}
 @media print{
-  @page{size:A4 portrait;margin:12mm}
+  @page{size:A4 portrait;margin:10mm}
   body{background:#fff}
   body>*{display:none!important}
-  body>#printSheet{display:block!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  #printSheet table{font-size:11.5px}
-  #printSheet th{font-size:10.5px;padding:6px 8px}
-  #printSheet td{padding:6px 8px}
+  body>#printSheet{display:block!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;line-height:1.35}
+  #printSheet table{font-size:9px}
+  #printSheet th{font-size:8.5px;padding:3px 6px}
+  #printSheet td{padding:2px 6px}
   #printSheet tr{break-inside:avoid}
   #printSheet tr:hover td{background:transparent}
+  #printSheet .badge{font-size:8.5px;padding:0 6px}
+  #printSheet .chip{font-size:8.5px}
+  #printSheet .muted{font-size:9px}
 }
