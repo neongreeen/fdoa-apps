@@ -10,59 +10,65 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root{
-  --bg:#f5f6f8; --card:#fff; --ink:#1f2430; --sub:#6b7280; --line:#e4e7ec;
-  --accent:#2f6fed; --danger:#e5484d; --warn:#f2a33c; --ok:#2fbf71;
+  --bg:#f5f5f3; --card:#ffffff; --ink:#1d1d1f; --sub:#6e6e73; --line:#e3e3e0;
+  --accent:#2f6f5e; --accent-soft:#e7f1ed;
+  --danger:#b4533b; --danger-soft:#fbe9e4;
+  --warn:#c1873b; --warn-soft:#faf3e4;
+  --ok:#2f6f5e;
+  --radius:14px; --shadow:0 1px 3px rgba(0,0,0,.06),0 6px 20px rgba(0,0,0,.04);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
-header{background:#1f2430;color:#fff;padding:10px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:50}
-header h1{font-size:16px;font-weight:700}
-nav{display:flex;gap:4px;flex-wrap:wrap}
-nav button{background:transparent;color:#cbd2dd;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px}
-nav button.active{background:var(--accent);color:#fff}
-nav button:hover:not(.active){background:#333a48}
-main{max-width:1200px;margin:0 auto;padding:16px}
+body{font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+header{position:sticky;top:0;z-index:50;background:rgba(245,245,243,.85);backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+header h1{font-size:17px;font-weight:700;letter-spacing:.02em}
+nav{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+nav button{background:transparent;color:var(--sub);border:none;padding:8px 14px;border-radius:999px;cursor:pointer;font-size:13.5px;font-weight:600}
+nav button.active{background:var(--ink);color:#fff}
+nav button:hover:not(.active){background:#eaeae7}
+main{max-width:1200px;margin:0 auto;padding:20px 16px 60px}
 section.tab{display:none}
 section.tab.active{display:block}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
-.card h2{font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:var(--shadow)}
+.card h2{font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .card h2 .count{font-size:11px;color:var(--sub);font-weight:normal}
-.frm{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
-.frm label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--sub)}
-input,select,textarea{border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px;font-family:inherit;background:#fff}
-input:focus,select:focus,textarea:focus{outline:2px solid #bcd0f7}
+.frm{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
+.frm label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--sub);font-weight:600}
+input,select,textarea{border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:13px;font-family:inherit;background:#fff;color:var(--ink)}
+input[type=checkbox]{accent-color:var(--accent)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 textarea{width:100%;min-height:40px;resize:vertical}
-button.btn{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:7px 16px;cursor:pointer;font-size:13px}
-button.btn.gray{background:#8b93a1}
-button.btn.red{background:var(--danger)}
-button.btn.sm{padding:3px 8px;font-size:11px}
+.btn{display:inline-block;background:var(--ink);color:#fff;border:none;border-radius:10px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600}
+.btn:hover{opacity:.9}
+.btn.gray{background:#ececea;color:var(--ink)}
+.btn.red{background:var(--danger)}
+.btn.sm{padding:3px 10px;font-size:11px}
 table{width:100%;border-collapse:collapse;font-size:12.5px}
-th{text-align:left;color:var(--sub);font-weight:normal;font-size:11px;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:6px 8px;border-bottom:1px solid #f0f1f4;vertical-align:top}
-tr:hover td{background:#f8f9fb}
-.badge{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;color:#fff;white-space:nowrap}
+th{text-align:left;color:var(--sub);font-weight:600;font-size:11px;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid #f0f0ee;vertical-align:top}
+tr:hover td{background:#fafaf8}
+.badge{display:inline-block;padding:1px 9px;border-radius:999px;font-size:11px;color:#fff;white-space:nowrap}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:middle}
-.memo-icon{cursor:help}
+.memo-icon{cursor:help;color:var(--sub);font-size:11px}
 .muted{color:var(--sub)}
 .done{opacity:.45;text-decoration:line-through}
-.overdue td{background:#fdecec}
-.soon td{background:#fef7e6}
+.overdue td{background:var(--danger-soft)}
+.soon td{background:var(--warn-soft)}
 /* gantt */
 .gtoolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-.gtoolbar .grp{display:flex;gap:4px;align-items:center;background:#eef0f4;border-radius:8px;padding:3px}
-.gtoolbar .grp button{border:none;background:transparent;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--sub)}
-.gtoolbar .grp button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
-.gwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:8px}
+.gtoolbar .grp{display:flex;gap:4px;align-items:center;background:#ececea;border-radius:999px;padding:3px}
+.gtoolbar .grp button{border:none;background:transparent;padding:5px 12px;border-radius:999px;cursor:pointer;font-size:12px;color:var(--sub);font-weight:600}
+.gtoolbar .grp button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.gwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:10px}
 .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .gantt{min-width:760px}
-.grow{display:flex;border-bottom:1px solid #f0f1f4;min-height:30px}
-.grow.header{border-bottom:1px solid var(--line);background:#fafbfc;position:sticky;top:0}
-.grow.phead{background:#eef2f9;font-weight:700;font-size:12px}
+.grow{display:flex;border-bottom:1px solid #f0f0ee;min-height:30px}
+.grow.header{border-bottom:1px solid var(--line);background:#fafaf8;position:sticky;top:0}
+.grow.phead{background:#f0f2ee;font-weight:700;font-size:12px}
 .glabel{flex:0 0 220px;padding:5px 8px;font-size:12px;border-right:1px solid var(--line);display:flex;align-items:center;gap:5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .gtrack{flex:1;position:relative}
-.gline{position:absolute;top:0;bottom:0;width:1px;background:#eceef2}
-.gline.month{background:#d6dae2}
-.gwe{position:absolute;top:0;bottom:0;background:rgba(120,130,150,.07)}
+.gline{position:absolute;top:0;bottom:0;width:1px;background:#ececea}
+.gline.month{background:#d8d8d4}
+.gwe{position:absolute;top:0;bottom:0;background:rgba(110,110,115,.06)}
 .gtoday{position:absolute;top:0;bottom:0;width:2px;background:var(--danger);z-index:5}
 .gbar{position:absolute;top:5px;height:20px;border-radius:5px;opacity:.9;cursor:pointer;min-width:4px}
 .gbar.done{opacity:.3}
@@ -74,10 +80,10 @@ tr:hover td{background:#f8f9fb}
 .empty{padding:32px;text-align:center;color:var(--sub);font-size:13px}
 /* 締切ボード・チェックリスト */
 .dlboard{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.dlchip{border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;background:#fff;display:flex;gap:6px;align-items:center}
-.dlchip.near{background:#fef7e6;border-color:#f2c94c}
-.dlchip.over{background:#fdecec;border-color:var(--danger);color:var(--danger);font-weight:700}
-.chk{display:flex;align-items:center;gap:8px;padding:4px 6px;border-bottom:1px solid #f0f1f4}
+.dlchip{border:1px solid var(--line);border-radius:10px;padding:5px 12px;font-size:12px;cursor:pointer;background:#fff;display:flex;gap:6px;align-items:center}
+.dlchip.near{background:var(--warn-soft);border-color:#d9c28a}
+.dlchip.over{background:var(--danger-soft);border-color:var(--danger);color:var(--danger);font-weight:700}
+.chk{display:flex;align-items:center;gap:8px;padding:4px 6px;border-bottom:1px solid #f0f0ee}
 .chk input{width:16px;height:16px;flex:0 0 auto}
 .prog{font-size:11px;color:var(--sub)}
 .note{font-size:12px;color:var(--sub);line-height:1.7}
@@ -86,8 +92,8 @@ tr:hover td{background:#f8f9fb}
 @media(max-width:820px){
   input,select,textarea{font-size:16px} /* iOSのフォーカス時自動ズーム防止 */
   nav button{padding:9px 14px;font-size:14px}
-  button.btn{padding:9px 16px}
-  button.btn.sm{padding:6px 10px;font-size:12px}
+  .btn{padding:9px 16px}
+  .btn.sm{padding:6px 10px;font-size:12px}
   .gtoolbar .grp{flex-wrap:wrap}
   .gtoolbar .grp button{padding:8px 12px;white-space:nowrap}
   .dlchip{padding:8px 10px}
@@ -109,7 +115,7 @@ tr:hover td{background:#f8f9fb}
   .glabel{flex-basis:110px;font-size:11px}
   .frm label{width:100%}
   .frm input:not([type=color]),.frm select,.frm textarea{width:100%!important}
-  .frm button.btn{width:100%;justify-content:center;text-align:center}
+  .frm .btn{width:100%;justify-content:center;text-align:center}
   .gtoolbar>label{margin-left:0!important}
   #ghTokenInput{width:100%!important}
 }
@@ -117,13 +123,13 @@ tr:hover td{background:#f8f9fb}
 </head>
 <body>
 <header>
-  <h1>📐 物件進捗管理 <span id="syncBadge" title="クラウド同期の状態" style="font-size:11px;font-weight:normal;color:#cbd2dd"></span></h1>
+  <h1>物件進捗管理 <span id="syncBadge" title="クラウド同期の状態" style="font-size:11px;font-weight:normal;color:var(--sub)"></span></h1>
   <nav>
-    <button data-tab="schedule" class="active">📊 スケジュール確認</button>
-    <button data-tab="input">✏️ スケジュール入力</button>
-    <button data-tab="check">✅ チェックリスト</button>
-    <button data-tab="master">📋 マスター管理</button>
-    <button data-tab="data">💾 データ管理<span id="bakDot" style="display:none;color:#ff6b6b"> ●</span></button>
+    <button data-tab="schedule" class="active">スケジュール確認</button>
+    <button data-tab="input">スケジュール入力</button>
+    <button data-tab="check">チェックリスト</button>
+    <button data-tab="master">マスター管理</button>
+    <button data-tab="data">データ管理<span id="bakDot" style="display:none;color:#ff6b6b"> ●</span></button>
   </nav>
 </header>
 <main>
@@ -162,7 +168,7 @@ tr:hover td{background:#f8f9fb}
 <!-- ===== スケジュール入力 ===== -->
 <section class="tab" id="tab-input">
   <div class="card">
-    <h2 id="itemFormTitle">✏️ 予定・締切の登録</h2>
+    <h2 id="itemFormTitle">予定・締切の登録</h2>
     <div class="frm">
       <label>物件 *<select id="iProject"></select></label>
       <label>種別 *<select id="iType"></select></label>
@@ -184,7 +190,7 @@ tr:hover td{background:#f8f9fb}
     </div>
   </div>
   <div class="card">
-    <h2>📄 登録済み一覧 <span class="count" id="itemCount"></span></h2>
+    <h2>登録済み一覧 <span class="count" id="itemCount"></span></h2>
     <div class="filerow" style="margin-bottom:10px">
       <select id="fProject"><option value="">全物件</option></select>
       <select id="fType"><option value="">全種別</option></select>
@@ -200,7 +206,7 @@ tr:hover td{background:#f8f9fb}
 <!-- ===== チェックリスト ===== -->
 <section class="tab" id="tab-check">
   <div class="card">
-    <h2>✅ 提出物チェックリスト <span class="count" id="checkCount"></span></h2>
+    <h2>提出物チェックリスト <span class="count" id="checkCount"></span></h2>
     <p class="note" style="margin-bottom:10px">山場の物件だけ持つ。提出が済んだらリストごと捨てる（管理はこれだけ方式）。</p>
     <div class="frm" style="align-items:flex-start">
       <label>物件<select id="kProject"></select></label>
@@ -214,7 +220,7 @@ tr:hover td{background:#f8f9fb}
 <!-- ===== マスター管理 ===== -->
 <section class="tab" id="tab-master">
   <div class="card">
-    <h2>👤 クライアント <span class="count" id="clientCount"></span></h2>
+    <h2>クライアント <span class="count" id="clientCount"></span></h2>
     <div class="frm">
       <label>クライアント名 *<input id="cName" style="width:180px"></label>
       <label>連絡先・担当者<input id="cContact" style="width:200px"></label>
@@ -226,12 +232,12 @@ tr:hover td{background:#f8f9fb}
   </div>
 
   <div class="card">
-    <h2>🏠 物件 <span class="count" id="projectCount"></span></h2>
+    <h2>物件 <span class="count" id="projectCount"></span></h2>
     <div class="frm">
       <label>物件名 *<input id="pName" style="width:200px"></label>
       <label>クライアント<select id="pClient"></select></label>
       <label>状態<select id="pStatus"><option>進行中</option><option>保留</option><option>完了</option></select></label>
-      <label>表示色<input type="color" id="pColor" value="#2f6fed" style="padding:2px;width:44px;height:31px"></label>
+      <label>表示色<input type="color" id="pColor" value="#5878a3" style="padding:2px;width:44px;height:31px"></label>
       <label>締め設定<input id="pShime" placeholder="例：月末締め翌月末払い" style="width:170px"></label>
       <label>請求設定<input id="pSeikyu" placeholder="例：着手50%・完了50%" style="width:170px"></label>
       <label>メモ<input id="pMemo" style="width:200px"></label>
@@ -242,7 +248,7 @@ tr:hover td{background:#f8f9fb}
   </div>
 
   <div class="card">
-    <h2>🏷️ 種別マスタ <span class="count" id="typeCount"></span></h2>
+    <h2>種別マスタ <span class="count" id="typeCount"></span></h2>
     <p class="note" style="margin-bottom:8px">予定の分類。形＝「締切◆」「期間バー」「連絡●（アポ・メール・確認等の起点）」。自由に追加OK。</p>
     <div class="frm">
       <label>種別名 *<input id="tName" style="width:160px"></label>
@@ -251,7 +257,7 @@ tr:hover td{background:#f8f9fb}
         <option value="period">期間（バー）</option>
         <option value="event">連絡・起点（●）</option>
       </select></label>
-      <label>色<input type="color" id="tColor" value="#e5484d" style="padding:2px;width:44px;height:31px"></label>
+      <label>色<input type="color" id="tColor" value="#b4533b" style="padding:2px;width:44px;height:31px"></label>
       <button class="btn" id="typeSaveBtn">追加</button>
       <button class="btn gray" id="typeCancelBtn" style="display:none">キャンセル</button>
     </div>
@@ -262,7 +268,7 @@ tr:hover td{background:#f8f9fb}
 <!-- ===== データ管理 ===== -->
 <section class="tab" id="tab-data">
   <div class="card">
-    <h2>☁️ クラウド同期（GitHub保存）</h2>
+    <h2>クラウド同期（GitHub保存）</h2>
     <p class="note" id="syncStatus" style="margin-bottom:10px">未設定（この端末のブラウザ内にだけ保存中）</p>
     <div class="frm">
       <label>アクセストークン<input type="password" id="ghTokenInput" placeholder="github_pat_…" style="width:280px"></label>
@@ -273,20 +279,20 @@ tr:hover td{background:#f8f9fb}
     <p class="note">接続すると保存のたびにGitHubの非公開リポジトリ（neongreeen/fdoa-app-data の bukken.json）へ自動保存され、他の端末と共有される。トークンはこの端末のブラウザにだけ保存。オフライン時もそのまま使えて、復帰時に同期する。</p>
   </div>
   <div class="card">
-    <h2>💾 バックアップ・書き出し</h2>
+    <h2>バックアップ・書き出し</h2>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <button class="btn" id="expJson">JSON書き出し（完全バックアップ）</button>
       <button class="btn" id="expCsv">予定CSV書き出し</button>
       <label class="btn gray" style="display:inline-block;cursor:pointer">JSON読み込み（復元）<input type="file" id="impJson" accept=".json" style="display:none"></label>
     </div>
-    <p class="note" id="bakNote">⚠️ クラウド同期が未設定の間、データはこのブラウザのlocalStorageにだけ保存される。<b>節目ごとにJSON書き出し</b>して「バックアップ」フォルダへ。（同期接続後は全保存がGitHubに自動バックアップされるので、JSON書き出しは保険）</p>
+    <p class="note" id="bakNote">クラウド同期が未設定の間、データはこのブラウザのlocalStorageにだけ保存される。<b>節目ごとにJSON書き出し</b>して「バックアップ」フォルダへ。（同期接続後は全保存がGitHubに自動バックアップされるので、JSON書き出しは保険）</p>
   </div>
   <div class="card">
-    <h2>📈 現在のデータ</h2>
+    <h2>現在のデータ</h2>
     <p class="note" id="dataStats"></p>
   </div>
   <div class="card">
-    <h2>🧭 拡張ロードマップ（設計メモ）</h2>
+    <h2>拡張ロードマップ（設計メモ）</h2>
     <p class="note">
       ・全データはスキーマバージョン付きJSON。全項目に <code>memo</code> と予備領域 <code>meta</code> を持たせてあり、項目追加はスキーマ移行で吸収できる。<br>
       ・種別マスタは自由編集式なので、入力の分類は運用しながら育てられる。<br>
@@ -295,7 +301,7 @@ tr:hover td{background:#f8f9fb}
     </p>
   </div>
   <div class="card">
-    <h2>🗑️ 危険操作</h2>
+    <h2>危険操作</h2>
     <button class="btn red" id="wipeBtn">全データ消去</button>
   </div>
 </section>
@@ -319,14 +325,14 @@ const disp=s=>{if(!s)return'';const d=parse(s);return (d.getMonth()+1)+'/'+d.get
 const mondayOf=d=>addDays(d,-((d.getDay()+6)%7));
 
 function defaultTypes(){return[
- {id:'t_zshime',name:'全体締切',kind:'deadline',color:'#e5484d',meta:{}},
- {id:'t_fshime',name:'FDOA締切',kind:'deadline',color:'#f2a33c',meta:{}},
- {id:'t_fwork',name:'FDOA作業',kind:'period',color:'#2f6fed',meta:{}},
- {id:'t_gshime',name:'業者締切',kind:'deadline',color:'#b0578d',meta:{}},
- {id:'t_gwork',name:'業者作業',kind:'period',color:'#2fbf71',meta:{}},
- {id:'t_apo',name:'アポ・MTG',kind:'event',color:'#f2c94c',meta:{}},
- {id:'t_mail',name:'メール・連絡',kind:'event',color:'#9b59b6',meta:{}},
- {id:'t_kakunin',name:'確認・待ち',kind:'event',color:'#7f8c8d',meta:{}},
+ {id:'t_zshime',name:'全体締切',kind:'deadline',color:'#b4533b',meta:{}},
+ {id:'t_fshime',name:'FDOA締切',kind:'deadline',color:'#c1873b',meta:{}},
+ {id:'t_fwork',name:'FDOA作業',kind:'period',color:'#5878a3',meta:{}},
+ {id:'t_gshime',name:'業者締切',kind:'deadline',color:'#a06084',meta:{}},
+ {id:'t_gwork',name:'業者作業',kind:'period',color:'#659a77',meta:{}},
+ {id:'t_apo',name:'アポ・MTG',kind:'event',color:'#bfa145',meta:{}},
+ {id:'t_mail',name:'メール・連絡',kind:'event',color:'#8d7bb0',meta:{}},
+ {id:'t_kakunin',name:'確認・待ち',kind:'event',color:'#8a9296',meta:{}},
 ];}
 function seed(){return{schemaVersion:1,clients:[],projects:[],types:defaultTypes(),items:[],checklists:[],settings:{},meta:{}};}
 function migrate(d){
@@ -373,7 +379,7 @@ function delClient(id){const used=db.projects.some(p=>p.clientId===id);
   if(!confirm('削除する？'))return;db.clients=db.clients.filter(c=>c.id!==id);save();}
 
 /* ========== マスター：物件 ========== */
-const PALETTE=['#2f6fed','#e5484d','#2fbf71','#f2a33c','#9b59b6','#16a2b8','#b0578d','#6b7280'];
+const PALETTE=['#5878a3','#b4533b','#659a77','#c1873b','#8d7bb0','#4f97a3','#a06084','#8a9296'];
 $('projectSaveBtn').onclick=()=>{
   const name=$('pName').value.trim();
   if(!name)return alert('物件名を入れて');
@@ -434,7 +440,7 @@ $('itemSaveBtn').onclick=()=>{
 function cancelItem(){view.editItem=null;
   $('iTitle').value=$('iStart').value=$('iEnd').value=$('iPartyName').value=$('iMemo').value='';
   $('iParty').value='FDOA';$('iStatus').value='予定';
-  $('itemFormTitle').textContent='✏️ 予定・締切の登録';
+  $('itemFormTitle').textContent='予定・締切の登録';
   $('itemSaveBtn').textContent='登録';$('itemCancelBtn').style.display='none';}
 $('itemCancelBtn').onclick=cancelItem;
 function editItem(id){const i=db.items.find(x=>x.id===id);if(!i)return;
@@ -443,7 +449,7 @@ function editItem(id){const i=db.items.find(x=>x.id===id);if(!i)return;
   $('iProject').value=i.projectId;$('iType').value=i.typeId;$('iTitle').value=i.title;
   $('iStart').value=i.start;$('iEnd').value=i.end||'';$('iParty').value=i.party||'FDOA';
   $('iPartyName').value=i.partyName||'';$('iStatus').value=i.status||'予定';$('iMemo').value=i.memo||'';
-  $('itemFormTitle').textContent='✏️ 予定の編集中';
+  $('itemFormTitle').textContent='予定の編集中';
   $('itemSaveBtn').textContent='更新';$('itemCancelBtn').style.display='';
   window.scrollTo({top:0,behavior:'smooth'});}
 function delItem(id){if(!confirm('この予定を削除する？'))return;
@@ -473,7 +479,7 @@ function renderCheck(){
   $('checkCount').textContent=db.checklists.length?('残 '+rest+'件'):'';
   $('checkArea').innerHTML=Object.keys(byP).map(pid=>{
     const p=projectById(pid),ks=byP[pid],done=ks.filter(k=>k.done).length;
-    return '<div style="margin-bottom:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><b>'+(p?'<span class="dot" style="background:'+esc(p.color)+'"></span>'+esc(p.name):'（削除済み物件）')+'</b><span class="prog">'+done+'/'+ks.length+'</span><button class="btn sm gray" onclick="clearDone(\''+pid+'\')">✔を一掃</button><button class="btn sm red" onclick="delList(\''+pid+'\')">リストごと捨てる</button></div>'
+    return '<div style="margin-bottom:18px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><b>'+(p?'<span class="dot" style="background:'+esc(p.color)+'"></span>'+esc(p.name):'（削除済み物件）')+'</b><span class="prog">'+done+'/'+ks.length+'</span><button class="btn sm gray" onclick="clearDone(\''+pid+'\')">済みを一掃</button><button class="btn sm red" onclick="delList(\''+pid+'\')">リストごと捨てる</button></div>'
       +ks.map(k=>'<div class="chk"><input type="checkbox" '+(k.done?'checked':'')+' onchange="toggleCheck(\''+k.id+'\')"><span class="'+(k.done?'done':'')+'">'+esc(k.title)+'</span><button class="btn sm red" style="margin-left:auto" onclick="delCheck(\''+k.id+'\')">×</button></div>').join('')
       +'</div>';
   }).join('')||'<div class="empty">チェックリストなし。山場の物件だけ作る。</div>';
@@ -643,7 +649,7 @@ function renderGantt(list,rs,re){
       const s=parse(i.start),e=parse(i.end||i.start);
       const cs=s<rs?rs:s, ce=e>re?re:e;
       let mark='';
-      const tip=esc(i.title)+'｜'+disp(i.start)+(i.end?'〜'+disp(i.end):'')+(i.memo?'\n📝'+esc(i.memo):'');
+      const tip=esc(i.title)+'｜'+disp(i.start)+(i.end?'〜'+disp(i.end):'')+(i.memo?'\n'+esc(i.memo):'');
       if(t.kind==='deadline'&&!i.end){
         mark='<div class="gpt'+(isDone?' done':'')+'" style="left:'+(pct(cs)+wpct(.5))+'%;background:'+esc(t.color)+'" title="'+tip+'" onclick="editItem(\''+i.id+'\')"></div>';
       }else if(t.kind==='event'&&!i.end){
@@ -651,7 +657,7 @@ function renderGantt(list,rs,re){
       }else{
         mark='<div class="gbar'+(isDone?' done':'')+'" style="left:'+pct(cs)+'%;width:'+wpct(daysBetween(cs,ce)+1)+'%;background:'+esc(t.color)+'" title="'+tip+'" onclick="editItem(\''+i.id+'\')"></div>';
       }
-      rows+='<div class="grow"><div class="glabel"><span class="badge" style="background:'+esc(t.color)+'">'+esc(t.name)+'</span><span class="'+(isDone?'done':'')+'" style="overflow:hidden;text-overflow:ellipsis">'+esc(i.title)+'</span>'+(i.memo?'<span class="memo-icon" title="'+esc(i.memo)+'">📝</span>':'')+'</div><div class="gtrack">'+bg+mark+'</div></div>';
+      rows+='<div class="grow"><div class="glabel"><span class="badge" style="background:'+esc(t.color)+'">'+esc(t.name)+'</span><span class="'+(isDone?'done':'')+'" style="overflow:hidden;text-overflow:ellipsis">'+esc(i.title)+'</span>'+(i.memo?'<span class="memo-icon" title="'+esc(i.memo)+'">※メモ</span>':'')+'</div><div class="gtrack">'+bg+mark+'</div></div>';
     }
   }
   if(!any)rows+='<div class="empty">この期間に予定なし</div>';
@@ -698,7 +704,7 @@ $('wipeBtn').onclick=()=>{
 function renderData(){
   const dirty=db.settings.dirtyCount||0;
   $('bakDot').style.display=dirty>=20?'':'none';
-  $('dataStats').innerHTML='クライアント '+db.clients.length+'件 ／ 物件 '+db.projects.length+'件 ／ 種別 '+db.types.length+'件 ／ 予定 '+db.items.length+'件 ／ チェック項目 '+db.checklists.length+'件<br>スキーマ v'+db.schemaVersion+' ／ 保存先：このブラウザのlocalStorage（キー: '+KEY+'）＋クラウド同期 '+(ghToken?'ON（GitHub: '+GH.owner+'/'+GH.repo+'/'+GH.path+'）':'未設定')+'<br>前回JSON書き出し：'+(db.settings.lastExportAt||'まだ')+'（それ以降の変更 '+dirty+'回'+(dirty>=20?' ⚠️ そろそろ書き出して':'')+'）';
+  $('dataStats').innerHTML='クライアント '+db.clients.length+'件 ／ 物件 '+db.projects.length+'件 ／ 種別 '+db.types.length+'件 ／ 予定 '+db.items.length+'件 ／ チェック項目 '+db.checklists.length+'件<br>スキーマ v'+db.schemaVersion+' ／ 保存先：このブラウザのlocalStorage（キー: '+KEY+'）＋クラウド同期 '+(ghToken?'ON（GitHub: '+GH.owner+'/'+GH.repo+'/'+GH.path+'）':'未設定')+'<br>前回JSON書き出し：'+(db.settings.lastExportAt||'まだ')+'（それ以降の変更 '+dirty+'回'+(dirty>=20?'・そろそろ書き出して':'')+'）';
 }
 
 /* ========== クラウド同期（GitHub Contents API） ========== */
