@@ -104,3 +104,28 @@ tr:hover td{background:#fafaf8}
   .frm .btn{width:100%;justify-content:center;text-align:center}
   #ghTokenInput{width:100%!important}
 }
+
+/* ---------- 印刷＝PDF書き出し（A4タテ）：#printSheet の中身だけを印刷する ----------
+   各アプリは #printSheet（bodyの直下）に印刷したいHTMLを入れて window.print() を呼ぶ。
+   ブラウザの印刷画面で「PDFとして保存」（iPhoneは共有→"PDFを作成"）。 */
+#printSheet{display:none}
+#printSheet .pt-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:16px}
+#printSheet .pt-title{font-size:19px;font-weight:700;letter-spacing:.02em}
+#printSheet .pt-to{font-size:14px;margin-top:4px}
+#printSheet .pt-sub{font-size:12px;color:var(--sub);text-align:right;line-height:1.7;flex:0 0 auto}
+#printSheet .pt-total{margin-top:14px;border-top:2px solid var(--ink);padding-top:10px;margin-left:auto;max-width:340px}
+#printSheet .pt-total .trow{display:flex;justify-content:space-between;gap:16px;font-size:13px;padding:2px 0}
+#printSheet .pt-total .trow.grand{font-weight:700;font-size:16px;margin-top:4px}
+#printSheet .pt-foot{margin-top:16px;font-size:11px;color:var(--sub)}
+@media print{
+  @page{size:A4 portrait;margin:12mm}
+  body{background:#fff}
+  body>*{display:none!important}
+  body>#printSheet{display:block!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #printSheet table{font-size:11.5px}
+  #printSheet th{font-size:10.5px;padding:6px 8px}
+  #printSheet td{padding:6px 8px}
+  #printSheet tr{break-inside:avoid}
+  #printSheet tr:hover td{background:transparent}
+}

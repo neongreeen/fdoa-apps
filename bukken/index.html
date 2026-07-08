@@ -58,6 +58,17 @@ textarea{width:100%;min-height:40px;resize:vertical}
   .chk{padding:8px 6px}
   .chk input{width:20px;height:20px}
 }
+/* 印刷＝PDF書き出し（共通ルールはbase.css・ここはガント等の固有UIだけ）
+   ガントは横長なのでこのアプリだけA4ヨコ（base.cssのA4タテを上書き） */
+@media print{
+  @page{size:A4 landscape}
+  #printSheet .gwrap{overflow:visible;border:none;border-radius:0}
+  #printSheet .gantt{min-width:0}
+  #printSheet .grow{break-inside:avoid}
+  #printSheet .grow.header{position:static}
+  #printSheet .glabel{flex-basis:250px}
+  #printSheet .tblwrap{overflow:visible}
+}
 /* スマホ（共通分はbase.css） */
 @media(max-width:720px){
   .gtoolbar{gap:6px}
@@ -106,6 +117,7 @@ textarea{width:100%;min-height:40px;resize:vertical}
         <button id="navToday">今日</button>
         <button id="navNext">▶</button>
       </div>
+      <button class="btn sec sm" id="btnPdf" title="表示中のスケジュールをA4タテのPDFに（印刷画面で「PDFとして保存」）">PDF</button>
       <span id="rangeLabel" style="font-size:12px;color:var(--sub)"></span>
       <label style="font-size:12px;display:flex;align-items:center;gap:4px;margin-left:auto">
         <input type="checkbox" id="showDone" checked>完了も表示</label>
@@ -207,6 +219,7 @@ textarea{width:100%;min-height:40px;resize:vertical}
 </section>
 
 </main>
+<div id="printSheet" aria-hidden="true"></div>
 <script src="../shared/store.js"></script>
 <script>
 'use strict';
@@ -416,6 +429,18 @@ $('periodGrp').querySelectorAll('button').forEach(b=>b.onclick=()=>{view.period=
 $('scopeSel').onchange=e=>{view.scope=e.target.value;renderSchedule();};
 $('showDone').onchange=e=>{view.showDone=e.target.checked;renderSchedule();};
 $('navToday').onclick=()=>{view.anchor=today();renderSchedule();};
+/* 表示中のスケジュールをPDFに：#printSheetに組んでwindow.print()（A4タテ＝shared/base.cssの印刷ルール） */
+$('btnPdf').onclick=()=>{
+  const scopeName=view.scope==='all'?'全物件':((projectById(view.scope)||{}).name||'');
+  $('printSheet').innerHTML=
+    '<div class="pt-head">'+
+      '<div><div class="pt-title">物件スケジュール　'+esc(scopeName)+'</div></div>'+
+      '<div class="pt-sub">'+esc($('rangeLabel').textContent)+'<br>出力日 '+fmt(today()).replaceAll('-','/')+'　FDOA</div>'+
+    '</div>'+
+    $('schedArea').innerHTML;
+  window.print();
+};
+window.addEventListener('afterprint',()=>{$('printSheet').innerHTML='';});
 $('navPrev').onclick=()=>nav(-1);
 $('navNext').onclick=()=>nav(1);
 function nav(dir){

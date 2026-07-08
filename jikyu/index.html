@@ -260,6 +260,7 @@
 
 <div class="modal-bg" id="modalBg"><div class="modal" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
+<div id="printSheet" aria-hidden="true"></div>
 
 <script src="../shared/store.js"></script>
 <script>
@@ -651,6 +652,7 @@ function renderInvoices(){
       '<td class="num"><strong>'+yen(total)+'</strong>'+note+'</td>'+
       '<td class="num" style="white-space:nowrap">'+
       '<button class="btn ghost sm" onclick="viewInvoice(\''+inv.id+'\')">明細・調整</button>'+
+      '<button class="btn ghost sm" onclick="printInvoice(\''+inv.id+'\')" title="請求明細をA4タテのPDFに（印刷画面で“PDFとして保存”）">PDF</button>'+
       '<button class="btn ghost sm" style="color:var(--warn)" onclick="cancelInvoice(\''+inv.id+'\')">取消</button></td></tr>';
   }).join("");
   $("#invoiceTable").innerHTML='<table><thead><tr><th>請求日</th><th>ラベル</th><th>物件</th><th class="num">件数</th><th class="num">稼働</th><th class="num">請求額</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
@@ -719,6 +721,39 @@ function viewInvoice(id){
     save(); closeModal(); renderAll(); toast("調整を保存しました");
   };
 }
+/* 請求明細のPDF書き出し：#printSheetに組んでwindow.print()（A4タテ＝shared/base.cssの印刷ルール） */
+function printInvoice(id){
+  const inv=invoiceById(id); if(!inv) return;
+  const recs=DB.records.filter(r=>r.invoiceId===id).sort((a,b)=> a.date<b.date?-1:1);
+  const exps=DB.expenses.filter(x=>x.invoiceId===id).sort((a,b)=> a.date<b.date?-1:1);
+  const base=invoiceBase(inv), expAmt=invoiceExpenses(inv), total=invoiceTotal(inv);
+  const min=recs.reduce((s,r)=>s+r.minutes,0);
+  const custNames=Array.from(new Set(recs.concat(exps).map(r=>{
+    const p=propById(r.propertyId); const c=p?custById(p.clientId):null; return c?c.name:null;
+  }).filter(Boolean))).join('・');
+  let rows=recs.map(r=>{ const p=propById(r.propertyId);
+    return '<tr><td>'+esc(r.date)+'</td><td>'+(p?esc(p.name):'削除済')+'</td><td>'+(esc(r.content)||'—')+'</td>'+
+      '<td class="num">'+fmtMin(r.minutes)+'</td><td class="num">'+yen(invRecAmount(r,inv))+'</td></tr>'; }).join("");
+  rows+=exps.map(x=>{ const p=propById(x.propertyId);
+    return '<tr><td>'+esc(x.date)+'</td><td>'+(p?esc(p.name):'削除済')+'</td><td>'+esc(x.type||'経費')+(x.memo?'（'+esc(x.memo)+'）':'')+'</td>'+
+      '<td class="num">経費</td><td class="num">'+yen(x.amount||0)+'</td></tr>'; }).join("");
+  $("#printSheet").innerHTML=
+    '<div class="pt-head">'+
+      '<div><div class="pt-title">ご請求明細</div>'+(custNames?'<div class="pt-to">'+esc(custNames)+' 様</div>':'')+'</div>'+
+      '<div class="pt-sub">FDOA<br>請求日 '+esc(inv.date)+(inv.label?'<br>'+esc(inv.label):'')+'</div>'+
+    '</div>'+
+    '<table><thead><tr><th>日付</th><th>物件</th><th>内容</th><th class="num">稼働/種別</th><th class="num">金額</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+    '<div class="pt-total">'+
+      '<div class="trow"><span>稼働明細合計（'+fmtMin(min)+'）</span><span>'+yen(base)+'</span></div>'+
+      (expAmt?'<div class="trow"><span>経費合計（'+exps.length+'件）</span><span>'+yen(expAmt)+'</span></div>':'')+
+      (inv.adjust?'<div class="trow"><span>調整額'+(inv.adjustNote?'（'+esc(inv.adjustNote)+'）':'')+'</span><span>'+(inv.adjust>0?'+':'')+yen(inv.adjust)+'</span></div>':'')+
+      (inv.overrideRate!=null?'<div class="trow"><span>適用時給（上書き）</span><span>'+yen(inv.overrideRate)+'/h</span></div>':'')+
+      '<div class="trow grand"><span>ご請求合計</span><span>'+yen(total)+'</span></div>'+
+    '</div>'+
+    '<div class="pt-foot">出力日 '+todayStr()+'　FDOA 時給プロジェクト管理</div>';
+  window.print();
+}
+window.addEventListener("afterprint",()=>{ const ps=$("#printSheet"); if(ps) ps.innerHTML=""; });
 function cancelInvoice(id){
   const n=DB.records.filter(r=>r.invoiceId===id).length + DB.expenses.filter(x=>x.invoiceId===id).length;
   confirmBox("この請求を取り消しますか？ "+n+"件のログ・経費は未請求に戻ります。", ()=>{
