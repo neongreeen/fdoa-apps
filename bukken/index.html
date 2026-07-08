@@ -130,9 +130,9 @@ tr:hover td{background:#fafaf8}
     <button data-tab="schedule" class="active">スケジュール確認</button>
     <button data-tab="input">スケジュール入力</button>
     <button data-tab="check">チェックリスト</button>
-    <button data-tab="master">マスター管理</button>
     <button data-tab="data">データ管理<span id="bakDot" style="display:none;color:#ff6b6b"> ●</span></button>
     <a class="applink" href="../jikyu/" title="時給プロジェクト管理を開く">時給管理 ↗</a>
+    <a class="applink" href="../master/" title="マスター管理を開く（物件・クライアント・種別の追加はこちら）">マスター ↗</a>
   </nav>
 </header>
 <main>
@@ -220,54 +220,6 @@ tr:hover td{background:#fafaf8}
   </div>
 </section>
 
-<!-- ===== マスター管理 ===== -->
-<section class="tab" id="tab-master">
-  <div class="card">
-    <h2>クライアント <span class="count" id="clientCount"></span></h2>
-    <div class="frm">
-      <label>クライアント名 *<input id="cName" style="width:180px"></label>
-      <label>連絡先・担当者<input id="cContact" style="width:200px"></label>
-      <label>メモ<input id="cMemo" style="width:240px"></label>
-      <button class="btn" id="clientSaveBtn">追加</button>
-      <button class="btn gray" id="clientCancelBtn" style="display:none">キャンセル</button>
-    </div>
-    <div class="tblwrap"><table><thead><tr><th>名前</th><th>連絡先</th><th>メモ</th><th></th></tr></thead><tbody id="clientRows"></tbody></table></div>
-  </div>
-
-  <div class="card">
-    <h2>物件 <span class="count" id="projectCount"></span></h2>
-    <div class="frm">
-      <label>物件名 *<input id="pName" style="width:200px"></label>
-      <label>クライアント<select id="pClient"></select></label>
-      <label>状態<select id="pStatus"><option>進行中</option><option>保留</option><option>完了</option></select></label>
-      <label>表示色<input type="color" id="pColor" value="#5878a3" style="padding:2px;width:44px;height:31px"></label>
-      <label>締め設定<input id="pShime" placeholder="例：月末締め翌月末払い" style="width:170px"></label>
-      <label>請求設定<input id="pSeikyu" placeholder="例：着手50%・完了50%" style="width:170px"></label>
-      <label>メモ<input id="pMemo" style="width:200px"></label>
-      <button class="btn" id="projectSaveBtn">追加</button>
-      <button class="btn gray" id="projectCancelBtn" style="display:none">キャンセル</button>
-    </div>
-    <div class="tblwrap"><table><thead><tr><th>物件名</th><th>クライアント</th><th>状態</th><th>締め設定</th><th>請求設定</th><th>メモ</th><th></th></tr></thead><tbody id="projectRows"></tbody></table></div>
-  </div>
-
-  <div class="card">
-    <h2>種別マスタ <span class="count" id="typeCount"></span></h2>
-    <p class="note" style="margin-bottom:8px">予定の分類。形＝「締切◆」「期間バー」「連絡●（アポ・メール・確認等の起点）」。自由に追加OK。</p>
-    <div class="frm">
-      <label>種別名 *<input id="tName" style="width:160px"></label>
-      <label>形<select id="tKind">
-        <option value="deadline">締切（◆）</option>
-        <option value="period">期間（バー）</option>
-        <option value="event">連絡・起点（●）</option>
-      </select></label>
-      <label>色<input type="color" id="tColor" value="#b4533b" style="padding:2px;width:44px;height:31px"></label>
-      <button class="btn" id="typeSaveBtn">追加</button>
-      <button class="btn gray" id="typeCancelBtn" style="display:none">キャンセル</button>
-    </div>
-    <div class="tblwrap"><table><thead><tr><th>種別</th><th>形</th><th></th></tr></thead><tbody id="typeRows"></tbody></table></div>
-  </div>
-</section>
-
 <!-- ===== データ管理 ===== -->
 <section class="tab" id="tab-data">
   <div class="card">
@@ -279,7 +231,7 @@ tr:hover td{background:#fafaf8}
       <button class="btn gray" id="ghSyncNowBtn">今すぐ同期</button>
       <button class="btn red" id="ghDisconnectBtn">この端末から切断</button>
     </div>
-    <p class="note">接続すると保存のたびにGitHubの非公開リポジトリ（neongreeen/fdoa-app-data の bukken.json）へ自動保存され、他の端末と共有される。トークンはこの端末のブラウザにだけ保存。オフライン時もそのまま使えて、復帰時に同期する。</p>
+    <p class="note">接続すると保存のたびにGitHubの非公開リポジトリ（<span id="repoLabel"></span>）へ自動保存され、他の端末と共有される。トークンは3アプリ（マスター・物件・時給）共通で、この端末のブラウザにだけ保存。オフライン時もそのまま使えて、復帰時に同期する。</p>
   </div>
   <div class="card">
     <h2>バックアップ・書き出し</h2>
@@ -298,9 +250,8 @@ tr:hover td{background:#fafaf8}
     <h2>拡張ロードマップ（設計メモ）</h2>
     <p class="note">
       ・全データはスキーマバージョン付きJSON。全項目に <code>memo</code> と予備領域 <code>meta</code> を持たせてあり、項目追加はスキーマ移行で吸収できる。<br>
-      ・種別マスタは自由編集式なので、入力の分類は運用しながら育てられる。<br>
-      ・将来：時給プロジェクト管理と物件IDで連携（稼働記録⇄スケジュール突き合わせ）→ 最終的に合体も可。<br>
-      ・将来：クラウド保存（GitHub/サーバ）にしてiPhone・iPadから閲覧編集。JSON一本で持ち運べる設計にしてある。
+      ・マスタ（クライアント・物件・種別）の正本は master.json。<b>追加・編集はマスター管理アプリで</b>（このアプリは読むだけ）。<br>
+      ・将来：時給プロジェクト管理と物件IDで連携（稼働記録⇄スケジュール突き合わせ）→ 最終的に合体も可。
     </p>
   </div>
   <div class="card">
@@ -310,10 +261,20 @@ tr:hover td{background:#fafaf8}
 </section>
 
 </main>
+<script src="../shared/store.js"></script>
 <script>
 'use strict';
+/* ========== 設定（直書き禁止・ここに集約） ========== */
+const CONFIG={
+  github:{owner:'neongreeen',repo:'fdoa-app-data',branch:'main'},
+  files:{master:'master.json',bukken:'bukken.json'},
+  tokenKey:'fdoa_gh_token',                 // 3アプリ共通のトークン保存キー
+  legacyTokenKeys:['fdoa_bukken_gh_token'],
+  storageKey:'fdoa_bukken_shinchoku_v1',    // この端末（localStorage）の保存キー
+  masterCacheKey:'fdoa_master_cache_v1',    // master.jsonの端末キャッシュ（オフライン用・時給とも共用予定）
+};
+
 /* ========== 基盤 ========== */
-const KEY='fdoa_bukken_shinchoku_v1';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=p=>p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -327,33 +288,44 @@ const WD=['日','月','火','水','木','金','土'];
 const disp=s=>{if(!s)return'';const d=parse(s);return (d.getMonth()+1)+'/'+d.getDate()+'('+WD[d.getDay()]+')';};
 const mondayOf=d=>addDays(d,-((d.getDay()+6)%7));
 
-function defaultTypes(){return[
- {id:'t_zshime',name:'全体締切',kind:'deadline',color:'#b4533b',meta:{}},
- {id:'t_fshime',name:'FDOA締切',kind:'deadline',color:'#c1873b',meta:{}},
- {id:'t_fwork',name:'FDOA作業',kind:'period',color:'#5878a3',meta:{}},
- {id:'t_gshime',name:'業者締切',kind:'deadline',color:'#a06084',meta:{}},
- {id:'t_gwork',name:'業者作業',kind:'period',color:'#659a77',meta:{}},
- {id:'t_apo',name:'アポ・MTG',kind:'event',color:'#bfa145',meta:{}},
- {id:'t_mail',name:'メール・連絡',kind:'event',color:'#8d7bb0',meta:{}},
- {id:'t_kakunin',name:'確認・待ち',kind:'event',color:'#8a9296',meta:{}},
-];}
-function seed(){return{schemaVersion:1,clients:[],projects:[],types:defaultTypes(),items:[],checklists:[],settings:{},meta:{}};}
+function seed(){return{schemaVersion:2,items:[],checklists:[],settings:{},meta:{}};}
 function migrate(d){
   const base=seed();
   for(const k of Object.keys(base)) if(d[k]===undefined) d[k]=base[k];
+  // v1→v2：マスタ（clients/projects/types）はmaster.jsonへ移管（着工② 2026-07-08）。IDは統一済みなので付け替え不要
+  delete d.clients;delete d.projects;delete d.types;
+  d.schemaVersion=2;
   return d;
 }
 let db;
-try{const raw=localStorage.getItem(KEY);db=raw?migrate(JSON.parse(raw)):seed();}catch(e){db=seed();}
-function persist(){localStorage.setItem(KEY,JSON.stringify(db));}
-function save(){db.settings.dirtyCount=(db.settings.dirtyCount||0)+1;db.meta.savedAt=new Date().toISOString();persist();renderAll();queueSync();}
+try{const raw=localStorage.getItem(CONFIG.storageKey);db=raw?migrate(JSON.parse(raw)):seed();}catch(e){db=seed();}
+function persist(){localStorage.setItem(CONFIG.storageKey,JSON.stringify(db));}
+function save(){db.settings.dirtyCount=(db.settings.dirtyCount||0)+1;db.meta.savedAt=new Date().toISOString();persist();renderAll();store.queueSync();}
 
-const view={mode:'gantt',scope:'all',period:'m1',anchor:today(),showDone:true,
-  editItem:null,editClient:null,editProject:null,editType:null};
+const view={mode:'gantt',scope:'all',period:'m1',anchor:today(),showDone:true,editItem:null};
 
-const clientById=id=>db.clients.find(c=>c.id===id);
-const projectById=id=>db.projects.find(p=>p.id===id);
-const typeById=id=>db.types.find(t=>t.id===id);
+/* ========== マスタ（正本＝master.json・このアプリは読み取り専用） ========== */
+let masters={clients:[],projects:[],types:[]};
+function adoptMasters(m){
+  if(!m)return;
+  masters={clients:m.clients||[],projects:m.projects||[],types:m.types||[]};
+  try{localStorage.setItem(CONFIG.masterCacheKey,JSON.stringify(masters));}catch(e){}
+}
+// 起動時はキャッシュから即表示（オフラインでも直近のマスタで動く）。マスター管理アプリのローカルデータも予備に読む
+try{
+  const c=localStorage.getItem(CONFIG.masterCacheKey);
+  if(c)masters=JSON.parse(c);
+  else{const m=localStorage.getItem('fdoa_master_v1');if(m)adoptMasters(JSON.parse(m));}
+}catch(e){}
+async function loadMasters(){ // クラウドのmaster.jsonから最新を取得
+  const m=await store.fetchFile(CONFIG.files.master);
+  if(m){adoptMasters(m);renderAll();}
+}
+
+const clientById=id=>masters.clients.find(c=>c.id===id);
+const projectById=id=>masters.projects.find(p=>p.id===id);
+const typeById=id=>masters.types.find(t=>t.id===id);
+const activeProjects=()=>masters.projects.filter(p=>!p.archived&&p.status!=='完了');
 const KINDLBL={deadline:'締切◆',period:'期間▬',event:'連絡●'};
 const txtColor=h=>{const m=/^#?([0-9a-f]{6})$/i.exec(String(h||''));if(!m)return'#fff';const n=parseInt(m[1],16),r=n>>16,g=n>>8&255,b=n&255;return(r*299+g*587+b*114)/1000>150?'#1d1d1f':'#fff';};
 
@@ -363,73 +335,10 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('section.tab').forEach(s=>s.classList.toggle('active',s.id==='tab-'+b.dataset.tab));
 });
 
-/* ========== マスター：クライアント ========== */
-$('clientSaveBtn').onclick=()=>{
-  const name=$('cName').value.trim();
-  if(!name)return alert('クライアント名を入れて');
-  if(view.editClient){const c=clientById(view.editClient);
-    Object.assign(c,{name,contact:$('cContact').value.trim(),memo:$('cMemo').value.trim()});
-  }else db.clients.push({id:uid('c'),name,contact:$('cContact').value.trim(),memo:$('cMemo').value.trim(),meta:{}});
-  cancelClient();save();
-};
-function cancelClient(){view.editClient=null;$('cName').value=$('cContact').value=$('cMemo').value='';
-  $('clientSaveBtn').textContent='追加';$('clientCancelBtn').style.display='none';}
-$('clientCancelBtn').onclick=cancelClient;
-function editClient(id){const c=clientById(id);if(!c)return;view.editClient=id;
-  $('cName').value=c.name;$('cContact').value=c.contact||'';$('cMemo').value=c.memo||'';
-  $('clientSaveBtn').textContent='更新';$('clientCancelBtn').style.display='';}
-function delClient(id){const used=db.projects.some(p=>p.clientId===id);
-  if(used)return alert('このクライアントの物件が残ってるから消せない。物件側を先に整理して。');
-  if(!confirm('削除する？'))return;db.clients=db.clients.filter(c=>c.id!==id);save();}
-
-/* ========== マスター：物件 ========== */
-const PALETTE=['#5878a3','#b4533b','#659a77','#c1873b','#8d7bb0','#4f97a3','#a06084','#8a9296'];
-$('projectSaveBtn').onclick=()=>{
-  const name=$('pName').value.trim();
-  if(!name)return alert('物件名を入れて');
-  const data={name,clientId:$('pClient').value||null,status:$('pStatus').value,color:$('pColor').value,
-    shime:$('pShime').value.trim(),seikyu:$('pSeikyu').value.trim(),memo:$('pMemo').value.trim()};
-  if(view.editProject)Object.assign(projectById(view.editProject),data);
-  else db.projects.push({id:uid('p'),...data,meta:{}});
-  cancelProject();save();
-};
-function cancelProject(){view.editProject=null;
-  $('pName').value=$('pShime').value=$('pSeikyu').value=$('pMemo').value='';
-  $('pClient').value='';$('pStatus').value='進行中';
-  $('pColor').value=PALETTE[db.projects.length%PALETTE.length];
-  $('projectSaveBtn').textContent='追加';$('projectCancelBtn').style.display='none';}
-$('projectCancelBtn').onclick=cancelProject;
-function editProject(id){const p=projectById(id);if(!p)return;view.editProject=id;
-  $('pName').value=p.name;$('pClient').value=p.clientId||'';$('pStatus').value=p.status;
-  $('pColor').value=p.color;$('pShime').value=p.shime||'';$('pSeikyu').value=p.seikyu||'';$('pMemo').value=p.memo||'';
-  $('projectSaveBtn').textContent='更新';$('projectCancelBtn').style.display='';}
-function delProject(id){const n=db.items.filter(i=>i.projectId===id).length;
-  if(!confirm('物件を削除する？'+(n?'（紐づく予定'+n+'件も消える）':'')))return;
-  db.projects=db.projects.filter(p=>p.id!==id);db.items=db.items.filter(i=>i.projectId!==id);save();}
-
-/* ========== マスター：種別 ========== */
-$('typeSaveBtn').onclick=()=>{
-  const name=$('tName').value.trim();
-  if(!name)return alert('種別名を入れて');
-  const data={name,kind:$('tKind').value,color:$('tColor').value};
-  if(view.editType)Object.assign(typeById(view.editType),data);
-  else db.types.push({id:uid('t'),...data,meta:{}});
-  cancelType();save();
-};
-function cancelType(){view.editType=null;$('tName').value='';$('tKind').value='deadline';
-  $('typeSaveBtn').textContent='追加';$('typeCancelBtn').style.display='none';}
-$('typeCancelBtn').onclick=cancelType;
-function editType(id){const t=typeById(id);if(!t)return;view.editType=id;
-  $('tName').value=t.name;$('tKind').value=t.kind;$('tColor').value=t.color;
-  $('typeSaveBtn').textContent='更新';$('typeCancelBtn').style.display='';}
-function delType(id){const used=db.items.some(i=>i.typeId===id);
-  if(used)return alert('この種別を使ってる予定があるから消せない。');
-  if(!confirm('削除する？'))return;db.types=db.types.filter(t=>t.id!==id);save();}
-
 /* ========== 予定入力 ========== */
 $('itemSaveBtn').onclick=()=>{
   const projectId=$('iProject').value, typeId=$('iType').value, title=$('iTitle').value.trim(), start=$('iStart').value;
-  if(!projectId)return alert('物件を選んで（マスター管理で物件を先に登録）');
+  if(!projectId)return alert('物件を選んで（物件の追加は右上の「マスター ↗」で）');
   if(!typeId)return alert('種別を選んで');
   if(!title)return alert('タイトルを入れて');
   if(!start)return alert('開始日を入れて');
@@ -447,9 +356,14 @@ function cancelItem(){view.editItem=null;
   $('itemFormTitle').textContent='予定・締切の登録';
   $('itemSaveBtn').textContent='登録';$('itemCancelBtn').style.display='none';}
 $('itemCancelBtn').onclick=cancelItem;
+function ensureOpt(sel,id,label){ // 編集対象がアーカイブ済み等でリストにない時だけ足す
+  if(id&&![...sel.options].some(o=>o.value===id))sel.insertAdjacentHTML('beforeend',opt(id,label));}
 function editItem(id){const i=db.items.find(x=>x.id===id);if(!i)return;
   document.querySelector('nav button[data-tab="input"]').click();
   view.editItem=id;
+  const ip=projectById(i.projectId),it=typeById(i.typeId);
+  ensureOpt($('iProject'),i.projectId,ip?ip.name:'（不明な物件）');
+  ensureOpt($('iType'),i.typeId,it?it.name:'（不明な種別）');
   $('iProject').value=i.projectId;$('iType').value=i.typeId;$('iTitle').value=i.title;
   $('iStart').value=i.start;$('iEnd').value=i.end||'';$('iParty').value=i.party||'FDOA';
   $('iPartyName').value=i.partyName||'';$('iStatus').value=i.status||'予定';$('iMemo').value=i.memo||'';
@@ -510,27 +424,15 @@ function renderDlBoard(){
 /* ========== 描画 ========== */
 function opt(v,t,sel){return '<option value="'+esc(v)+'"'+(sel===v?' selected':'')+'>'+esc(t)+'</option>';}
 function fillSelects(){
-  const pOpts=db.projects.filter(p=>p.status!=='完了').map(p=>opt(p.id,p.name)).join('');
-  const pAll=db.projects.map(p=>opt(p.id,p.name)).join('');
+  const pOpts=activeProjects().map(p=>opt(p.id,p.name)).join('');
+  const pAll=masters.projects.map(p=>opt(p.id,p.name)).join('');
   const keep=(el,html,first)=>{const v=el.value;el.innerHTML=first+html;if([...el.options].some(o=>o.value===v))el.value=v;};
   keep($('iProject'),pOpts,'<option value="">— 物件 —</option>');
   keep($('kProject'),pOpts,'<option value="">— 物件 —</option>');
-  keep($('iType'),db.types.map(t=>opt(t.id,t.name)).join(''),'<option value="">— 種別 —</option>');
+  keep($('iType'),masters.types.filter(t=>!t.archived).map(t=>opt(t.id,t.name)).join(''),'<option value="">— 種別 —</option>');
   keep($('fProject'),pAll,'<option value="">全物件</option>');
-  keep($('fType'),db.types.map(t=>opt(t.id,t.name)).join(''),'<option value="">全種別</option>');
-  keep($('pClient'),db.clients.map(c=>opt(c.id,c.name)).join(''),'<option value="">—</option>');
-  keep($('scopeSel'),db.projects.filter(p=>p.status!=='完了').map(p=>opt(p.id,p.name)).join(''),'<option value="all">全物件</option>');
-}
-function renderMaster(){
-  $('clientCount').textContent=db.clients.length+'件';
-  $('clientRows').innerHTML=db.clients.map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.contact||'')+'</td><td class="muted">'+esc(c.memo||'')+'</td><td style="white-space:nowrap"><button class="btn sm gray" onclick="editClient(\''+c.id+'\')">編集</button> <button class="btn sm red" onclick="delClient(\''+c.id+'\')">削除</button></td></tr>').join('')||'<tr><td colspan="4" class="muted">まだ登録なし</td></tr>';
-  $('projectCount').textContent=db.projects.length+'件';
-  $('projectRows').innerHTML=db.projects.map(p=>{
-    const c=clientById(p.clientId);
-    return '<tr><td><span class="dot" style="background:'+esc(p.color)+'"></span>'+esc(p.name)+'</td><td>'+esc(c?c.name:'')+'</td><td>'+esc(p.status)+'</td><td class="muted">'+esc(p.shime||'')+'</td><td class="muted">'+esc(p.seikyu||'')+'</td><td class="muted">'+esc(p.memo||'')+'</td><td style="white-space:nowrap"><button class="btn sm gray" onclick="editProject(\''+p.id+'\')">編集</button> <button class="btn sm red" onclick="delProject(\''+p.id+'\')">削除</button></td></tr>';
-  }).join('')||'<tr><td colspan="7" class="muted">まだ登録なし</td></tr>';
-  $('typeCount').textContent=db.types.length+'件';
-  $('typeRows').innerHTML=db.types.map(t=>'<tr><td><span class="badge" style="background:'+esc(t.color)+';color:'+txtColor(t.color)+'">'+esc(t.name)+'</span></td><td>'+KINDLBL[t.kind]+'</td><td style="white-space:nowrap"><button class="btn sm gray" onclick="editType(\''+t.id+'\')">編集</button> <button class="btn sm red" onclick="delType(\''+t.id+'\')">削除</button></td></tr>').join('');
+  keep($('fType'),masters.types.map(t=>opt(t.id,t.name)).join(''),'<option value="">全種別</option>');
+  keep($('scopeSel'),activeProjects().map(p=>opt(p.id,p.name)).join(''),'<option value="all">全物件</option>');
 }
 function renderItems(){
   const fp=$('fProject').value,ft=$('fType').value,kw=$('fKw').value.trim();
@@ -590,7 +492,7 @@ function renderSchedule(){
   const[rs,re]=calcRange();
   $('rangeLabel').textContent=fmt(rs).replaceAll('-','/')+' 〜 '+fmt(re).replaceAll('-','/');
   const list=itemsInRange(rs,re);
-  if(db.projects.length===0){$('schedArea').innerHTML='<div class="empty">まず「マスター管理」で物件を登録 →「スケジュール入力」で予定を入れてね</div>';return;}
+  if(masters.projects.length===0){$('schedArea').innerHTML='<div class="empty">まず右上の「マスター ↗」で物件を登録 →「スケジュール入力」で予定を入れてね（クラウド未接続ならデータ管理タブでトークンを設定）</div>';return;}
   if(view.mode==='list')renderListView(list,rs,re);
   else renderGantt(list,rs,re);
 }
@@ -628,7 +530,7 @@ function renderGantt(list,rs,re){
   const todayLine=(t0>=rs&&t0<=re)?'<div class="gtoday" style="left:'+(pct(t0)+wpct(.5))+'%"></div>':'';
   const bg=grid+we+todayLine;
   /* 行 */
-  let projs=view.scope==='all'?db.projects.filter(p=>p.status!=='完了'):db.projects.filter(p=>p.id===view.scope);
+  let projs=view.scope==='all'?activeProjects():masters.projects.filter(p=>p.id===view.scope);
   if(view.scope==='all'){
     // 未完了の締切が近い物件を上に（締切なしは下・元の順）
     const due={},t0s=fmt(today());
@@ -708,17 +610,11 @@ $('wipeBtn').onclick=()=>{
 function renderData(){
   const dirty=db.settings.dirtyCount||0;
   $('bakDot').style.display=dirty>=20?'':'none';
-  $('dataStats').innerHTML='クライアント '+db.clients.length+'件 ／ 物件 '+db.projects.length+'件 ／ 種別 '+db.types.length+'件 ／ 予定 '+db.items.length+'件 ／ チェック項目 '+db.checklists.length+'件<br>スキーマ v'+db.schemaVersion+' ／ 保存先：このブラウザのlocalStorage（キー: '+KEY+'）＋クラウド同期 '+(ghToken?'ON（GitHub: '+GH.owner+'/'+GH.repo+'/'+GH.path+'）':'未設定')+'<br>前回JSON書き出し：'+(db.settings.lastExportAt||'まだ')+'（それ以降の変更 '+dirty+'回'+(dirty>=20?'・そろそろ書き出して':'')+'）';
+  $('repoLabel').textContent=CONFIG.github.owner+'/'+CONFIG.github.repo+' の '+CONFIG.files.bukken;
+  $('dataStats').innerHTML='予定 '+db.items.length+'件 ／ チェック項目 '+db.checklists.length+'件<br>マスタ参照：クライアント '+masters.clients.length+'件 ／ 物件 '+masters.projects.length+'件 ／ 種別 '+masters.types.length+'件（正本＝'+CONFIG.files.master+'・編集はマスター管理アプリで）<br>スキーマ v'+db.schemaVersion+' ／ 保存先：このブラウザのlocalStorage（キー: '+CONFIG.storageKey+'）＋クラウド同期 '+(store.hasToken()?'ON（GitHub: '+CONFIG.github.owner+'/'+CONFIG.github.repo+'/'+CONFIG.files.bukken+'）':'未設定')+'<br>前回JSON書き出し：'+(db.settings.lastExportAt||'まだ')+'（それ以降の変更 '+dirty+'回'+(dirty>=20?'・そろそろ書き出して':'')+'）';
 }
 
-/* ========== クラウド同期（GitHub Contents API） ========== */
-const GH={owner:'neongreeen',repo:'fdoa-app-data',path:'bukken.json',branch:'main'};
-const TKEY='fdoa_gh_token'; // 2アプリ共通キー（時給と共有・旧キーからも読む）
-let ghToken=localStorage.getItem(TKEY)||localStorage.getItem('fdoa_bukken_gh_token')||'';
-let ghSha=null;      // 最後に確認したリモートファイルのSHA（上書き事故防止）
-let ghStamp=null;    // 最後に同期したリモートのsavedAt（他端末保存の検知用）
-let syncTimer=null,pushing=false,pendingPush=false;
-
+/* ========== クラウド同期（共通部品 shared/store.js を使用） ========== */
 const SYNC_LBL={
   off:['','未設定（この端末のブラウザ内にだけ保存中）'],
   loading:['☁️…','クラウドから読み込み中…'],
@@ -728,102 +624,40 @@ const SYNC_LBL={
   offline:['☁️⚠','オフライン。復帰したら自動で同期する'],
   error:['☁️✕','同期エラー'],
 };
-function setSync(state,msg){
-  const[badge,label]=SYNC_LBL[state]||['',''];
-  $('syncBadge').textContent=badge;
-  $('syncStatus').textContent=label+(msg?'：'+msg:'')+(state==='saved'?'（'+new Date().toLocaleTimeString('ja-JP')+'）':'');
-  $('syncStatus').style.color=state==='error'?'var(--danger)':state==='offline'?'var(--warn)':'var(--sub)';
-}
-function b64enc(s){const b=new TextEncoder().encode(s);let bin='';for(let i=0;i<b.length;i+=0x8000)bin+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(bin);}
-function b64dec(s){const bin=atob(s.replace(/\s/g,''));const b=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)b[i]=bin.charCodeAt(i);return new TextDecoder().decode(b);}
-function ghApi(method,body){
-  const url='https://api.github.com/repos/'+GH.owner+'/'+GH.repo+'/contents/'+GH.path+(method==='GET'?'?ref='+GH.branch+'&_='+Date.now():'');
-  return fetch(url,{method,cache:'no-store',
-    headers:{'Authorization':'Bearer '+ghToken,'Accept':'application/vnd.github+json'},
-    body:body?JSON.stringify(body):undefined});
-}
-async function ghPull(){ // リモート取得（ghShaも更新）
-  const res=await ghApi('GET');
-  if(res.status===404)return{missing:true};
-  if(res.status===401)throw new Error('トークンが無効（401）');
-  if(!res.ok)throw new Error('GitHub応答 '+res.status);
-  const j=await res.json();
-  ghSha=j.sha;
-  let data=null;
-  try{data=JSON.parse(b64dec(j.content));}catch(e){}
-  return{data};
-}
-function adoptRemote(data){ // リモートをこの端末に採用
-  db=migrate(data);ghStamp=(data.meta&&data.meta.savedAt)||null;persist();renderAll();setSync('saved');
-}
-function queueSync(){ // save()から呼ばれる：少し待ってまとめてpush
-  if(!ghToken)return;
-  setSync('dirty');clearTimeout(syncTimer);syncTimer=setTimeout(ghPush,1500);
-}
-async function ghPush(){
-  if(!ghToken)return;
-  if(pushing){pendingPush=true;return;}
-  pushing=true;setSync('saving');
-  try{
-    const cur=await ghPull(); // 最新SHA取得＋他端末保存の検知
-    const remoteStamp=(cur.data&&cur.data.meta&&cur.data.meta.savedAt)||null;
-    if(remoteStamp&&ghStamp!==null&&remoteStamp!==ghStamp){
-      if(confirm('他の端末で保存されたデータがクラウドにある。\nOK＝クラウドの内容を読み込む（この端末の直近の変更は消える）\nキャンセル＝この端末の内容でクラウドを上書き')){
-        adoptRemote(cur.data);pushing=false;pendingPush=false;return;
-      }
-    }
-    const body={message:'保存：物件進捗 '+new Date().toLocaleString('ja-JP'),content:b64enc(JSON.stringify(db,null,1)),branch:GH.branch};
-    if(ghSha)body.sha=ghSha;
-    const res=await ghApi('PUT',body);
-    if(!res.ok)throw new Error('保存失敗（'+res.status+'）');
-    const j=await res.json();
-    ghSha=j.content.sha;ghStamp=db.meta.savedAt||null;
-    setSync('saved');
-  }catch(e){
-    setSync(navigator.onLine?'error':'offline',navigator.onLine?e.message:'');
-  }
-  pushing=false;
-  if(pendingPush){pendingPush=false;ghPush();}
-}
-async function ghInit(){ // 起動時：新しい方を採用
-  if(!ghToken){setSync('off');return;}
-  setSync('loading');
-  try{
-    const r=await ghPull();
-    if(r.missing||!r.data||!r.data.schemaVersion){ghPush();return;} // クラウドが空→ローカルを上げる
-    const remoteStamp=(r.data.meta&&r.data.meta.savedAt)||'';
-    const localStamp=(db.meta&&db.meta.savedAt)||'';
-    if(remoteStamp>localStamp)adoptRemote(r.data);
-    else if(localStamp>remoteStamp){ghStamp=remoteStamp;ghPush();}
-    else{ghStamp=remoteStamp;setSync('saved');}
-  }catch(e){setSync(navigator.onLine?'error':'offline',navigator.onLine?e.message:'');}
-}
-$('ghConnectBtn').onclick=()=>{
+const store=createCloudStore({
+  owner:CONFIG.github.owner,repo:CONFIG.github.repo,branch:CONFIG.github.branch,
+  path:CONFIG.files.bukken,tokenKey:CONFIG.tokenKey,legacyTokenKeys:CONFIG.legacyTokenKeys,
+  label:'物件進捗',
+  getData:()=>db,
+  adoptRemote:data=>{db=migrate(data);persist();renderAll();},
+  onState:(state,msg)=>{
+    const[badge,label]=SYNC_LBL[state]||['',''];
+    $('syncBadge').textContent=badge;
+    $('syncStatus').textContent=label+(msg?'：'+msg:'')+(state==='saved'?'（'+new Date().toLocaleTimeString('ja-JP')+'）':'');
+    $('syncStatus').style.color=state==='error'?'var(--danger)':state==='offline'?'var(--warn)':'var(--sub)';
+  },
+});
+$('ghConnectBtn').onclick=async()=>{
   const t=$('ghTokenInput').value.trim();
   if(!t)return alert('トークンを貼り付けて');
-  ghToken=t;localStorage.setItem(TKEY,t);$('ghTokenInput').value='';
-  ghSha=null;ghStamp=null;ghInit();renderData();
+  $('ghTokenInput').value='';
+  await store.connect(t);renderAll();loadMasters();
 };
 $('ghSyncNowBtn').onclick=()=>{
-  if(!ghToken)return alert('先にトークンを設定して');
-  ghInit();
+  if(!store.hasToken())return alert('先にトークンを設定して');
+  store.syncNow();loadMasters();
 };
 $('ghDisconnectBtn').onclick=()=>{
-  if(!confirm('この端末をクラウド同期から切断する？（クラウド上のデータは残る）'))return;
-  ghToken='';localStorage.removeItem(TKEY);localStorage.removeItem('fdoa_bukken_gh_token');ghSha=null;ghStamp=null;setSync('off');renderData();
+  if(!confirm('この端末をクラウド同期から切断する？（クラウド上のデータは残る。マスター管理・時給管理も同じトークンなので一緒に切れる）'))return;
+  store.disconnect();renderData();
 };
-window.addEventListener('online',()=>{if(ghToken)ghPush();});
 
 /* ========== 全体描画 ========== */
-function renderAll(){fillSelects();renderMaster();renderItems();renderSchedule();renderCheck();renderDlBoard();renderData();}
+function renderAll(){fillSelects();renderItems();renderSchedule();renderCheck();renderDlBoard();renderData();}
 window.toggleCheck=toggleCheck;window.delCheck=delCheck;window.clearDone=clearDone;window.delList=delList;
-window.editClient=editClient;window.delClient=delClient;
-window.editProject=editProject;window.delProject=delProject;
-window.editType=editType;window.delType=delType;
 window.editItem=editItem;window.delItem=delItem;window.toggleDone=toggleDone;
-$('pColor').value=PALETTE[db.projects.length%PALETTE.length];
 renderAll();
-ghInit();
+(async()=>{await store.init();loadMasters();})();
 </script>
 </body>
 </html>
