@@ -309,7 +309,7 @@ let masters={clients:[],projects:[],types:[]};
 function adoptMasters(m){
   if(!m)return;
   masters={clients:m.clients||[],projects:m.projects||[],types:m.types||[]};
-  try{localStorage.setItem(CONFIG.masterCacheKey,JSON.stringify(masters));}catch(e){}
+  try{localStorage.setItem(CONFIG.masterCacheKey,JSON.stringify(m));}catch(e){} // キャッシュはmaster.json丸ごと（時給はcontents/expTypesも使うため）
 }
 // 起動時はキャッシュから即表示（オフラインでも直近のマスタで動く）。マスター管理アプリのローカルデータも予備に読む
 try{

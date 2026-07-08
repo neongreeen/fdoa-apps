@@ -83,16 +83,14 @@
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
   /* JSが表を流し込むコンテナは横スクロール可能に */
-  #todayTable,#listTable,#expenseListTable,#billingSummary,#billingTable,#invoiceTable,
-  #customerTable,#propertyTable,#contentTable,#expTypeTable{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  #todayTable,#listTable,#expenseListTable,#billingSummary,#billingTable,#invoiceTable{overflow-x:auto;-webkit-overflow-scrolling:touch}
   /* タブレット以下：指で押しやすく・表は横スクロール */
   @media(max-width:820px){
     input,select,textarea{font-size:16px} /* iOSのフォーカス時自動ズーム防止 */
     .btn{min-height:42px}
     .btn.sm{min-height:34px}
     .billchk,#billAll{width:24px;height:24px}
-    #todayTable td,#listTable td,#expenseListTable td,#billingSummary td,#billingTable td,#invoiceTable td,
-    #customerTable td,#propertyTable td,#contentTable td,#expTypeTable td{white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+    #todayTable td,#listTable td,#expenseListTable td,#billingSummary td,#billingTable td,#invoiceTable td{white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis}
   }
   /* スマホ：フォームは縦積み全幅・メニューは1行横スクロール・全体を一段コンパクトに */
   @media(max-width:720px){
@@ -131,9 +129,9 @@
       <button data-view="record" class="active">記録</button>
       <button data-view="list">記録一覧</button>
       <button data-view="billing">請求管理</button>
-      <button data-view="master">マスター管理</button>
       <button data-view="export">書き出し</button>
       <a class="applink" href="../bukken/" title="物件進捗管理を開く">物件管理 ↗</a>
+      <a class="applink" href="../master/" title="マスター管理を開く（物件・顧客・稼働内容・経費種別の追加はこちら）">マスター ↗</a>
     </nav>
   </div>
 </header>
@@ -181,7 +179,7 @@
         <div style="flex:3"><label>稼働内容</label><select id="mContent"></select></div>
         <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="btn" id="btnManualAdd">追加</button></div>
       </div>
-      <div class="muted" style="margin-top:8px">開始・終了を選ぶと分は自動計算。分を直接入れてもOK。稼働内容は「マスター管理」で追加できます。</div>
+      <div class="muted" style="margin-top:8px">開始・終了を選ぶと分は自動計算。分を直接入れてもOK。稼働内容の追加は右上の「マスター ↗」で。</div>
     </div>
 
     <div class="panel">
@@ -195,7 +193,7 @@
         <div style="flex:2"><label>メモ(任意)</label><input type="text" id="xMemo" placeholder="例 芦屋打合せ 新幹線往復"></div>
         <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="btn" id="btnExpenseAdd">追加</button></div>
       </div>
-      <div class="muted" style="margin-top:8px">入力した経費は「記録一覧」ページで確認・編集できます。種別は「マスター管理」で追加できます。</div>
+      <div class="muted" style="margin-top:8px">入力した経費は「記録一覧」ページで確認・編集できます。種別の追加は右上の「マスター ↗」で。</div>
     </div>
 
     <div class="panel">
@@ -267,57 +265,6 @@
     </div>
   </section>
 
-  <!-- ===== マスター管理 ===== -->
-  <section id="view-master" class="view">
-    <div class="grid2">
-      <div class="panel">
-        <h2>顧客</h2>
-        <div class="row" style="margin-bottom:14px">
-          <div style="flex:3"><label>顧客名</label><input type="text" id="cName" placeholder="例 株式会社○○"></div>
-          <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="btn" id="btnAddCustomer">追加</button></div>
-        </div>
-        <div id="customerTable"></div>
-      </div>
-      <div class="panel">
-        <h2>物件</h2>
-        <div class="row" style="margin-bottom:8px">
-          <div><label>物件名</label><input type="text" id="pName" placeholder="例 COMMECA"></div>
-          <div><label>顧客</label><select id="pCustomer"></select></div>
-          <div style="flex:0 0 auto"><label>状態</label><select id="pStatus" style="width:auto"><option>未着手</option><option>稼働中</option><option>完了</option><option>停止</option></select></div>
-        </div>
-        <div class="row" style="margin-bottom:14px">
-          <div><label>時間単価(円)</label><input type="number" id="pRate" min="0" step="100" placeholder="例 5000"></div>
-          <div><label>請求タイプ(任意)</label><input type="text" id="pBillType" list="billTypeList" placeholder="例 毎月 / 一式 / 3分割"></div>
-          <div style="flex:0 0 auto"><label>締め日(毎月の場合)</label><select id="pCloseDay" style="width:auto"></select></div>
-          <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="btn" id="btnAddProperty">追加</button></div>
-        </div>
-        <datalist id="billTypeList"><option value="毎月"></option><option value="一式"></option><option value="2分割"></option><option value="3分割"></option><option value="都度"></option></datalist>
-        <div class="toolbar"><span class="muted">表示：</span><select id="pFilter" style="width:auto"><option value="">全部</option><option>未着手</option><option>稼働中</option><option>完了</option><option>停止</option></select></div>
-        <div id="propertyTable"></div>
-      </div>
-    </div>
-    <div class="grid2">
-      <div class="panel">
-        <h2>稼働内容</h2>
-        <h3>記録時にプルダウンから選べる作業内容を登録</h3>
-        <div class="row" style="margin-bottom:14px">
-          <div style="flex:3"><label>稼働内容</label><input type="text" id="wName" placeholder="例 現地調査 / 図面修正 / 打合せ"></div>
-          <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="btn" id="btnAddContent">追加</button></div>
-        </div>
-        <div id="contentTable"></div>
-      </div>
-      <div class="panel">
-        <h2>経費種別</h2>
-        <h3>経費入力時にプルダウンから選べる種別を登録</h3>
-        <div class="row" style="margin-bottom:14px">
-          <div style="flex:3"><label>経費種別</label><input type="text" id="xtName" placeholder="例 交通費 / 宿泊費 / 駐車場代"></div>
-          <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="btn" id="btnAddExpType">追加</button></div>
-        </div>
-        <div id="expTypeTable"></div>
-      </div>
-    </div>
-  </section>
-
   <!-- ===== 書き出し ===== -->
   <section id="view-export" class="view">
     <div class="panel">
@@ -329,7 +276,7 @@
         <div style="flex:0 0 auto"><button class="btn sec" id="ghSyncNowBtn">今すぐ同期</button></div>
         <div style="flex:0 0 auto"><button class="btn warn sm" id="ghDisconnectBtn">この端末から切断</button></div>
       </div>
-      <p class="muted" style="margin-top:10px">接続すると保存のたびにGitHubの非公開リポジトリ（neongreeen/fdoa-app-data の jikyu.json）へ自動保存され、他の端末と共有される。物件進捗管理と同じトークンでOK（同じ端末で接続済みなら自動でつながる）。オフライン時もそのまま使えて、復帰時に同期する。</p>
+      <p class="muted" style="margin-top:10px">接続すると保存のたびにGitHubの非公開リポジトリ（<span id="repoLabel"></span>）へ自動保存され、他の端末と共有される。トークンは3アプリ（マスター・物件・時給）共通で、この端末のブラウザにだけ保存（接続済みの端末なら自動でつながる）。物件・顧客・稼働内容・経費種別のマスタは master.json から読むだけ（追加・編集は「マスター ↗」で）。オフライン時もそのまま使えて、復帰時に同期する。</p>
     </div>
     <div class="panel">
       <h2>シート書き出し（バックアップ）</h2>
@@ -361,7 +308,7 @@
     </div>
     <div class="panel danger-zone">
       <h2>全データ削除</h2>
-      <p class="muted">この端末のブラウザに保存された全記録・マスターを消します。元に戻せません。</p>
+      <p class="muted">この端末のブラウザに保存された全記録・経費・請求を消します。元に戻せません。（マスタの正本はmaster.jsonなので消えません）</p>
       <button class="btn warn sm" id="btnWipe">全データを削除</button>
     </div>
   </section>
@@ -370,170 +317,96 @@
 <div class="modal-bg" id="modalBg"><div class="modal" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
 
+<script src="../shared/store.js"></script>
 <script>
 "use strict";
 /* ============================================================
-   時給プロジェクト管理 — 単一HTMLアプリ（ローカルlocalStorage保存）
-   データ構造（将来の項目追加もしやすいようオブジェクトで保持）
+   時給プロジェクト管理 — 単一HTMLアプリ
+   データ（jikyu.json / localStorage・schemaVersion 2）
    ------------------------------------------------------------
-   customers : [{id, name}]
-   properties: [{id, name, customerId, rate, active, note, billType}]
-                billType = 請求タイプの自由ラベル（毎月/一式/3分割/都度…目安のみ）
-   contents  : [{id, name}]   ← 稼働内容マスター（プルダウン候補）
-   invoices  : [{id, date, label, createdAt}]   ← 請求（ログを束ねた単位）
-   records   : [{id, propertyId, date, start, end, minutes, content, billed, invoiceId, createdAt}]
+   records   : [{id, propertyId, date, start, end, endDate, minutes, content, rate, billed, invoiceId, createdAt}]
                 invoiceId が入れば「その請求に含まれる＝請求済」。
                 請求の区切りは月でも一式でも3分割でも自由（選んだログを束ねるだけ）。
    expenses  : [{id, propertyId, date, type, amount, memo, billed, invoiceId, createdAt}]
                 経費（交通費など実費）。時給ログと同様、請求にまとめられる。金額は税込実額。
-   expTypes  : [{id, name}]   ← 経費種別マスター（プルダウン候補）
-   running   : {propertyId, startTs} | null   ← 稼働中タイマー
+   invoices  : [{id, date, label, adjust, adjustNote, overrideRate, createdAt}]
+   running   : {propertyId, content, startTs} | null   ← 稼働中タイマー
+   ------------------------------------------------------------
+   マスタ（物件・顧客・稼働内容・経費種別）の正本は master.json。
+   このアプリは読むだけ（追加・編集はマスター管理アプリで）。
+   物件は統一ID参照、稼働内容・経費種別は名前参照。
    ============================================================ */
-const KEY = "jikyu_app_v1";
+
+/* ========== 設定（直書き禁止・ここに集約） ========== */
+const CONFIG={
+  github:{owner:'neongreeen',repo:'fdoa-app-data',branch:'main'},
+  files:{master:'master.json',jikyu:'jikyu.json'},
+  tokenKey:'fdoa_gh_token',                 // 3アプリ共通のトークン保存キー
+  legacyTokenKeys:['fdoa_bukken_gh_token'],
+  storageKey:'jikyu_app_v1',                // この端末（localStorage）の保存キー
+  masterCacheKey:'fdoa_master_cache_v1',    // master.jsonの端末キャッシュ（オフライン用・物件側と共用）
+};
+const KEY = CONFIG.storageKey;
 const $ = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
 const uid = ()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const yen = n => "¥"+Math.round(n).toLocaleString("ja-JP");
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 
-/* ---------- クラウド同期（GitHub Contents API・物件進捗管理と同方式） ---------- */
-const GH={owner:'neongreeen',repo:'fdoa-app-data',path:'jikyu.json',branch:'main'};
-const TKEY='fdoa_gh_token'; // 2アプリ共通キー（物件進捗管理の旧キーからも読む）
-let ghToken=localStorage.getItem(TKEY)||localStorage.getItem('fdoa_bukken_gh_token')||'';
-let ghSha=null;      // 最後に確認したリモートファイルのSHA（上書き事故防止）
-let ghStamp=null;    // 最後に同期したリモートのsavedAt（他端末保存の検知用）
-let syncTimer=null,pushing=false,pendingPush=false;
-const SYNC_LBL={
-  off:['ローカル保存版','未設定（この端末のブラウザ内にだけ保存中）'],
-  loading:['☁️…','クラウドから読み込み中…'],
-  dirty:['☁️●','変更あり・まもなく自動保存'],
-  saving:['☁️↑','クラウドへ保存中…'],
-  saved:['☁️✓','同期済み'],
-  offline:['☁️⚠','オフライン。復帰したら自動で同期する'],
-  error:['☁️✕','同期エラー'],
+/* ---------- スキーマ移行（v1→v2・着工③ 2026-07-08） ----------
+   旧ID→統一IDの対応表。旧v1データ（端末のlocalStorage・昔のJSONバックアップ）を
+   読み込んだ時に自動で付け替えるため、恒久的にアプリへ埋め込んでおく */
+const MIG_PROPS={
+  mqhm77eybwpaq:'p_mrbii9rk3lr3',   // （仮称）メディメッセ桜十字福岡 内装工事
+  mqhqptb2v4zop:'p_19f40150555ci2t',// 環境開発社宅
+  mqhrvbr2eruut:'p_mrbi8pvng7mm',   // CCU
+  mr3cudi2wfmsu:'p_mragkrhzhzq6',   // （仮称）芦屋Y邸新築工事
+  mr60t6xcvglmc:'p_mragn2wy9nvg',   // 志免ペットクリニック
 };
-function setSync(state,msg){
-  const[badge,label]=SYNC_LBL[state]||['',''];
-  $('#syncBadge').textContent=badge;
-  $('#syncStatus').textContent=label+(msg?'：'+msg:'')+(state==='saved'?'（'+new Date().toLocaleTimeString('ja-JP')+'）':'');
-  $('#syncStatus').style.color=state==='error'?'#c0392b':state==='offline'?'#b26a00':'';
-}
-function b64enc(s){const b=new TextEncoder().encode(s);let bin='';for(let i=0;i<b.length;i+=0x8000)bin+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(bin);}
-function b64dec(s){const bin=atob(s.replace(/\s/g,''));const b=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)b[i]=bin.charCodeAt(i);return new TextDecoder().decode(b);}
-function ghApi(method,body){
-  const url='https://api.github.com/repos/'+GH.owner+'/'+GH.repo+'/contents/'+GH.path+(method==='GET'?'?ref='+GH.branch+'&_='+Date.now():'');
-  return fetch(url,{method,cache:'no-store',
-    headers:{'Authorization':'Bearer '+ghToken,'Accept':'application/vnd.github+json'},
-    body:body?JSON.stringify(body):undefined});
-}
-async function ghPull(){ // リモート取得（ghShaも更新）
-  const res=await ghApi('GET');
-  if(res.status===404)return{missing:true};
-  if(res.status===401)throw new Error('トークンが無効（401）');
-  if(!res.ok)throw new Error('GitHub応答 '+res.status);
-  const j=await res.json();
-  ghSha=j.sha;
-  let data=null;
-  try{data=JSON.parse(b64dec(j.content));}catch(e){}
-  return{data};
-}
-function adoptRemote(data){ // リモートをこの端末に採用
-  DB=data; DB.running=DB.running||null; DB.contents=DB.contents||[]; DB.invoices=DB.invoices||[]; DB.expenses=DB.expenses||[]; DB.expTypes=DB.expTypes||[]; DB.meta=DB.meta||{};
-  ghStamp=DB.meta.savedAt||null;
-  localStorage.setItem(KEY,JSON.stringify(DB));
-  stopTick(); renderAll(); if(DB.running) startTick(); else updateClock();
-  setSync('saved');
-}
-function queueSync(){ // save()から呼ばれる：少し待ってまとめてpush
-  if(!ghToken)return;
-  setSync('dirty');clearTimeout(syncTimer);syncTimer=setTimeout(ghPush,1500);
-}
-async function ghPush(){
-  if(!ghToken)return;
-  if(pushing){pendingPush=true;return;}
-  pushing=true;setSync('saving');
-  try{
-    const cur=await ghPull(); // 最新SHA取得＋他端末保存の検知
-    const remoteStamp=(cur.data&&cur.data.meta&&cur.data.meta.savedAt)||null;
-    if(remoteStamp&&ghStamp!==null&&remoteStamp!==ghStamp){
-      if(confirm('他の端末で保存されたデータがクラウドにある。\nOK＝クラウドの内容を読み込む（この端末の直近の変更は消える）\nキャンセル＝この端末の内容でクラウドを上書き')){
-        adoptRemote(cur.data);pushing=false;pendingPush=false;return;
-      }
-    }
-    const body={message:'保存：時給 '+new Date().toLocaleString('ja-JP'),content:b64enc(JSON.stringify(DB,null,1)),branch:GH.branch};
-    if(ghSha)body.sha=ghSha;
-    const res=await ghApi('PUT',body);
-    if(!res.ok)throw new Error('保存失敗（'+res.status+'）');
-    const j=await res.json();
-    ghSha=j.content.sha;ghStamp=(DB.meta&&DB.meta.savedAt)||null;
-    setSync('saved');
-  }catch(e){
-    setSync(navigator.onLine?'error':'offline',navigator.onLine?e.message:'');
-  }
-  pushing=false;
-  if(pendingPush){pendingPush=false;ghPush();}
-}
-async function ghInit(){ // 起動時：新しい方を採用
-  if(!ghToken){setSync('off');return;}
-  // 旧データ互換：実データがあるのにタイムスタンプ未付与なら今付ける（初回接続で確実にクラウドへ上がるように）
-  if(!(DB.meta&&DB.meta.savedAt)&&(DB.customers.length||DB.properties.length||DB.records.length)){
-    DB.meta=DB.meta||{};DB.meta.savedAt=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(DB));
-  }
-  setSync('loading');
-  try{
-    const r=await ghPull();
-    if(r.missing||!r.data||!r.data.customers){ghPush();return;} // クラウドが空→ローカルを上げる
-    const remoteStamp=(r.data.meta&&r.data.meta.savedAt)||'';
-    const localStamp=(DB.meta&&DB.meta.savedAt)||'';
-    if(remoteStamp>localStamp)adoptRemote(r.data);
-    else if(localStamp>remoteStamp){ghStamp=remoteStamp;ghPush();}
-    else{ghStamp=remoteStamp;setSync('saved');}
-  }catch(e){setSync(navigator.onLine?'error':'offline',navigator.onLine?e.message:'');}
+function seed(){ return {schemaVersion:2, records:[], expenses:[], invoices:[], running:null, meta:{}}; }
+function migrate(d){
+  if(!d||typeof d!=="object"||!Array.isArray(d.records)) return seed();
+  d.records=d.records||[]; d.expenses=d.expenses||[]; d.invoices=d.invoices||[]; d.running=d.running||null; d.meta=d.meta||{};
+  const map=id=>MIG_PROPS[id]||id;
+  d.records.forEach(r=>{ r.propertyId=map(r.propertyId); });
+  d.expenses.forEach(x=>{ x.propertyId=map(x.propertyId); });
+  if(d.running&&d.running.propertyId) d.running.propertyId=map(d.running.propertyId);
+  // v1→v2：マスタ配列（customers/properties/contents/expTypes）はmaster.jsonへ移管
+  delete d.customers; delete d.properties; delete d.contents; delete d.expTypes; delete d.version;
+  d.schemaVersion=2;
+  return d;
 }
 
 let DB = load();
-if(!DB.contents) DB.contents=[];   // 旧データ互換：稼働内容マスター
-if(!DB.invoices) DB.invoices=[];   // 旧データ互換：請求
-if(!DB.expenses) DB.expenses=[];   // 旧データ互換：経費
-if(!DB.expTypes) DB.expTypes=["交通費","宿泊費","駐車場代","立替購入","その他"].map(n=>({id:uid()+n.length,name:n}));   // 経費種別マスター（初期値つき）
-// 旧データ互換：時給スナップショットが無い記録は、現在の物件単価で確定させる（以後ぶれない）
-(function migrateRates(){
-  let changed=false;
-  DB.records.forEach(r=>{
-    if(r.rate==null){ const p=DB.properties.find(x=>x.id===r.propertyId); r.rate=p?(p.rate||0):0; changed=true; }
-  });
-  // 旧データ互換：物件の状態(未着手/稼働中/完了/停止)。旧active から引き継ぐ
-  DB.properties.forEach(p=>{ if(!p.status){ p.status=(p.active===false?"停止":"稼働中"); changed=true; } });
-  if(changed) save();
-})();
-
 function load(){
   try{
     const d = JSON.parse(localStorage.getItem(KEY));
-    if(d && d.customers) return d;
+    if(d && (Array.isArray(d.records))) return migrate(d);
   }catch(e){}
-  return {version:1, customers:[], properties:[], contents:[], invoices:[], records:[], expenses:[], expTypes:null, running:null};
+  return seed();
 }
-function save(){ DB.meta=DB.meta||{}; DB.meta.savedAt=new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(DB)); queueSync(); }
+function save(){ DB.meta=DB.meta||{}; DB.meta.savedAt=new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(DB)); store.queueSync(); }
 
-function propById(id){ return DB.properties.find(p=>p.id===id); }
-function custById(id){ return DB.customers.find(c=>c.id===id); }
-function custOfProp(p){ return p ? custById(p.customerId) : null; }
-/* 物件の状態：未着手/稼働中/完了/停止。記録の候補に出すのは未着手・稼働中のみ */
-const PROP_STATUSES=["未着手","稼働中","完了","停止"];
-function propStatus(p){ return (p&&p.status)? p.status : (p&&p.active===false?"停止":"稼働中"); }
-function isSelectable(p){ const s=propStatus(p); return s==="未着手"||s==="稼働中"; }
-function statusChip(s){
-  const col={"未着手":"#8a8a8e","稼働中":"var(--accent)","完了":"#3a6ea5","停止":"var(--warn)"}[s]||"#8a8a8e";
-  const bg ={"未着手":"#ececea","稼働中":"var(--accent-soft)","完了":"#e7eef6","停止":"var(--warn-soft)"}[s]||"#ececea";
-  return '<span class="pill" style="background:'+bg+';color:'+col+'">'+esc(s)+'</span>';
+/* ---------- マスタ（正本＝master.json・このアプリは読み取り専用） ---------- */
+let MS={clients:[],projects:[],contents:[],expTypes:[]};
+function adoptMasters(m){
+  if(!m)return;
+  MS={clients:m.clients||[],projects:m.projects||[],contents:m.contents||[],expTypes:m.expTypes||[]};
+  try{localStorage.setItem(CONFIG.masterCacheKey,JSON.stringify(m));}catch(e){} // キャッシュはmaster.json丸ごと（物件側と共用）
 }
-/* 初めて記録したら 未着手 → 稼働中 に自動で切替（完了・停止はそのまま） */
-function activateIfPending(pid){
-  const p=propById(pid);
-  if(p && propStatus(p)==="未着手"){ p.status="稼働中"; p.active=true; return true; }
-  return false;
+// 起動時はキャッシュから即表示（オフラインでも直近のマスタで動く）
+try{const c=localStorage.getItem(CONFIG.masterCacheKey);if(c){const m=JSON.parse(c);MS={clients:m.clients||[],projects:m.projects||[],contents:m.contents||[],expTypes:m.expTypes||[]};}}catch(e){}
+async function loadMasters(){ // クラウドのmaster.jsonから最新を取得
+  const m=await store.fetchFile(CONFIG.files.master);
+  if(m){adoptMasters(m);renderAll();}
 }
+
+function propById(id){ return MS.projects.find(p=>p.id===id); }
+function custById(id){ return MS.clients.find(c=>c.id===id); }
+function custOfProp(p){ return p ? custById(p.clientId) : null; }
+/* 物件の状態はmaster.json準拠（進行中/保留/完了）。記録の候補に出すのは進行中のみ */
+function propStatus(p){ return (p&&p.status)||"進行中"; }
+function isSelectable(p){ if(p.archived)return false; const s=propStatus(p); return s!=="完了"&&s!=="保留"&&s!=="停止"; }
 /* 時給はログに保存した値（スナップショット）を優先。無ければ物件マスターの現単価。
    → マスターの時給を変えても過去の確定額は動かない（今後の新規記録だけに反映） */
 function recRate(r){
@@ -580,14 +453,14 @@ function minOptions(sel){
   return o;
 }
 function contentOptions(sel){
-  let names=DB.contents.map(c=>c.name);
+  let names=MS.contents.filter(c=>!c.archived).map(c=>c.name);
   if(sel && names.indexOf(sel)<0) names=[sel].concat(names);   // 既存記録の値が未登録でも表示
   let o='<option value="">（未選択）</option>';
   names.forEach(n=>o+='<option value="'+esc(n)+'"'+(sel===n?" selected":"")+'>'+esc(n)+'</option>');
   return o;
 }
 function expTypeOptions(sel){
-  let names=DB.expTypes.map(t=>t.name);
+  let names=MS.expTypes.filter(t=>!t.archived).map(t=>t.name);
   if(sel && names.indexOf(sel)<0) names=[sel].concat(names);   // 既存経費の値が未登録でも表示
   let o='<option value="">（種別を選択）</option>';
   names.forEach(n=>o+='<option value="'+esc(n)+'"'+(sel===n?" selected":"")+'>'+esc(n)+'</option>');
@@ -637,9 +510,8 @@ function startTimer(){
   const pid=$("#timerProperty").value;
   if(!pid){ toast("物件を選んでください"); return; }
   DB.running={propertyId:pid, content:$("#timerContent").value, startTs:Date.now()};
-  const flipped=activateIfPending(pid); save();
+  save();
   syncTimerUI(); startTick();
-  if(flipped){ renderMaster(); toast("稼働開始（状態を稼働中に）"); }
 }
 function stopTimer(){
   if(!DB.running) return;
@@ -668,18 +540,15 @@ function syncTimerUI(){
 
 /* ---------- セレクト再構築 ---------- */
 function fillPropertySelects(){
-  const opts = DB.properties.filter(isSelectable)
+  const opts = MS.projects.filter(isSelectable)
     .map(p=>'<option value="'+p.id+'">'+esc(p.name)+(custOfProp(p)?" 〔"+esc(custOfProp(p).name)+"〕":"")+'</option>').join("");
   const ph = '<option value="">物件を選択…</option>';
   ["#timerProperty","#mProperty","#xProperty"].forEach(sel=>{
     const el=$(sel), cur=el.value; el.innerHTML=ph+opts; el.value=cur;
   });
-  const all = DB.properties.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join("");
+  const all = MS.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join("");
   const fp=$("#fProperty"), curf=fp.value; fp.innerHTML='<option value="">全物件</option>'+all; fp.value=curf;
   const bp=$("#bProperty"), curbp=bp.value; bp.innerHTML='<option value="">全物件</option>'+all; bp.value=curbp;
-  const cs=$("#pCustomer"), curc=cs.value;
-  cs.innerHTML='<option value="">顧客を選択…</option>'+DB.customers.map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join("");
-  cs.value=curc;
   const mc=$("#mContent"), curmc=mc.value; mc.innerHTML=contentOptions(curmc); mc.value=curmc;
   const tc=$("#timerContent"), curtc=tc.value; tc.innerHTML=contentOptions(curtc); tc.value=curtc;
   const xt=$("#xType"), curxt=xt.value; xt.innerHTML=expTypeOptions(curxt); xt.value=curxt;
@@ -915,42 +784,7 @@ function cancelInvoice(id){
     save(); renderAll(); toast("請求を取り消しました");
   });
 }
-function renderMaster(){
-  const cRows=DB.customers.map(c=>{
-    const n=DB.properties.filter(p=>p.customerId===c.id).length;
-    return '<tr><td>'+esc(c.name)+'</td><td class="muted num">'+n+'物件</td>'+
-      '<td class="num" style="white-space:nowrap">'+
-      '<button class="btn ghost sm" onclick="editCustomer(\''+c.id+'\')">編集</button>'+
-      '<button class="btn ghost sm" style="color:var(--warn)" onclick="delCustomer(\''+c.id+'\')">削除</button></td></tr>';
-  }).join("");
-  $("#customerTable").innerHTML=tableWrap('<th>顧客名</th><th class="num">物件数</th><th></th>',cRows,"顧客がまだありません");
-  const pf=$("#pFilter")?$("#pFilter").value:"";
-  const props=DB.properties.filter(p=>!pf||propStatus(p)===pf);
-  const pRows=props.map(p=>{
-    const c=custOfProp(p); const st=propStatus(p); const dim=(st==="完了"||st==="停止");
-    return '<tr'+(dim?' style="opacity:.55"':'')+'>'+
-      '<td>'+esc(p.name)+'</td>'+
-      '<td class="muted">'+(c?esc(c.name):"—")+'</td>'+
-      '<td class="num">'+yen(p.rate||0)+'</td>'+
-      '<td class="muted">'+((esc(p.billType||"")||"—")+(p.billType==="毎月"?"・"+closeLabel(p.closeDay)+"締":""))+'</td>'+
-      '<td>'+statusChip(st)+'</td>'+
-      '<td class="num" style="white-space:nowrap">'+
-      '<button class="btn ghost sm" onclick="editProperty(\''+p.id+'\')">編集</button>'+
-      '<button class="btn ghost sm" style="color:var(--warn)" onclick="delProperty(\''+p.id+'\')">削除</button></td></tr>';
-  }).join("");
-  $("#propertyTable").innerHTML=tableWrap('<th>物件名</th><th>顧客</th><th class="num">時間単価</th><th>請求タイプ</th><th>状態</th><th></th>',pRows,"該当する物件がありません");
-  const wRows=DB.contents.map(c=>'<tr><td>'+esc(c.name)+'</td>'+
-      '<td class="num" style="white-space:nowrap">'+
-      '<button class="btn ghost sm" onclick="editContent(\''+c.id+'\')">編集</button>'+
-      '<button class="btn ghost sm" style="color:var(--warn)" onclick="delContent(\''+c.id+'\')">削除</button></td></tr>').join("");
-  $("#contentTable").innerHTML=tableWrap('<th>稼働内容</th><th></th>',wRows,"稼働内容がまだありません");
-  const xtRows=DB.expTypes.map(t=>'<tr><td>'+esc(t.name)+'</td>'+
-      '<td class="num" style="white-space:nowrap">'+
-      '<button class="btn ghost sm" onclick="editExpType(\''+t.id+'\')">編集</button>'+
-      '<button class="btn ghost sm" style="color:var(--warn)" onclick="delExpType(\''+t.id+'\')">削除</button></td></tr>').join("");
-  $("#expTypeTable").innerHTML=tableWrap('<th>経費種別</th><th></th>',xtRows,"経費種別がまだありません");
-}
-function renderAll(){ fillPropertySelects(); renderToday(); renderList(); renderBilling(); renderMaster(); syncTimerUI(); }
+function renderAll(){ fillPropertySelects(); renderToday(); renderList(); renderBilling(); syncTimerUI(); }
 
 /* ---------- 記録 追加/編集/削除 ---------- */
 function resetManualInputs(){
@@ -981,7 +815,6 @@ function manualAdd(){
   const mp=propById(pid);
   DB.records.push({id:uid(),propertyId:pid,date:date,start:start||"",end:end||"",endDate:recEndDate,minutes:minutes,
     content:$("#mContent").value,rate:mp?(mp.rate||0):0,billed:false,invoiceId:null,createdAt:Date.now()});
-  activateIfPending(pid);   // 初記録なら未着手→稼働中
   save();
   resetManualInputs();
   renderAll(); toast("追加しました");
@@ -1000,12 +833,6 @@ function spanMin(d1,t1,d2,t2){
 function _pad(n){ return String(n).padStart(2,"0"); }
 function fmtYMD(d){ return d.getFullYear()+"-"+_pad(d.getMonth()+1)+"-"+_pad(d.getDate()); }
 function closeLabel(cd){ cd=cd||31; return (cd>=31)?"末日":(cd+"日"); }
-function closeDayOptions(sel){
-  sel=sel||31;
-  let o='<option value="31"'+(sel>=31?" selected":"")+'>末日</option>';
-  for(let d=1;d<=30;d++) o+='<option value="'+d+'"'+(sel===d?" selected":"")+'>'+d+'日</option>';
-  return o;
-}
 /* 締め月(YYYY-MM)＋締め日 → 集計対象の期間[start,end]（短い月は月末にクランプ） */
 function monthPeriod(ym, closeDay){
   const y=+ym.slice(0,4), m=+ym.slice(5,7);   // m:1-12
@@ -1035,9 +862,15 @@ function setPeriodChip(sel, ym, prop){
     el.style.display="";
   } else { el.style.display="none"; }
 }
+/* 編集モーダルの物件候補：全物件＋（マスタから消えた物件を参照中なら補完表示） */
+function propOptionsFor(curId){
+  let list=MS.projects.slice();
+  if(curId && !list.some(p=>p.id===curId)) list=[{id:curId,name:"（不明な物件）"}].concat(list);
+  return list.map(p=>'<option value="'+p.id+'" '+(p.id===curId?"selected":"")+'>'+esc(p.name)+(custOfProp(p)?" 〔"+esc(custOfProp(p).name)+"〕":"")+'</option>').join("");
+}
 function editRecord(id, fromTimer){
   const r=DB.records.find(x=>x.id===id); if(!r) return;
-  const opts=DB.properties.map(p=>'<option value="'+p.id+'" '+(p.id===r.propertyId?"selected":"")+'>'+esc(p.name)+(custOfProp(p)?" 〔"+esc(custOfProp(p).name)+"〕":"")+'</option>').join("");
+  const opts=propOptionsFor(r.propertyId);
   const sh=(r.start||"").split(":")[0]||"", sm=(r.start||"").split(":")[1]||"";
   const eh=(r.end||"").split(":")[0]||"", em=(r.end||"").split(":")[1]||"";
   openModal('<h3>'+(fromTimer?"稼働内容を入力":"記録を編集")+'</h3>'+
@@ -1122,14 +955,13 @@ function expenseAdd(){
   if(!amt||amt<=0){ toast("金額を入力してください"); return; }
   DB.expenses.push({id:uid(),propertyId:pid,date:$("#xDate").value||todayStr(),
     type:$("#xType").value.trim()||"経費",amount:amt,memo:$("#xMemo").value.trim(),billed:false,invoiceId:null,createdAt:Date.now()});
-  activateIfPending(pid);
   save();
   $("#xAmount").value=""; $("#xMemo").value="";
   renderAll(); toast("経費を追加しました");
 }
 function editExpense(id){
   const x=DB.expenses.find(v=>v.id===id); if(!x) return;
-  const opts=DB.properties.map(p=>'<option value="'+p.id+'" '+(p.id===x.propertyId?"selected":"")+'>'+esc(p.name)+(custOfProp(p)?" 〔"+esc(custOfProp(p).name)+"〕":"")+'</option>').join("");
+  const opts=propOptionsFor(x.propertyId);
   openModal('<h3>経費を編集</h3>'+
     '<div class="row"><div><label>日付</label><input type="date" id="x_date" value="'+x.date+'"></div>'+
       '<div><label>物件</label><select id="x_prop">'+opts+'</select></div></div>'+
@@ -1153,90 +985,6 @@ function editExpense(id){
 }
 function delExpense(id){
   confirmBox("この経費を削除しますか？", ()=>{ DB.expenses=DB.expenses.filter(x=>x.id!==id); save(); renderAll(); toast("削除しました"); });
-}
-
-/* ---------- マスター ---------- */
-function addCustomer(){
-  const name=$("#cName").value.trim(); if(!name){ toast("顧客名を入力してください"); return; }
-  DB.customers.push({id:uid(),name:name}); save(); $("#cName").value=""; renderAll(); toast("顧客を追加しました");
-}
-function editCustomer(id){
-  const c=custById(id); if(!c) return;
-  openModal('<h3>顧客を編集</h3><div class="row"><div><label>顧客名</label><input id="ec_name" value="'+esc(c.name)+'"></div></div>'+
-    '<div class="modal-actions"><button class="btn sec" onclick="closeModal()">キャンセル</button><button class="btn" id="ec_save">保存</button></div>');
-  $("#ec_save").onclick=()=>{ const v=$("#ec_name").value.trim(); if(!v) return; c.name=v; save(); closeModal(); renderAll(); toast("保存しました"); };
-}
-function delCustomer(id){
-  const props=DB.properties.filter(p=>p.customerId===id);
-  const msg = props.length? "この顧客には"+props.length+"件の物件が紐づいています。顧客を削除すると物件の顧客欄が空になります。続けますか？" : "この顧客を削除しますか？";
-  confirmBox(msg, ()=>{ DB.customers=DB.customers.filter(c=>c.id!==id); DB.properties.forEach(p=>{ if(p.customerId===id) p.customerId=""; }); save(); renderAll(); toast("削除しました"); });
-}
-function addProperty(){
-  const name=$("#pName").value.trim(); if(!name){ toast("物件名を入力してください"); return; }
-  const rate=parseInt($("#pRate").value||"0",10);
-  const st=$("#pStatus").value||"未着手";
-  DB.properties.push({id:uid(),name:name,customerId:$("#pCustomer").value||"",rate:rate,status:st,active:(st==="未着手"||st==="稼働中"),note:"",billType:$("#pBillType").value.trim(),closeDay:parseInt($("#pCloseDay").value||"31",10)});
-  save(); $("#pName").value="";$("#pRate").value="";$("#pBillType").value="";$("#pStatus").value="未着手";$("#pCloseDay").value="31"; renderAll(); toast("物件を追加しました");
-}
-function editProperty(id){
-  const p=propById(id); if(!p) return;
-  const opts=DB.customers.map(c=>'<option value="'+c.id+'" '+(c.id===p.customerId?"selected":"")+'>'+esc(c.name)+'</option>').join("");
-  openModal('<h3>物件を編集</h3>'+
-    '<div class="row"><div><label>物件名</label><input id="ep_name" value="'+esc(p.name)+'"></div></div>'+
-    '<div class="row"><div><label>顧客</label><select id="ep_cust"><option value="">未設定</option>'+opts+'</select></div>'+
-      '<div><label>時間単価(円)</label><input type="number" id="ep_rate" value="'+(p.rate||0)+'" step="100"></div></div>'+
-    '<div class="row"><div><label>請求タイプ(任意)</label><input id="ep_billType" list="billTypeList" value="'+esc(p.billType||"")+'" placeholder="毎月 / 一式 / 3分割 など自由"></div>'+
-      '<div><label>締め日(毎月の場合)</label><select id="ep_closeDay">'+closeDayOptions(p.closeDay)+'</select></div></div>'+
-    '<div class="row"><div><label>状態</label><select id="ep_status">'+
-      PROP_STATUSES.map(s=>'<option '+(propStatus(p)===s?"selected":"")+'>'+s+'</option>').join("")+
-      '</select><div class="muted" style="margin-top:6px">未着手・稼働中は記録の物件候補に表示。完了・停止は候補から外れます。</div></div></div>'+
-    '<div class="row"><div><label>メモ(任意)</label><input id="ep_note" value="'+esc(p.note||"")+'"></div></div>'+
-    '<div class="modal-actions"><button class="btn sec" onclick="closeModal()">キャンセル</button><button class="btn" id="ep_save">保存</button></div>');
-  $("#ep_save").onclick=()=>{
-    p.name=$("#ep_name").value.trim()||p.name; p.customerId=$("#ep_cust").value;
-    p.rate=parseInt($("#ep_rate").value||"0",10); p.note=$("#ep_note").value.trim();
-    p.status=$("#ep_status").value; p.active=(p.status==="未着手"||p.status==="稼働中");
-    p.billType=$("#ep_billType").value.trim();
-    p.closeDay=parseInt($("#ep_closeDay").value||"31",10);
-    save(); closeModal(); renderAll(); toast("保存しました");
-  };
-}
-function delProperty(id){
-  const recs=DB.records.filter(r=>r.propertyId===id);
-  if(recs.length){ toast("この物件には"+recs.length+"件の記録があります。先に編集で「停止」にするか記録を移してください"); return; }
-  confirmBox("この物件を削除しますか？", ()=>{ DB.properties=DB.properties.filter(p=>p.id!==id); save(); renderAll(); toast("削除しました"); });
-}
-
-/* ---------- 稼働内容マスター ---------- */
-function addContent(){
-  const name=$("#wName").value.trim(); if(!name){ toast("稼働内容を入力してください"); return; }
-  if(DB.contents.some(c=>c.name===name)){ toast("同じ内容が既にあります"); return; }
-  DB.contents.push({id:uid(),name:name}); save(); $("#wName").value=""; renderAll(); toast("稼働内容を追加しました");
-}
-function editContent(id){
-  const c=DB.contents.find(x=>x.id===id); if(!c) return;
-  openModal('<h3>稼働内容を編集</h3><div class="row"><div><label>稼働内容</label><input id="ew_name" value="'+esc(c.name)+'"></div></div>'+
-    '<div class="modal-actions"><button class="btn sec" onclick="closeModal()">キャンセル</button><button class="btn" id="ew_save">保存</button></div>');
-  $("#ew_save").onclick=()=>{ const v=$("#ew_name").value.trim(); if(!v) return; c.name=v; save(); closeModal(); renderAll(); toast("保存しました"); };
-}
-function delContent(id){
-  confirmBox("この稼働内容を削除しますか？（既存の記録の文字はそのまま残ります）", ()=>{ DB.contents=DB.contents.filter(c=>c.id!==id); save(); renderAll(); toast("削除しました"); });
-}
-
-/* ---------- 経費種別マスター ---------- */
-function addExpType(){
-  const name=$("#xtName").value.trim(); if(!name){ toast("経費種別を入力してください"); return; }
-  if(DB.expTypes.some(t=>t.name===name)){ toast("同じ種別が既にあります"); return; }
-  DB.expTypes.push({id:uid(),name:name}); save(); $("#xtName").value=""; renderAll(); toast("経費種別を追加しました");
-}
-function editExpType(id){
-  const t=DB.expTypes.find(x=>x.id===id); if(!t) return;
-  openModal('<h3>経費種別を編集</h3><div class="row"><div><label>経費種別</label><input id="ext_name" value="'+esc(t.name)+'"></div></div>'+
-    '<div class="modal-actions"><button class="btn sec" onclick="closeModal()">キャンセル</button><button class="btn" id="ext_save">保存</button></div>');
-  $("#ext_save").onclick=()=>{ const v=$("#ext_name").value.trim(); if(!v) return; t.name=v; save(); closeModal(); renderAll(); toast("保存しました"); };
-}
-function delExpType(id){
-  confirmBox("この経費種別を削除しますか？（既存の経費の文字はそのまま残ります）", ()=>{ DB.expTypes=DB.expTypes.filter(t=>t.id!==id); save(); renderAll(); toast("削除しました"); });
 }
 
 /* ---------- CSV / JSON ---------- */
@@ -1309,10 +1057,10 @@ function buildExpensesCsv(){
   });
   return {name:"経費_"+todayStr()+".csv", text:toCsv(head,rows)};
 }
-function buildMasterCsv(){
+function buildMasterCsv(){ // マスタの正本はmaster.json。ここでは参照中のスナップショットを書き出す
   const head=["種別","名前","顧客/単価","状態","メモ","請求タイプ","締め日"];
-  const cust=DB.customers.map(c=>["顧客",c.name,"","","","",""]);
-  const prop=DB.properties.map(p=>["物件",p.name,(custOfProp(p)?custOfProp(p).name+" / ":"")+ (p.rate||0)+"円", propStatus(p), p.note||"", p.billType||"", p.billType==="毎月"?closeLabel(p.closeDay):""]);
+  const cust=MS.clients.map(c=>["顧客",c.name,"","","","",""]);
+  const prop=MS.projects.map(p=>["物件",p.name,(custOfProp(p)?custOfProp(p).name+" / ":"")+ (p.rate||0)+"円", propStatus(p)+(p.archived?"（アーカイブ）":""), p.memo||"", p.billType||"", p.billType==="毎月"?closeLabel(p.closeDay):""]);
   return {name:"マスター_"+todayStr()+".csv", text:toCsv(head,cust.concat(prop))};
 }
 function csvRecords(){ const f=buildRecordsCsv(); download(f.name,f.text); toast("記録CSVを書き出しました"); }
@@ -1337,9 +1085,10 @@ function jsonImport(file){
   fr.onload=()=>{
     try{
       const d=JSON.parse(fr.result);
-      if(!d.customers||!d.properties||!d.records) throw new Error("形式が違います");
+      if(!Array.isArray(d.records)) throw new Error("形式が違います");
       confirmBox("現在のデータを、選んだバックアップで上書きします。よろしいですか？", ()=>{
-        DB=d; DB.running=DB.running||null; DB.contents=DB.contents||[]; DB.invoices=DB.invoices||[]; DB.expenses=DB.expenses||[]; save(); stopTick(); renderAll(); startTick(); toast("復元しました");
+        DB=migrate(d);   // 旧v1バックアップでも旧ID→統一IDに自動変換して取り込む
+        save(); stopTick(); renderAll(); if(DB.running) startTick(); else updateClock(); toast("復元しました");
       }, "上書きして復元");
     }catch(e){ toast("読み込めませんでした："+e.message); }
   };
@@ -1347,8 +1096,8 @@ function jsonImport(file){
 }
 function wipeAll(){
   confirmBox("本当に全データを削除しますか？元に戻せません。", ()=>{
-    confirmBox("最終確認：全記録・全マスターを削除します。", ()=>{
-      DB={version:1,customers:[],properties:[],contents:[],invoices:[],records:[],expenses:[],running:null}; save(); stopTick(); renderAll(); updateClock(); toast("全データを削除しました");
+    confirmBox("最終確認：全記録・経費・請求を削除します。（マスタはmaster.jsonの正本なので消えません）", ()=>{
+      DB=seed(); save(); stopTick(); renderAll(); updateClock(); toast("全データを削除しました");
     });
   });
 }
@@ -1368,11 +1117,6 @@ $("#btnManualAdd").onclick=manualAdd;
 $("#btnExpenseAdd").onclick=expenseAdd;
 ["#mStartH","#mStartM","#mEndH","#mEndM","#mEndDate"].forEach(s=>$(s).addEventListener("change",recalcManual));
 $("#mDate").addEventListener("change",()=>{ $("#mEndDate").value=$("#mDate").value; recalcManual(); });
-$("#btnAddCustomer").onclick=addCustomer;
-$("#btnAddProperty").onclick=addProperty;
-$("#pFilter").addEventListener("change",renderMaster);
-$("#btnAddContent").onclick=addContent;
-$("#btnAddExpType").onclick=addExpType;
 ["#fProperty","#fBilled","#fMonth"].forEach(s=>$(s).addEventListener("change",renderList));
 $("#fClear").onclick=()=>{ $("#fProperty").value="";$("#fBilled").value="";$("#fMonth").value=""; renderList(); };
 ["#bProperty","#bMonth"].forEach(s=>$(s).addEventListener("change",renderBilling));
@@ -1386,19 +1130,47 @@ $("#btnCsvMaster").onclick=csvMaster;
 $("#btnJsonExport").onclick=jsonExport;
 $("#jsonImport").addEventListener("change",e=>{ if(e.target.files[0]) jsonImport(e.target.files[0]); e.target.value=""; });
 $("#btnWipe").onclick=wipeAll;
-$("#ghConnectBtn").onclick=()=>{
+
+/* ---------- クラウド同期（共通部品 shared/store.js を使用） ---------- */
+const SYNC_LBL={
+  off:['ローカル保存版','未設定（この端末のブラウザ内にだけ保存中）'],
+  loading:['☁️…','クラウドから読み込み中…'],
+  dirty:['☁️●','変更あり・まもなく自動保存'],
+  saving:['☁️↑','クラウドへ保存中…'],
+  saved:['☁️✓','同期済み'],
+  offline:['☁️⚠','オフライン。復帰したら自動で同期する'],
+  error:['☁️✕','同期エラー'],
+};
+function setSync(state,msg){
+  const[badge,label]=SYNC_LBL[state]||['',''];
+  $('#syncBadge').textContent=badge;
+  $('#syncStatus').textContent=label+(msg?'：'+msg:'')+(state==='saved'?'（'+new Date().toLocaleTimeString('ja-JP')+'）':'');
+  $('#syncStatus').style.color=state==='error'?'#c0392b':state==='offline'?'#b26a00':'';
+}
+const store=createCloudStore({
+  owner:CONFIG.github.owner,repo:CONFIG.github.repo,branch:CONFIG.github.branch,
+  path:CONFIG.files.jikyu,tokenKey:CONFIG.tokenKey,legacyTokenKeys:CONFIG.legacyTokenKeys,
+  label:'時給',
+  getData:()=>DB,
+  adoptRemote:data=>{
+    DB=migrate(data);
+    localStorage.setItem(KEY,JSON.stringify(DB));
+    stopTick(); renderAll(); if(DB.running) startTick(); else updateClock();
+  },
+  onState:setSync,
+});
+$("#ghConnectBtn").onclick=async()=>{
   const t=$("#ghTokenInput").value.trim();
   if(!t){ toast("トークンを貼り付けてください"); return; }
-  ghToken=t;localStorage.setItem(TKEY,t);$("#ghTokenInput").value="";
-  ghSha=null;ghStamp=null;ghInit();
+  $("#ghTokenInput").value="";
+  await store.connect(t); loadMasters();
 };
-$("#ghSyncNowBtn").onclick=()=>{ if(!ghToken){ toast("先にトークンを設定してください"); return; } ghInit(); };
+$("#ghSyncNowBtn").onclick=()=>{ if(!store.hasToken()){ toast("先にトークンを設定してください"); return; } store.syncNow(); loadMasters(); };
 $("#ghDisconnectBtn").onclick=()=>{
-  confirmBox("この端末をクラウド同期から切断しますか？（クラウド上のデータは残ります）", ()=>{
-    ghToken="";localStorage.removeItem(TKEY);localStorage.removeItem('fdoa_bukken_gh_token');ghSha=null;ghStamp=null;setSync('off');toast("切断しました");
+  confirmBox("この端末をクラウド同期から切断しますか？（クラウド上のデータは残ります。物件管理・マスター管理も同じトークンなので一緒に切れます）", ()=>{
+    store.disconnect(); toast("切断しました");
   });
 };
-window.addEventListener('online',()=>{if(ghToken)ghPush();});
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
 
 $("#mDate").value=todayStr();
@@ -1407,10 +1179,10 @@ $("#xDate").value=todayStr();
 $("#bDate").value=todayStr();
 $("#mStartH").innerHTML=hourOptions("09"); $("#mStartM").innerHTML=minOptions("00");
 $("#mEndH").innerHTML=hourOptions("09"); $("#mEndM").innerHTML=minOptions("00");
-$("#pCloseDay").innerHTML=closeDayOptions(31);
+$("#repoLabel").textContent=CONFIG.github.owner+'/'+CONFIG.github.repo+' の '+CONFIG.files.jikyu;
 renderAll();
 if(DB.running) startTick(); else updateClock();
-ghInit();
+(async()=>{await store.init();loadMasters();})();
 </script>
 </body>
 </html>
