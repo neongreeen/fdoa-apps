@@ -589,9 +589,10 @@ $('wipeBtn').onclick=()=>{
 };
 function renderData(){
   const dirty=db.settings.dirtyCount||0;
-  $('bakDot').style.display=dirty>=20?'':'none';
+  // 赤●のバックアップ促しはクラウド同期が未設定の端末だけ（接続済みなら全保存が自動でGitHubに残る）
+  $('bakDot').style.display=(dirty>=20&&!store.hasToken())?'':'none';
   $('repoLabel').textContent=CONFIG.github.owner+'/'+CONFIG.github.repo+' の '+CONFIG.files.bukken;
-  $('dataStats').innerHTML='予定 '+db.items.length+'件 ／ チェック項目 '+db.checklists.length+'件<br>マスタ参照：クライアント '+masters.clients.length+'件 ／ 物件 '+masters.projects.length+'件 ／ 種別 '+masters.types.length+'件（正本＝'+CONFIG.files.master+'・編集はマスター管理アプリで）<br>スキーマ v'+db.schemaVersion+' ／ 保存先：このブラウザのlocalStorage（キー: '+CONFIG.storageKey+'）＋クラウド同期 '+(store.hasToken()?'ON（GitHub: '+CONFIG.github.owner+'/'+CONFIG.github.repo+'/'+CONFIG.files.bukken+'）':'未設定')+'<br>前回JSON書き出し：'+(db.settings.lastExportAt||'まだ')+'（それ以降の変更 '+dirty+'回'+(dirty>=20?'・そろそろ書き出して':'')+'）';
+  $('dataStats').innerHTML='予定 '+db.items.length+'件 ／ チェック項目 '+db.checklists.length+'件<br>マスタ参照：クライアント '+masters.clients.length+'件 ／ 物件 '+masters.projects.length+'件 ／ 種別 '+masters.types.length+'件（正本＝'+CONFIG.files.master+'・編集はマスター管理アプリで）<br>スキーマ v'+db.schemaVersion+' ／ 保存先：このブラウザのlocalStorage（キー: '+CONFIG.storageKey+'）＋クラウド同期 '+(store.hasToken()?'ON（GitHub: '+CONFIG.github.owner+'/'+CONFIG.github.repo+'/'+CONFIG.files.bukken+'）':'未設定')+'<br>前回JSON書き出し：'+(db.settings.lastExportAt||'まだ')+'（それ以降の変更 '+dirty+'回'+(dirty>=20&&!store.hasToken()?'・そろそろ書き出して':'')+'）';
 }
 
 /* ========== クラウド同期（共通部品 shared/store.js を使用） ========== */
