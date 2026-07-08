@@ -28,6 +28,8 @@
     font-size:14px;cursor:pointer;font-weight:600}
   nav button.active{background:var(--ink);color:#fff}
   nav button:hover:not(.active){background:#eaeae7}
+  .applink{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:#fff;color:var(--sub);padding:7px 13px;border-radius:999px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;flex:0 0 auto}
+  .applink:hover{color:var(--ink);border-color:#d0d0cc}
   main{max-width:1080px;margin:0 auto;padding:24px 20px 80px}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
     padding:22px;margin-bottom:20px;box-shadow:var(--shadow)}
@@ -131,6 +133,7 @@
       <button data-view="billing">請求管理</button>
       <button data-view="master">マスター管理</button>
       <button data-view="export">書き出し</button>
+      <a class="applink" href="../bukken/" title="物件進捗管理を開く">物件管理 ↗</a>
     </nav>
   </div>
 </header>

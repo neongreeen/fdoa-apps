@@ -25,6 +25,8 @@ nav{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
 nav button{background:transparent;color:var(--sub);border:none;padding:8px 14px;border-radius:999px;cursor:pointer;font-size:13.5px;font-weight:600}
 nav button.active{background:var(--ink);color:#fff}
 nav button:hover:not(.active){background:#eaeae7}
+.applink{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:#fff;color:var(--sub);padding:7px 13px;border-radius:999px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;flex:0 0 auto}
+.applink:hover{color:var(--ink);border-color:#d0d0cc}
 main{max-width:1200px;margin:0 auto;padding:20px 16px 60px}
 section.tab{display:none}
 section.tab.active{display:block}
@@ -130,6 +132,7 @@ tr:hover td{background:#fafaf8}
     <button data-tab="check">チェックリスト</button>
     <button data-tab="master">マスター管理</button>
     <button data-tab="data">データ管理<span id="bakDot" style="display:none;color:#ff6b6b"> ●</span></button>
+    <a class="applink" href="../jikyu/" title="時給プロジェクト管理を開く">時給管理 ↗</a>
   </nav>
 </header>
 <main>
