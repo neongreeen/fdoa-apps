@@ -8,90 +8,29 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="../shared/base.css">
 <style>
-:root{
-  --bg:#f5f5f3; --card:#ffffff; --ink:#1d1d1f; --sub:#6e6e73; --line:#e3e3e0;
-  --accent:#2f6f5e; --accent-soft:#e7f1ed;
-  --danger:#b4533b; --danger-soft:#fbe9e4;
-  --warn:#c1873b; --warn-soft:#faf3e4;
-  --ok:#2f6f5e;
-  --radius:14px; --shadow:0 1px 3px rgba(0,0,0,.06),0 6px 20px rgba(0,0,0,.04);
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
-header{position:sticky;top:0;z-index:50;background:rgba(245,245,243,.85);backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-header h1{font-size:17px;font-weight:700;letter-spacing:.02em}
-nav{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
-nav button{background:transparent;color:var(--sub);border:none;padding:8px 14px;border-radius:999px;cursor:pointer;font-size:13.5px;font-weight:600}
-nav button.active{background:var(--ink);color:#fff}
-nav button:hover:not(.active){background:#eaeae7}
-.applink{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:#fff;color:var(--sub);padding:7px 13px;border-radius:999px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;flex:0 0 auto}
-.applink:hover{color:var(--ink);border-color:#d0d0cc}
-main{max-width:1200px;margin:0 auto;padding:20px 16px 60px}
-section.tab{display:none}
-section.tab.active{display:block}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:var(--shadow)}
-.card h2{font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.card h2 .count{font-size:11px;color:var(--sub);font-weight:normal}
-.frm{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
-.frm label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--sub);font-weight:600}
-input,select,textarea{border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:13px;font-family:inherit;background:#fff;color:var(--ink)}
-input[type=checkbox]{accent-color:var(--accent)}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-.btn{display:inline-block;background:var(--ink);color:#fff;border:none;border-radius:10px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600}
-.btn:hover{opacity:.9}
-.btn.gray{background:#ececea;color:var(--ink)}
-.btn.red{background:var(--danger)}
-.btn.sm{padding:3px 10px;font-size:11px}
-table{width:100%;border-collapse:collapse;font-size:12.5px}
-th{text-align:left;color:var(--sub);font-weight:600;font-size:11px;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:7px 8px;border-bottom:1px solid #f0f0ee;vertical-align:top}
-tr:hover td{background:#fafaf8}
-.badge{display:inline-block;padding:1px 9px;border-radius:999px;font-size:11px;color:#fff;white-space:nowrap}
-.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:middle}
-.muted{color:var(--sub)}
-.note{font-size:12px;color:var(--sub);line-height:1.7}
+/* 見た目の共通部分は ../shared/base.css（正本）。ここはこのアプリ固有のUIだけ */
+.card h2{display:flex;align-items:center;gap:8px}
 .usage{font-size:11px;color:var(--sub);white-space:nowrap}
 details.arch{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
 details.arch summary{cursor:pointer;font-size:12px;color:var(--sub);font-weight:600;user-select:none}
 details.arch summary:hover{color:var(--ink)}
 details.arch .tblwrap{margin-top:8px}
 details.arch td{color:var(--sub)}
-.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.empty{padding:20px;text-align:center;color:var(--sub);font-size:13px}
-/* タブレット以下 */
-@media(max-width:820px){
-  input,select,textarea{font-size:16px}
-  nav button{padding:9px 14px;font-size:14px}
-  .btn{padding:9px 16px}
-  .btn.sm{padding:6px 10px;font-size:12px}
-  .tblwrap td{white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis}
-}
-/* スマホ */
-@media(max-width:700px){
-  main{padding:10px}
-  .card{padding:12px}
-  header{padding:8px 10px;gap:5px;flex-wrap:nowrap;flex-direction:column;align-items:stretch}
-  header h1{font-size:15px}
-  nav{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -10px;padding:0 10px}
-  nav::-webkit-scrollbar{display:none}
-  nav button{white-space:nowrap;flex:0 0 auto;padding:6px 11px;font-size:12.5px}
-  .frm label{width:100%}
-  .frm input:not([type=color]),.frm select{width:100%!important}
-  .frm .btn{width:100%;justify-content:center;text-align:center}
-  #ghTokenInput{width:100%!important}
-}
 </style>
 </head>
 <body>
 <header>
-  <h1>マスター管理 <span id="syncBadge" title="クラウド同期の状態" style="font-size:11px;font-weight:normal;color:var(--sub)"></span></h1>
-  <nav>
-    <button data-tab="master" class="active">マスター</button>
-    <button data-tab="data">データ管理</button>
-    <a class="applink" href="../bukken/" title="物件進捗管理を開く">物件管理 ↗</a>
-    <a class="applink" href="../jikyu/" title="時給プロジェクト管理を開く">時給管理 ↗</a>
-  </nav>
+  <div class="head-in">
+    <h1>マスター管理 <small id="syncBadge" title="クラウド同期の状態"></small></h1>
+    <nav>
+      <button data-tab="master" class="active">マスター</button>
+      <button data-tab="data">データ管理</button>
+      <a class="applink" href="../bukken/" title="物件進捗管理を開く">物件管理 ↗</a>
+      <a class="applink" href="../jikyu/" title="時給プロジェクト管理を開く">時給管理 ↗</a>
+    </nav>
+  </div>
 </header>
 <main>
 
