@@ -352,6 +352,7 @@ const clientById=id=>db.clients.find(c=>c.id===id);
 const projectById=id=>db.projects.find(p=>p.id===id);
 const typeById=id=>db.types.find(t=>t.id===id);
 const KINDLBL={deadline:'締切◆',period:'期間▬',event:'連絡●'};
+const txtColor=h=>{const m=/^#?([0-9a-f]{6})$/i.exec(String(h||''));if(!m)return'#fff';const n=parseInt(m[1],16),r=n>>16,g=n>>8&255,b=n&255;return(r*299+g*587+b*114)/1000>150?'#1d1d1f':'#fff';};
 
 /* ========== タブ ========== */
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
@@ -526,7 +527,7 @@ function renderMaster(){
     return '<tr><td><span class="dot" style="background:'+esc(p.color)+'"></span>'+esc(p.name)+'</td><td>'+esc(c?c.name:'')+'</td><td>'+esc(p.status)+'</td><td class="muted">'+esc(p.shime||'')+'</td><td class="muted">'+esc(p.seikyu||'')+'</td><td class="muted">'+esc(p.memo||'')+'</td><td style="white-space:nowrap"><button class="btn sm gray" onclick="editProject(\''+p.id+'\')">編集</button> <button class="btn sm red" onclick="delProject(\''+p.id+'\')">削除</button></td></tr>';
   }).join('')||'<tr><td colspan="7" class="muted">まだ登録なし</td></tr>';
   $('typeCount').textContent=db.types.length+'件';
-  $('typeRows').innerHTML=db.types.map(t=>'<tr><td><span class="badge" style="background:'+esc(t.color)+'">'+esc(t.name)+'</span></td><td>'+KINDLBL[t.kind]+'</td><td style="white-space:nowrap"><button class="btn sm gray" onclick="editType(\''+t.id+'\')">編集</button> <button class="btn sm red" onclick="delType(\''+t.id+'\')">削除</button></td></tr>').join('');
+  $('typeRows').innerHTML=db.types.map(t=>'<tr><td><span class="badge" style="background:'+esc(t.color)+';color:'+txtColor(t.color)+'">'+esc(t.name)+'</span></td><td>'+KINDLBL[t.kind]+'</td><td style="white-space:nowrap"><button class="btn sm gray" onclick="editType(\''+t.id+'\')">編集</button> <button class="btn sm red" onclick="delType(\''+t.id+'\')">削除</button></td></tr>').join('');
 }
 function renderItems(){
   const fp=$('fProject').value,ft=$('fType').value,kw=$('fKw').value.trim();
@@ -542,7 +543,7 @@ function renderItems(){
     const endOr=i.end||i.start;
     let cls='';
     if(!isDone&&t&&t.kind==='deadline'){if(endOr<t0)cls='overdue';else if(daysBetween(today(),parse(endOr))<=7)cls='soon';}
-    return '<tr class="'+cls+'"><td>'+disp(i.start)+'</td><td>'+(i.end?disp(i.end):'')+'</td><td>'+(p?'<span class="dot" style="background:'+esc(p.color)+'"></span>'+esc(p.name):'?')+'</td><td>'+(t?'<span class="badge" style="background:'+esc(t.color)+'">'+esc(t.name)+'</span>':'?')+'</td><td class="'+(isDone?'done':'')+'">'+esc(i.title)+'</td><td class="muted">'+esc(i.party||'')+(i.partyName?'：'+esc(i.partyName):'')+'</td><td>'+esc(i.status)+'</td><td class="muted" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(i.memo||'')+'">'+esc(i.memo||'')+'</td><td style="white-space:nowrap"><button class="btn sm gray" onclick="editItem(\''+i.id+'\')">編集</button> <button class="btn sm" style="background:'+(isDone?'#8b93a1':'var(--ok)')+'" onclick="toggleDone(\''+i.id+'\')">'+(isDone?'戻す':'完了')+'</button> <button class="btn sm red" onclick="delItem(\''+i.id+'\')">削除</button></td></tr>';
+    return '<tr class="'+cls+'"><td>'+disp(i.start)+'</td><td>'+(i.end?disp(i.end):'')+'</td><td>'+(p?'<span class="dot" style="background:'+esc(p.color)+'"></span>'+esc(p.name):'?')+'</td><td>'+(t?'<span class="badge" style="background:'+esc(t.color)+';color:'+txtColor(t.color)+'">'+esc(t.name)+'</span>':'?')+'</td><td class="'+(isDone?'done':'')+'">'+esc(i.title)+'</td><td class="muted">'+esc(i.party||'')+(i.partyName?'：'+esc(i.partyName):'')+'</td><td>'+esc(i.status)+'</td><td class="muted" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(i.memo||'')+'">'+esc(i.memo||'')+'</td><td style="white-space:nowrap"><button class="btn sm gray" onclick="editItem(\''+i.id+'\')">編集</button> <button class="btn sm" style="background:'+(isDone?'#8b93a1':'var(--ok)')+'" onclick="toggleDone(\''+i.id+'\')">'+(isDone?'戻す':'完了')+'</button> <button class="btn sm red" onclick="delItem(\''+i.id+'\')">削除</button></td></tr>';
   }).join('')||'<tr><td colspan="9" class="muted">該当なし</td></tr>';
 }
 ['fProject','fType'].forEach(id=>$(id).onchange=renderItems);
@@ -599,7 +600,7 @@ function renderListView(list){
     const isDone=i.status==='完了';const endOr=i.end||i.start;
     let cls='';
     if(!isDone&&t&&t.kind==='deadline'){if(endOr<t0)cls='overdue';else if(daysBetween(today(),parse(endOr))<=7)cls='soon';}
-    return '<tr class="'+cls+'" style="cursor:pointer" onclick="editItem(\''+i.id+'\')"><td>'+disp(i.start)+'</td><td>'+(i.end?disp(i.end):'')+'</td><td>'+(p?'<span class="dot" style="background:'+esc(p.color)+'"></span>'+esc(p.name):'')+'</td><td>'+(t?'<span class="badge" style="background:'+esc(t.color)+'">'+esc(t.name)+'</span>':'')+'</td><td class="'+(isDone?'done':'')+'">'+esc(i.title)+'</td><td class="muted">'+esc(i.party||'')+(i.partyName?'：'+esc(i.partyName):'')+'</td><td>'+esc(i.status)+'</td><td class="muted">'+esc(i.memo||'')+'</td></tr>';
+    return '<tr class="'+cls+'" style="cursor:pointer" onclick="editItem(\''+i.id+'\')"><td>'+disp(i.start)+'</td><td>'+(i.end?disp(i.end):'')+'</td><td>'+(p?'<span class="dot" style="background:'+esc(p.color)+'"></span>'+esc(p.name):'')+'</td><td>'+(t?'<span class="badge" style="background:'+esc(t.color)+';color:'+txtColor(t.color)+'">'+esc(t.name)+'</span>':'')+'</td><td class="'+(isDone?'done':'')+'">'+esc(i.title)+'</td><td class="muted">'+esc(i.party||'')+(i.partyName?'：'+esc(i.partyName):'')+'</td><td>'+esc(i.status)+'</td><td class="muted">'+esc(i.memo||'')+'</td></tr>';
   }).join('');
   $('schedArea').innerHTML=html+'</tbody></table></div>';
 }
@@ -657,7 +658,7 @@ function renderGantt(list,rs,re){
       }else{
         mark='<div class="gbar'+(isDone?' done':'')+'" style="left:'+pct(cs)+'%;width:'+wpct(daysBetween(cs,ce)+1)+'%;background:'+esc(t.color)+'" title="'+tip+'" onclick="editItem(\''+i.id+'\')"></div>';
       }
-      rows+='<div class="grow"><div class="glabel"><span class="badge" style="background:'+esc(t.color)+'">'+esc(t.name)+'</span><span class="'+(isDone?'done':'')+'" style="overflow:hidden;text-overflow:ellipsis">'+esc(i.title)+'</span>'+(i.memo?'<span class="memo-icon" title="'+esc(i.memo)+'">※メモ</span>':'')+'</div><div class="gtrack">'+bg+mark+'</div></div>';
+      rows+='<div class="grow"><div class="glabel"><span class="badge" style="background:'+esc(t.color)+';color:'+txtColor(t.color)+'">'+esc(t.name)+'</span><span class="'+(isDone?'done':'')+'" style="overflow:hidden;text-overflow:ellipsis">'+esc(i.title)+'</span>'+(i.memo?'<span class="memo-icon" title="'+esc(i.memo)+'">※メモ</span>':'')+'</div><div class="gtrack">'+bg+mark+'</div></div>';
     }
   }
   if(!any)rows+='<div class="empty">この期間に予定なし</div>';
