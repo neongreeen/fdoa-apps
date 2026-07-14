@@ -16,7 +16,7 @@
     <nav id="nav" aria-label="メインメニュー">
       <button type="button" data-view="today" class="active">今日</button>
       <button type="button" data-view="observe">観察</button>
-      <button type="button" data-view="log">ログ</button>
+      <button type="button" data-view="stocks">銘柄マスター</button>
       <button type="button" data-view="master">マスター</button>
       <a id="sbiQuickLink" class="nav-external" href="#" target="_blank" rel="noopener noreferrer">SBIを設定</a>
     </nav>
@@ -119,7 +119,26 @@
     <div class="panel">
       <div class="panel-heading">
         <div>
-          <h2>銘柄を追加</h2>
+          <h2>判断ログ</h2>
+          <p>判断は上書きせず、すべて時系列で残ります</p>
+        </div>
+        <span class="count-label" id="logCount"></span>
+      </div>
+      <div class="log-filters">
+        <select id="fStock"><option value="">全銘柄</option></select>
+        <select id="fStatus"><option value="">全状態</option></select>
+        <select id="fAction"><option value="">全判断</option></select>
+        <button type="button" class="btn sec sm" id="clearFilters">条件クリア</button>
+      </div>
+      <div id="logList" class="log-list"></div>
+    </div>
+  </section>
+
+  <section id="view-stocks" class="view">
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>銘柄マスター</h2>
           <p>検索して選ぶ。見つからない銘柄はそのまま手入力</p>
         </div>
         <span class="count-label" id="instrumentSource">銘柄一覧を読込中</span>
@@ -172,25 +191,6 @@
         <button class="btn" type="submit">銘柄を追加</button>
       </form>
       <div id="stockTable" class="stock-table"></div>
-    </div>
-  </section>
-
-  <section id="view-log" class="view">
-    <div class="panel">
-      <div class="panel-heading">
-        <div>
-          <h2>判断ログ</h2>
-          <p>判断は上書きせず、すべて時系列で残ります</p>
-        </div>
-        <span class="count-label" id="logCount"></span>
-      </div>
-      <div class="log-filters">
-        <select id="fStock"><option value="">全銘柄</option></select>
-        <select id="fStatus"><option value="">全状態</option></select>
-        <select id="fAction"><option value="">全判断</option></select>
-        <button type="button" class="btn sec sm" id="clearFilters">条件クリア</button>
-      </div>
-      <div id="logList" class="log-list"></div>
     </div>
   </section>
 
