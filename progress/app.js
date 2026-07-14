@@ -216,10 +216,18 @@ function openSbiWindow(url){
     `top=${availableTop}`,
     "resizable=yes",
     "scrollbars=yes",
-    "noopener=yes",
-    "noreferrer=yes",
   ].join(",");
-  window.open(safeUrl,"_blank",features);
+  const popup=window.open("about:blank","_blank",features);
+  if(!popup) return false;
+  try{
+    popup.resizeTo(width,availableHeight);
+    popup.moveTo(left,availableTop);
+    popup.opener=null;
+    popup.location.replace(safeUrl);
+    popup.focus();
+  }catch(error){
+    popup.location.href=safeUrl;
+  }
   return true;
 }
 
