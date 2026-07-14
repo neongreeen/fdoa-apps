@@ -467,7 +467,7 @@ function renderLog(){
     const side=action?.executionSide;
     return `<div class="log-row">
       <div class="timeline-date">${formatDate(decision.decidedAt,true)}</div>
-      <div class="stock-identity"><div class="stock-name">${esc(stock?.name||"不明な銘柄")}</div><div class="stock-symbol">${esc(stock?.ticker||"")}</div></div>
+      <div class="stock-identity"><div class="stock-name" title="${esc(stock?.name||"不明な銘柄")}">${esc(stock?.name||"不明な銘柄")}</div><div class="stock-symbol">${esc(stock?.ticker||"")}</div></div>
       <div class="log-status">${statusPill(decision.statusId)}</div>
       <div>${actionPill(decision.actionId)}</div>
       <div class="log-detail"><div class="log-memo">${esc(decision.memo||"—")}</div><div class="log-reason">${esc(master("reasons",decision.reasonId)?.label||"—")} ／ ${esc(master("subReasons",decision.subReasonId)?.label||"—")} ／ 次回 ${decision.nextReviewDate?formatDate(`${decision.nextReviewDate}T12:00:00`):"—"}</div></div>
