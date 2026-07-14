@@ -688,7 +688,7 @@ function submitStock(event){
   });
   save();
   event.target.reset();$("#sCurrency").value="USD";$("#sCountry").value="";
-  renderAll();showView("observe");showToast("銘柄を追加しました");
+  renderAll();showView("stocks");showToast("銘柄を追加しました");
 }
 
 function exportJson(){
