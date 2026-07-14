@@ -707,7 +707,7 @@ async function importJson(event){
     const parsed=JSON.parse(await file.text());
     if(!Array.isArray(parsed.stocks)||!Array.isArray(parsed.decisions)||!Array.isArray(parsed.executions)) throw new Error("Progress PortfolioのJSONではありません");
     if(!confirm("現在のデータを、読み込んだJSONで置き換えますか？")) return;
-    DB=normalize(parsed);save();renderAll();showView("master");showToast("JSONから復元しました");
+    DB=normalize(parsed);save();renderAll();showView("sync");showToast("JSONから復元しました");
   }catch(error){showToast(error.message||"JSONを読み込めませんでした","error");}
   finally{event.target.value="";}
 }
