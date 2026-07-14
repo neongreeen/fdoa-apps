@@ -199,6 +199,30 @@ function safeExternalUrl(value){
   }catch(error){return "";}
 }
 
+function openSbiWindow(url){
+  const safeUrl=safeExternalUrl(url);
+  if(!safeUrl) return false;
+  const width=1800;
+  const availableLeft=Number.isFinite(Number(window.screen.availLeft))?Number(window.screen.availLeft):0;
+  const availableTop=Number.isFinite(Number(window.screen.availTop))?Number(window.screen.availTop):0;
+  const availableWidth=Number(window.screen.availWidth)||width;
+  const availableHeight=Number(window.screen.availHeight)||900;
+  const left=Math.max(availableLeft,availableLeft+availableWidth-width);
+  const features=[
+    "popup=yes",
+    `width=${width}`,
+    `height=${availableHeight}`,
+    `left=${left}`,
+    `top=${availableTop}`,
+    "resizable=yes",
+    "scrollbars=yes",
+    "noopener=yes",
+    "noreferrer=yes",
+  ].join(",");
+  window.open(safeUrl,"_blank",features);
+  return true;
+}
+
 function normalizeSearchText(value){
   return String(value||"").normalize("NFKC").toLocaleLowerCase("ja").replace(/\s+/g," ").trim();
 }
@@ -708,8 +732,13 @@ function bindEvents(){
     save();renderSettings();showToast("SBIへのリンクを保存しました");
   });
   $("#sbiQuickLink").addEventListener("click",event=>{
-    if(safeExternalUrl(DB.settings.sbiPortfolioUrl)) return;
-    event.preventDefault();showView("master");$("#sbiPortfolioUrl").focus();
+    event.preventDefault();
+    if(openSbiWindow(DB.settings.sbiPortfolioUrl)) return;
+    showView("master");$("#sbiPortfolioUrl").focus();
+  });
+  $("#testSbiUrl").addEventListener("click",event=>{
+    event.preventDefault();
+    openSbiWindow(DB.settings.sbiPortfolioUrl);
   });
   $("#ghConnectBtn").addEventListener("click",async()=>{
     const token=$("#ghTokenInput").value.trim();
