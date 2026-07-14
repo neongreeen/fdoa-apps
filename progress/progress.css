@@ -87,6 +87,20 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 #view-observe .save-decision{height:30px;min-height:30px;padding:5px 9px;font-size:11px}
 #view-observe .empty-compact{padding:9px 5px;font-size:10px;line-height:1.25}
 
+/* 銘柄・項目マスターは観察画面と同じ表示密度と見出し規則で揃える */
+.compact-admin-view{font-size:12px;line-height:1.3}
+.compact-admin-view .panel{padding:10px 12px;margin-bottom:8px}
+.compact-admin-view .panel-heading{align-items:center;gap:8px;margin-bottom:6px}
+.compact-admin-view .panel-heading>div{display:flex;align-items:baseline;gap:7px;min-width:0}
+.compact-admin-view .panel-heading h2{font-size:14px;line-height:1.2;margin-bottom:0}
+.compact-admin-view .panel-heading p{font-size:9px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.compact-admin-view .count-label{font-size:9px;line-height:1.2;padding:2px 7px}
+.compact-admin-view .field{gap:2px}
+.compact-admin-view .field>span{font-size:9px;line-height:1.15}
+.compact-admin-view input:not([type="checkbox"]):not([type="radio"]),.compact-admin-view select{padding:5px 7px;border-radius:7px;font-size:12px;line-height:1.2}
+.compact-admin-view .btn{min-height:30px;padding:5px 9px;border-radius:7px;font-size:11px;line-height:1.2}
+.compact-admin-view .note{font-size:9px;line-height:1.3}
+
 .due-list,.timeline,.log-list{display:flex;flex-direction:column}
 .due-row,.timeline-row,.log-row{
   display:grid;
@@ -183,6 +197,23 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .settings-form{display:grid;grid-template-columns:minmax(240px,1fr) auto auto;gap:9px;align-items:end;margin-bottom:9px}
 .settings-form .btn{height:43px;text-decoration:none}
 
+#view-stocks .instrument-search{margin-bottom:8px}
+#view-stocks .instrument-results{margin-top:3px;border-radius:7px}
+#view-stocks .instrument-result{padding:6px 8px;gap:6px}
+#view-stocks .instrument-result strong{font-size:10px;line-height:1.2}
+#view-stocks .instrument-result small,#view-stocks .instrument-country{font-size:8px;line-height:1.2}
+#view-stocks .instrument-empty{padding:7px 8px;font-size:10px}
+#view-stocks .stock-form{gap:5px 6px;margin-bottom:8px}
+#view-stocks .stock-form .btn{height:30px}
+#view-stocks .stock-table-row{gap:6px;padding:5px 2px;font-size:10px;line-height:1.2}
+#view-stocks .stock-table-row .stock-name{font-size:10px;line-height:1.2}
+#view-stocks .stock-table-row .stock-symbol{font-size:8px;line-height:1.2}
+#view-stocks .stock-links{gap:5px;font-size:9px}
+#view-stocks .stock-table-row .btn{font-size:9px;padding:4px 7px;min-height:25px}
+
+#view-master .settings-form{gap:5px;margin-bottom:4px}
+#view-master .settings-form .btn{height:30px}
+
 .log-filters{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px}
 .log-filters select{width:auto;min-width:118px;padding:4px 6px;font-size:10px;line-height:1.2}
 .log-filters .btn{min-height:26px;padding:4px 9px;font-size:10px}
@@ -197,33 +228,34 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .log-memo{font-size:10px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .log-execution{font-size:9px;line-height:1.15;text-align:right;font-variant-numeric:tabular-nums}
 
-.master-note{background:var(--warn-soft);color:#73542d;border-radius:10px;padding:10px 12px;font-size:12px;margin:-4px 0 18px}
-.master-section{border-top:1px solid var(--line);padding:20px 0 4px}
+.master-note{background:var(--warn-soft);color:#73542d;border-radius:7px;padding:6px 8px;font-size:9px;line-height:1.3;margin:0 0 6px}
+.master-section{border-top:1px solid var(--line);padding:8px 0 2px}
 .master-section:first-child{border-top:none;padding-top:0}
-.master-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
-.master-section h3{font-size:15px}
+.master-section-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px}
+.master-section h3{font-size:11px;line-height:1.2}
+.master-section .muted{font-size:9px;line-height:1.2}
 .master-list{display:flex;flex-direction:column}
 .master-row{
   display:grid;
   grid-template-columns:minmax(150px,1.5fr) 86px 90px 88px minmax(120px,.9fr) auto;
-  gap:8px;
+  gap:5px;
   align-items:center;
-  padding:8px 0;
+  padding:4px 0;
   border-top:1px solid #eeeeeb;
 }
 .master-row:first-child{border-top:none}
-.master-row input[type="text"],.master-row input[type="number"],.master-row select{width:100%;padding:7px 9px;font-size:13px}
-.master-check{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);white-space:nowrap}
-.master-check input{width:18px;height:18px}
+.master-row input[type="text"],.master-row input[type="number"],.master-row select{width:100%;padding:4px 6px;font-size:10px}
+.master-check{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--sub);white-space:nowrap}
+.master-check input{width:14px;height:14px}
 .master-extra-empty{min-height:1px}
 .master-add{
   display:grid;
   grid-template-columns:minmax(160px,1.5fr) minmax(120px,.9fr) auto;
-  gap:8px;
+  gap:5px;
   align-items:end;
-  padding-top:10px;
+  padding-top:5px;
 }
-.master-add .btn{height:39px}
+.master-add .btn{height:29px}
 
 .sync-status{font-size:12px;color:var(--sub);font-weight:650}
 .sync-status.ok{color:var(--accent)}
