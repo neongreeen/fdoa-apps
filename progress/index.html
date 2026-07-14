@@ -18,6 +18,7 @@
       <button type="button" data-view="observe">観察</button>
       <button type="button" data-view="log">ログ</button>
       <button type="button" data-view="master">マスター</button>
+      <a id="sbiQuickLink" class="nav-external" href="#" target="_blank" rel="noopener noreferrer">SBIを設定</a>
     </nav>
   </div>
 </header>
@@ -76,14 +77,6 @@
             <span>実行日時</span>
             <input id="dExecutedAt" type="datetime-local" disabled>
           </label>
-          <label class="field execution-field">
-            <span>実行価格</span>
-            <input id="dPrice" type="number" min="0" step="0.0001" inputmode="decimal" disabled>
-          </label>
-          <label class="field execution-field">
-            <span>実行数量</span>
-            <input id="dQuantity" type="number" min="0.0001" step="0.0001" inputmode="decimal" disabled>
-          </label>
           <button class="btn save-decision" type="submit" id="saveDecision">判断を保存</button>
         </div>
       </form>
@@ -127,8 +120,16 @@
       <div class="panel-heading">
         <div>
           <h2>銘柄を追加</h2>
-          <p>保有前・売却後の観察対象も登録できます</p>
+          <p>検索して選ぶ。見つからない銘柄はそのまま手入力</p>
         </div>
+        <span class="count-label" id="instrumentSource">銘柄一覧を読込中</span>
+      </div>
+      <div class="instrument-search">
+        <label class="field">
+          <span>銘柄検索</span>
+          <input id="instrumentQuery" type="search" maxlength="80" placeholder="銘柄名またはコード／ティッカー" autocomplete="off">
+        </label>
+        <div id="instrumentResults" class="instrument-results" aria-live="polite"></div>
       </div>
       <form id="stockForm" class="stock-form" novalidate>
         <label class="field">
@@ -151,6 +152,22 @@
             <option value="EUR">EUR</option>
             <option value="GBP">GBP</option>
           </select>
+        </label>
+        <label class="field">
+          <span>国</span>
+          <select id="sCountry">
+            <option value="">未設定</option>
+            <option value="JP">日本</option>
+            <option value="US">米国</option>
+          </select>
+        </label>
+        <label class="field stock-url-field">
+          <span>企業サイト</span>
+          <input id="sCompanyUrl" type="url" maxlength="500" placeholder="https://">
+        </label>
+        <label class="field stock-url-field">
+          <span>IRページ</span>
+          <input id="sIrUrl" type="url" maxlength="500" placeholder="https://">
         </label>
         <button class="btn" type="submit">銘柄を追加</button>
       </form>
@@ -178,6 +195,24 @@
   </section>
 
   <section id="view-master" class="view">
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>SBIへの導線</h2>
+          <p>価格・保有・損益の正本を別タブで開きます</p>
+        </div>
+      </div>
+      <div class="settings-form">
+        <label class="field">
+          <span>SBIポートフォリオURL</span>
+          <input type="url" id="sbiPortfolioUrl" maxlength="1000" placeholder="https://">
+        </label>
+        <button type="button" class="btn" id="saveSbiUrl">保存</button>
+        <a id="testSbiUrl" class="btn sec" href="#" target="_blank" rel="noopener noreferrer" hidden>開く</a>
+      </div>
+      <p class="note">ID・パスワード・価格は保存しません。URLだけをこの設定に保持します。</p>
+    </div>
+
     <div class="panel">
       <div class="panel-heading">
         <div>

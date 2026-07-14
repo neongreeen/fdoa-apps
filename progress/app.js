@@ -1,6 +1,6 @@
 "use strict";
 
-/* Progress Portfolio v0.1
+/* Progress Portfolio v0.1.x
    現在状態は stocks に保存せず、各銘柄の最新 decision から算出する。
    判断は上書きせず追加し、売買 execution は判断にだけ紐付ける。 */
 
@@ -10,6 +10,8 @@ const CONFIG={
   tokenKey:"fdoa_gh_token",
   legacyTokenKeys:["fdoa_bukken_gh_token"],
   storageKey:"progress_portfolio_v1",
+  schemaVersion:2,
+  instrumentFiles:["data/instruments-jp.json","data/instruments-us.json"],
 };
 
 const $=(selector,root=document)=>root.querySelector(selector);
@@ -63,7 +65,7 @@ const DEFAULT_MASTERS={
 
 function seed(){
   return{
-    meta:{schemaVersion:1,savedAt:null},
+    meta:{schemaVersion:CONFIG.schemaVersion,savedAt:null},
     stocks:[],
     decisions:[],
     executions:[],
@@ -76,10 +78,28 @@ function normalize(data){
   if(!data||typeof data!=="object") return seed();
   const base=seed();
   const result={
-    meta:{schemaVersion:1,savedAt:data.meta?.savedAt||null},
-    stocks:Array.isArray(data.stocks)?data.stocks:[],
+    meta:{schemaVersion:CONFIG.schemaVersion,savedAt:data.meta?.savedAt||null},
+    stocks:(Array.isArray(data.stocks)?data.stocks:[]).map(stock=>({
+      id:stock.id||uid("stock"),
+      name:String(stock.name||"名称未設定"),
+      ticker:String(stock.ticker||"").toUpperCase(),
+      market:String(stock.market||""),
+      currency:String(stock.currency||""),
+      country:String(stock.country||""),
+      companyUrl:safeExternalUrl(stock.companyUrl),
+      irUrl:safeExternalUrl(stock.irUrl),
+      active:stock.active!==false,
+      createdAt:stock.createdAt||new Date().toISOString(),
+      updatedAt:stock.updatedAt||stock.createdAt||new Date().toISOString(),
+    })),
     decisions:Array.isArray(data.decisions)?data.decisions:[],
-    executions:Array.isArray(data.executions)?data.executions:[],
+    executions:(Array.isArray(data.executions)?data.executions:[]).map(execution=>({
+      id:execution.id||uid("execution"),
+      decisionId:execution.decisionId,
+      stockId:execution.stockId,
+      executedAt:execution.executedAt,
+      createdAt:execution.createdAt||execution.executedAt,
+    })),
     masters:{},
     settings:data.settings&&typeof data.settings==="object"?data.settings:{},
   };
@@ -111,9 +131,11 @@ function load(){
 let DB=load();
 let store=null;
 let toastTimer=null;
+let INSTRUMENTS=[];
+let instrumentMeta=[];
 
 function save(){
-  DB.meta.schemaVersion=1;
+  DB.meta.schemaVersion=CONFIG.schemaVersion;
   DB.meta.savedAt=new Date().toISOString();
   localStorage.setItem(CONFIG.storageKey,JSON.stringify(DB));
   if(store) store.queueSync();
@@ -169,10 +191,78 @@ function formatDate(value,withTime=false){
   return new Intl.DateTimeFormat("ja-JP",withTime?{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}:{year:"numeric",month:"numeric",day:"numeric"}).format(date);
 }
 
-function formatPrice(value,currency){
-  if(value==null||value==="") return "—";
-  try{return new Intl.NumberFormat("ja-JP",{style:"currency",currency:currency||"USD",maximumFractionDigits:4}).format(value);}
-  catch(error){return `${Number(value).toLocaleString("ja-JP")} ${currency||""}`.trim();}
+function safeExternalUrl(value){
+  if(!value) return "";
+  try{
+    const url=new URL(String(value));
+    return ["http:","https:"].includes(url.protocol)?url.href:"";
+  }catch(error){return "";}
+}
+
+function normalizeSearchText(value){
+  return String(value||"").normalize("NFKC").toLocaleLowerCase("ja").replace(/\s+/g," ").trim();
+}
+
+async function loadInstrumentData(){
+  const results=await Promise.allSettled(CONFIG.instrumentFiles.map(async path=>{
+    const response=await fetch(path,{cache:"no-cache"});
+    if(!response.ok) throw new Error(`${path}: ${response.status}`);
+    const payload=await response.json();
+    if(!Array.isArray(payload.instruments)) throw new Error(`${path}: invalid data`);
+    instrumentMeta.push({source:payload.source||path,sourceUpdatedAt:payload.sourceUpdatedAt||null,generatedAt:payload.generatedAt||null,count:payload.instruments.length});
+    return payload.instruments;
+  }));
+  INSTRUMENTS=results.flatMap(result=>result.status==="fulfilled"?result.value:[]).map(item=>({
+    ...item,
+    searchText:normalizeSearchText(`${item.ticker} ${item.name} ${item.market||""}`),
+  }));
+  const failed=results.filter(result=>result.status==="rejected").length;
+  $("#instrumentSource").textContent=INSTRUMENTS.length?`${INSTRUMENTS.length.toLocaleString("ja-JP")}銘柄${failed?"・一部読込失敗":""}`:"手動登録のみ";
+  $("#instrumentSource").title=instrumentMeta.map(item=>`${item.source} ${item.sourceUpdatedAt||item.generatedAt||"更新日不明"}`).join(" / ");
+  renderInstrumentResults();
+  if(failed) console.warn("Instrument data load failed",results.filter(result=>result.status==="rejected"));
+}
+
+function searchInstruments(query){
+  const term=normalizeSearchText(query);
+  if(!term) return [];
+  return INSTRUMENTS
+    .filter(item=>item.searchText.includes(term))
+    .sort((a,b)=>{
+      const aTicker=normalizeSearchText(a.ticker),bTicker=normalizeSearchText(b.ticker);
+      const aName=normalizeSearchText(a.name),bName=normalizeSearchText(b.name);
+      const rank=(ticker,name)=>ticker===term?0:ticker.startsWith(term)?1:name===term?2:name.startsWith(term)?3:4;
+      const rankA=rank(aTicker,aName),rankB=rank(bTicker,bName);
+      return rankA-rankB||(rankA===3?aName.length-bName.length:0)||aTicker.localeCompare(bTicker,"en")||a.name.localeCompare(b.name,"ja");
+    })
+    .slice(0,8);
+}
+
+function renderInstrumentResults(){
+  const query=$("#instrumentQuery").value;
+  const list=searchInstruments(query);
+  if(!normalizeSearchText(query)){ $("#instrumentResults").innerHTML="";return; }
+  if(!list.length){
+    $("#instrumentResults").innerHTML='<div class="instrument-empty">見つかりません。下の欄へ手入力できます。</div>';
+    return;
+  }
+  $("#instrumentResults").innerHTML=list.map((item,index)=>`<button type="button" class="instrument-result" data-index="${index}">
+    <span><strong>${esc(item.name)}</strong><small>${esc(item.ticker)}・${esc(item.market||"市場未設定")}</small></span>
+    <span class="instrument-country">${esc(item.country||"")}</span>
+  </button>`).join("");
+  $$(".instrument-result",$("#instrumentResults")).forEach(button=>button.addEventListener("click",()=>selectInstrument(list[Number(button.dataset.index)])));
+}
+
+function selectInstrument(item){
+  if(!item) return;
+  $("#sName").value=item.name||"";
+  $("#sTicker").value=item.ticker||"";
+  $("#sMarket").value=item.market||"";
+  $("#sCurrency").value=item.currency||"USD";
+  $("#sCountry").value=item.country||"";
+  $("#instrumentQuery").value="";
+  $("#instrumentResults").innerHTML="";
+  $("#sCompanyUrl").focus();
 }
 
 function showToast(message,type="ok"){
@@ -248,8 +338,6 @@ function applyStockDefaults(stockId){
   $("#dMemo").value="";
   $("#dExecutionState").value="pending";
   $("#dExecutedAt").value="";
-  $("#dPrice").value="";
-  $("#dQuantity").value="";
   $("#formState").textContent=decision?`前回 ${formatDate(decision.decidedAt,true)}`:"初回判断";
   $("#formState").className="save-state ready";
   updateExecutionFields();
@@ -261,7 +349,7 @@ function updateExecutionFields(){
   $("#dExecutionState").disabled=!canExecute;
   if(!canExecute) $("#dExecutionState").value="pending";
   const enabled=canExecute&&$("#dExecutionState").value==="executed";
-  [$("#dExecutedAt"),$("#dPrice"),$("#dQuantity")].forEach(input=>{
+  [$("#dExecutedAt")].forEach(input=>{
     input.disabled=!enabled;
     input.closest(".execution-field").classList.toggle("disabled",!enabled);
   });
@@ -357,6 +445,7 @@ function renderStockTable(){
     <div class="stock-identity"><div class="stock-name">${esc(stock.name)}</div><div class="stock-symbol">${esc(stock.ticker)}</div></div>
     <div class="stock-market">${esc(stock.market||"—")}</div>
     <div class="stock-currency">${esc(stock.currency||"—")}</div>
+    <div class="stock-links">${stock.companyUrl?`<a href="${esc(stock.companyUrl)}" target="_blank" rel="noopener noreferrer">企業</a>`:""}${stock.irUrl?`<a href="${esc(stock.irUrl)}" target="_blank" rel="noopener noreferrer">IR</a>`:""}${!stock.companyUrl&&!stock.irUrl?"—":""}</div>
     <div>${stock.active===false?"休止":"観察中"}</div>
     <button type="button" class="btn sec sm toggle-stock" data-stock="${esc(stock.id)}">${stock.active===false?"再開":"休止"}</button>
   </div>`).join("");
@@ -396,7 +485,7 @@ function renderLog(){
       <div class="log-status">${statusPill(decision.statusId)}</div>
       <div>${actionPill(decision.actionId)}</div>
       <div class="log-detail"><div class="log-memo">${esc(decision.memo||"—")}</div><div class="log-reason">${esc(master("reasons",decision.reasonId)?.label||"—")} ／ ${esc(master("subReasons",decision.subReasonId)?.label||"—")} ／ 次回 ${decision.nextReviewDate?formatDate(`${decision.nextReviewDate}T12:00:00`):"—"}</div></div>
-      <div class="log-execution">${execution?`<span class="side-pill ${side}">${side==="buy"?"買付":"売却"}</span> ${formatPrice(execution.price,stock?.currency)} × ${Number(execution.quantity).toLocaleString("ja-JP")}`:"未実行"}</div>
+      <div class="log-execution">${execution?`<span class="side-pill ${side}">${side==="buy"?"買付":"売却"}</span> ${formatDate(execution.executedAt,true)}`:"未実行"}</div>
     </div>`;
   }).join("");
 }
@@ -486,7 +575,17 @@ function renderAll(){
   renderFilters();
   renderLog();
   renderMasterSections();
+  renderSettings();
   showView(view);
+}
+
+function renderSettings(){
+  const url=safeExternalUrl(DB.settings.sbiPortfolioUrl);
+  $("#sbiPortfolioUrl").value=url;
+  $("#sbiQuickLink").href=url||"#";
+  $("#sbiQuickLink").textContent=url?"SBIを開く":"SBIを設定";
+  $("#testSbiUrl").hidden=!url;
+  $("#testSbiUrl").href=url||"#";
 }
 
 function goToDecision(stockId){
@@ -521,11 +620,9 @@ function submitDecision(event){
   let execution=null;
   if(executed){
     if(!action?.executionSide){showToast("売買を伴う判断を選択してください","error");return;}
-    const price=Number($("#dPrice").value);
-    const quantity=Number($("#dQuantity").value);
     const executedAt=$("#dExecutedAt").value;
-    if(!executedAt||!(price>0)||!(quantity>0)){showToast("実行日時・価格・数量は必須です","error");return;}
-    execution={id:uid("execution"),decisionId:decision.id,stockId,executedAt:new Date(executedAt).toISOString(),price,quantity,createdAt:now};
+    if(!executedAt){showToast("実行日時を入力してください","error");return;}
+    execution={id:uid("execution"),decisionId:decision.id,stockId,executedAt:new Date(executedAt).toISOString(),createdAt:now};
   }
 
   DB.decisions.push(decision);
@@ -545,9 +642,16 @@ function submitStock(event){
   if(!name||!ticker){showToast("銘柄名とティッカーは必須です","error");return;}
   if(DB.stocks.some(stock=>stock.ticker.toUpperCase()===ticker&&stock.active!==false)&&!confirm(`${ticker} はすでに登録されています。追加しますか？`)) return;
   const now=new Date().toISOString();
-  DB.stocks.push({id:uid("stock"),name,ticker,market:$("#sMarket").value.trim(),currency:$("#sCurrency").value,active:true,createdAt:now,updatedAt:now});
+  const companyUrl=safeExternalUrl($("#sCompanyUrl").value.trim());
+  const irUrl=safeExternalUrl($("#sIrUrl").value.trim());
+  if($("#sCompanyUrl").value.trim()&&!companyUrl){showToast("企業サイトのURLを確認してください","error");return;}
+  if($("#sIrUrl").value.trim()&&!irUrl){showToast("IRページのURLを確認してください","error");return;}
+  DB.stocks.push({
+    id:uid("stock"),name,ticker,market:$("#sMarket").value.trim(),currency:$("#sCurrency").value,
+    country:$("#sCountry").value,companyUrl,irUrl,active:true,createdAt:now,updatedAt:now,
+  });
   save();
-  event.target.reset();$("#sCurrency").value="USD";
+  event.target.reset();$("#sCurrency").value="USD";$("#sCountry").value="";
   renderAll();showView("observe");showToast("銘柄を追加しました");
 }
 
@@ -584,6 +688,7 @@ function bindEvents(){
   $$("nav button[data-view]").forEach(button=>button.addEventListener("click",()=>showView(button.dataset.view)));
   $("#decisionForm").addEventListener("submit",submitDecision);
   $("#stockForm").addEventListener("submit",submitStock);
+  $("#instrumentQuery").addEventListener("input",renderInstrumentResults);
   $("#dStock").addEventListener("change",event=>applyStockDefaults(event.target.value));
   $("#dAction").addEventListener("change",updateExecutionFields);
   $("#dExecutionState").addEventListener("change",updateExecutionFields);
@@ -591,6 +696,17 @@ function bindEvents(){
   $("#clearFilters").addEventListener("click",()=>{$("#fStock").value="";$("#fStatus").value="";$("#fAction").value="";renderLog();});
   $("#btnJsonExport").addEventListener("click",exportJson);
   $("#jsonImport").addEventListener("change",importJson);
+  $("#saveSbiUrl").addEventListener("click",()=>{
+    const raw=$("#sbiPortfolioUrl").value.trim();
+    const url=safeExternalUrl(raw);
+    if(raw&&!url){showToast("SBIのURLを確認してください","error");return;}
+    DB.settings.sbiPortfolioUrl=url;
+    save();renderSettings();showToast("SBIへのリンクを保存しました");
+  });
+  $("#sbiQuickLink").addEventListener("click",event=>{
+    if(safeExternalUrl(DB.settings.sbiPortfolioUrl)) return;
+    event.preventDefault();showView("master");$("#sbiPortfolioUrl").focus();
+  });
   $("#ghConnectBtn").addEventListener("click",async()=>{
     const token=$("#ghTokenInput").value.trim();
     if(!token){showToast("アクセストークンを入力してください","error");return;}
@@ -610,3 +726,7 @@ $("#repoLabel").textContent=`${CONFIG.github.owner}/${CONFIG.github.repo}/${CONF
 bindEvents();
 renderAll();
 store.init();
+loadInstrumentData().catch(error=>{
+  console.warn(error);
+  $("#instrumentSource").textContent="手動登録のみ";
+});
