@@ -10,6 +10,7 @@
 
 - 日本株：[JPX 東証上場銘柄一覧](https://www.jpx.co.jp/markets/statistics-equities/misc/01.html)
 - 米国株：[SEC Company Tickers and Exchanges](https://www.sec.gov/file/company-tickers-exchange)
+- 新規上場等の補完：`data/instruments-curated.json`
 
 `.github/workflows/update-progress-instruments.yml`が月1回リストを更新する。GitHub Actions画面から手動実行もできる。取得・検証に失敗したデータ源は既存JSONを維持し、正常に取得できたデータ源だけを更新する。
 
@@ -21,6 +22,8 @@ python progress/scripts/update_instruments.py
 ```
 
 検索にない銘柄は手動登録できる。JPXは東証上場銘柄が対象であり、SECも一覧の完全性を保証していないため、手動登録は恒久的な逃げ道として残す。
+
+SEC一覧への反映待ちや取得制限で検索できない新規上場銘柄は、公式IRまたは取引所情報を確認して`instruments-curated.json`へ追加する。自動更新はこのファイルを上書きしない。
 
 ## スキーマ
 
