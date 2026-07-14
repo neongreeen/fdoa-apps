@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import tempfile
 import urllib.request
 from datetime import datetime, timezone
@@ -116,6 +117,19 @@ def atomic_json(path: Path, payload: dict) -> None:
     path.chmod(0o644)
 
 
+def write_if_changed(path: Path, payload: dict) -> bool:
+    if path.exists():
+        try:
+            current = json.loads(path.read_text(encoding="utf-8"))
+            comparable_keys = ("schemaVersion", "source", "sourceUrl", "sourceUpdatedAt", "instruments")
+            if all(current.get(key) == payload.get(key) for key in comparable_keys):
+                return False
+        except (OSError, json.JSONDecodeError):
+            pass
+    atomic_json(path, payload)
+    return True
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--jpx-input")
@@ -123,36 +137,52 @@ def main() -> None:
     parser.add_argument("--output-dir", default=str(Path(__file__).resolve().parents[1] / "data"))
     args = parser.parse_args()
 
-    generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    jpx_items, jpx_date = parse_jpx(read_source(args.jpx_input, JPX_URL))
-    sec_items = parse_sec(read_source(args.sec_input, SEC_URL))
-    validate(jpx_items, 3000, "JPX")
-    validate(sec_items, 5000, "SEC")
-
     output_dir = Path(args.output_dir)
-    atomic_json(
-        output_dir / "instruments-jp.json",
-        {
+    generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    updated = []
+    failures = []
+    successful_sources = 0
+
+    try:
+        jpx_items, jpx_date = parse_jpx(read_source(args.jpx_input, JPX_URL))
+        validate(jpx_items, 3000, "JPX")
+        successful_sources += 1
+        if write_if_changed(output_dir / "instruments-jp.json", {
             "schemaVersion": 1,
             "source": "JPX",
             "sourceUrl": JPX_URL,
             "sourceUpdatedAt": jpx_date,
             "generatedAt": generated_at,
             "instruments": jpx_items,
-        },
-    )
-    atomic_json(
-        output_dir / "instruments-us.json",
-        {
+        }):
+            updated.append(f"JPX {len(jpx_items)}")
+    except Exception as error:  # preserve last-known-good file
+        failures.append(f"JPX: {error}")
+
+    try:
+        sec_items = parse_sec(read_source(args.sec_input, SEC_URL))
+        validate(sec_items, 5000, "SEC")
+        successful_sources += 1
+        if write_if_changed(output_dir / "instruments-us.json", {
             "schemaVersion": 1,
             "source": "SEC",
             "sourceUrl": SEC_URL,
             "sourceUpdatedAt": None,
             "generatedAt": generated_at,
             "instruments": sec_items,
-        },
-    )
-    print(f"Wrote {len(jpx_items)} JPX and {len(sec_items)} SEC instruments")
+        }):
+            updated.append(f"SEC {len(sec_items)}")
+    except Exception as error:  # SEC may reject data-center IPs; keep bundled list
+        failures.append(f"SEC: {error}")
+
+    for failure in failures:
+        print(f"Warning: {failure}; keeping the existing list", file=sys.stderr)
+    missing = [path for path in (output_dir / "instruments-jp.json", output_dir / "instruments-us.json") if not path.exists()]
+    if missing:
+        raise RuntimeError(f"No usable instrument list: {', '.join(map(str, missing))}")
+    if successful_sources == 0:
+        raise RuntimeError("All instrument sources failed; existing lists were preserved")
+    print("Updated " + ", ".join(updated) if updated else "No instrument changes")
 
 
 if __name__ == "__main__":
