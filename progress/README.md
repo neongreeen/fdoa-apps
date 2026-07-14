@@ -11,7 +11,7 @@
 - 日本株：[JPX 東証上場銘柄一覧](https://www.jpx.co.jp/markets/statistics-equities/misc/01.html)
 - 米国株：[SEC Company Tickers and Exchanges](https://www.sec.gov/file/company-tickers-exchange)
 
-`.github/workflows/update-progress-instruments.yml`が月1回リストを更新する。GitHub Actions画面から手動実行もできる。取得・検証に失敗した場合、既存JSONは上書きされない。
+`.github/workflows/update-progress-instruments.yml`が月1回リストを更新する。GitHub Actions画面から手動実行もできる。取得・検証に失敗したデータ源は既存JSONを維持し、正常に取得できたデータ源だけを更新する。
 
 ローカルで更新する場合：
 
