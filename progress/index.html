@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f5f5f3">
+  <title>Progress Portfolio</title>
+  <link rel="icon" href="../jikyu/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="progress.css">
+</head>
+<body>
+<header>
+  <div class="head-in">
+    <div class="logo">Progress Portfolio <small id="syncBadge">ローカル保存</small></div>
+    <nav id="nav" aria-label="メインメニュー">
+      <button type="button" data-view="today" class="active">今日</button>
+      <button type="button" data-view="observe">観察</button>
+      <button type="button" data-view="log">ログ</button>
+      <button type="button" data-view="master">マスター</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section id="view-today" class="view active">
+    <div class="summary-grid" id="todaySummary"></div>
+
+    <div class="panel decision-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>判断を記録</h2>
+          <p>変わったところだけ確認して保存</p>
+        </div>
+        <span class="save-state" id="formState">未保存</span>
+      </div>
+
+      <form id="decisionForm" novalidate>
+        <div class="decision-grid">
+          <label class="field field-stock">
+            <span>銘柄</span>
+            <select id="dStock" required></select>
+          </label>
+          <label class="field">
+            <span>状態</span>
+            <select id="dStatus" required></select>
+          </label>
+          <label class="field">
+            <span>判断</span>
+            <select id="dAction" required></select>
+          </label>
+          <label class="field">
+            <span>理由</span>
+            <select id="dReason" required></select>
+          </label>
+          <label class="field">
+            <span>補助理由</span>
+            <select id="dSubReason" required></select>
+          </label>
+          <label class="field">
+            <span>次回確認</span>
+            <select id="dReviewPreset" required></select>
+          </label>
+          <label class="field field-memo">
+            <span>一言メモ</span>
+            <input id="dMemo" type="text" maxlength="240" placeholder="今回変わったこと">
+          </label>
+          <label class="field">
+            <span>実行状態</span>
+            <select id="dExecutionState">
+              <option value="pending">未実行</option>
+              <option value="executed">実行済み</option>
+            </select>
+          </label>
+          <label class="field execution-field">
+            <span>実行日時</span>
+            <input id="dExecutedAt" type="datetime-local" disabled>
+          </label>
+          <label class="field execution-field">
+            <span>実行価格</span>
+            <input id="dPrice" type="number" min="0" step="0.0001" inputmode="decimal" disabled>
+          </label>
+          <label class="field execution-field">
+            <span>実行数量</span>
+            <input id="dQuantity" type="number" min="0.0001" step="0.0001" inputmode="decimal" disabled>
+          </label>
+          <button class="btn save-decision" type="submit" id="saveDecision">判断を保存</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>今日、確認する銘柄</h2>
+          <p>期限が来たものと、まだ判断がないもの</p>
+        </div>
+        <span class="count-label" id="dueCount"></span>
+      </div>
+      <div id="dueList" class="due-list"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>直近の判断</h2>
+          <p>保存した内容をすぐ確認</p>
+        </div>
+      </div>
+      <div id="recentDecisions" class="timeline"></div>
+    </div>
+  </section>
+
+  <section id="view-observe" class="view">
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>観察ボード</h2>
+          <p>現在状態は各銘柄の最新判断から表示</p>
+        </div>
+        <span class="count-label" id="stockCount"></span>
+      </div>
+      <div id="statusBoard" class="status-board"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>銘柄を追加</h2>
+          <p>保有前・売却後の観察対象も登録できます</p>
+        </div>
+      </div>
+      <form id="stockForm" class="stock-form" novalidate>
+        <label class="field">
+          <span>銘柄名</span>
+          <input id="sName" type="text" maxlength="80" required placeholder="例：Apple">
+        </label>
+        <label class="field">
+          <span>ティッカー</span>
+          <input id="sTicker" type="text" maxlength="20" required placeholder="例：AAPL" autocapitalize="characters">
+        </label>
+        <label class="field">
+          <span>市場</span>
+          <input id="sMarket" type="text" maxlength="40" placeholder="例：NASDAQ">
+        </label>
+        <label class="field">
+          <span>通貨</span>
+          <select id="sCurrency">
+            <option value="USD">USD</option>
+            <option value="JPY">JPY</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+          </select>
+        </label>
+        <button class="btn" type="submit">銘柄を追加</button>
+      </form>
+      <div id="stockTable" class="stock-table"></div>
+    </div>
+  </section>
+
+  <section id="view-log" class="view">
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>判断ログ</h2>
+          <p>判断は上書きせず、すべて時系列で残ります</p>
+        </div>
+        <span class="count-label" id="logCount"></span>
+      </div>
+      <div class="log-filters">
+        <select id="fStock"><option value="">全銘柄</option></select>
+        <select id="fStatus"><option value="">全状態</option></select>
+        <select id="fAction"><option value="">全判断</option></select>
+        <button type="button" class="btn sec sm" id="clearFilters">条件クリア</button>
+      </div>
+      <div id="logList" class="log-list"></div>
+    </div>
+  </section>
+
+  <section id="view-master" class="view">
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>選択肢マスター</h2>
+          <p>ここで明示的に変えるまで、表示順と既定値は固定されます</p>
+        </div>
+      </div>
+      <p class="master-note">過去ログの意味を守るため項目は削除しません。意味を変える場合は、古い項目を使用停止にして新しい項目を追加してください。</p>
+      <div id="masterSections"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>GitHub同期</h2>
+          <p><span id="repoLabel"></span> に自動保存</p>
+        </div>
+        <strong id="syncStatus" class="sync-status">未接続</strong>
+      </div>
+      <div class="sync-form">
+        <label class="field token-field">
+          <span>アクセストークン</span>
+          <input type="password" id="ghTokenInput" placeholder="github_pat_…" autocomplete="off">
+        </label>
+        <button type="button" class="btn" id="ghConnectBtn">接続</button>
+        <button type="button" class="btn sec" id="ghSyncNowBtn">今すぐ同期</button>
+        <button type="button" class="btn warn" id="ghDisconnectBtn">切断</button>
+      </div>
+      <p class="note sync-note">トークンはこの端末のブラウザ内だけに保存されます。オフライン中も入力でき、接続が戻ると同期します。</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>バックアップ</h2>
+          <p>全データをJSONで持ち出し・復元</p>
+        </div>
+      </div>
+      <div class="backup-actions">
+        <button type="button" class="btn" id="btnJsonExport">JSONを書き出す</button>
+        <label class="btn sec file-button">JSONから復元<input type="file" id="jsonImport" accept=".json,application/json"></label>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="../shared/store.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
