@@ -469,7 +469,7 @@ function renderBoard(){
 
 function stockCard(stock,decision){
   return `<button type="button" class="stock-card" data-stock="${esc(stock.id)}">
-    <span class="stock-card-top"><span class="stock-identity"><span class="stock-name">${esc(stock.name)}</span><span class="stock-symbol">${esc(stock.ticker)}</span></span><span class="stock-card-action">${esc(master("actions",decision?.actionId)?.label||"判断する")}</span></span>
+    <span class="stock-card-top"><span class="stock-identity"><span class="stock-name" title="${esc(stock.name)}">${esc(stock.name)}</span><span class="stock-symbol">${esc(stock.ticker)}</span></span><span class="stock-card-action">${esc(master("actions",decision?.actionId)?.label||"判断する")}</span></span>
     <span class="stock-card-memo">${esc(decision?.memo||master("subReasons",decision?.subReasonId)?.label||"まだログがありません")}</span>
     <span class="stock-card-date">次回 ${decision?.nextReviewDate?formatDate(`${decision.nextReviewDate}T12:00:00`):"未設定"}</span>
   </button>`;
