@@ -14,8 +14,7 @@
   <div class="head-in">
     <div class="logo">Progress Portfolio <small id="syncBadge">ローカル保存</small></div>
     <nav id="nav" aria-label="メインメニュー">
-      <button type="button" data-view="today" class="active">今日</button>
-      <button type="button" data-view="observe">観察</button>
+      <button type="button" data-view="observe" class="active">観察・判断</button>
       <button type="button" data-view="stocks">銘柄マスター</button>
       <button type="button" data-view="master">項目マスター</button>
       <button type="button" data-view="sync">同期・バックアップ</button>
@@ -25,9 +24,7 @@
 </header>
 
 <main>
-  <section id="view-today" class="view active">
-    <div class="summary-grid" id="todaySummary"></div>
-
+  <section id="view-observe" class="view active">
     <div class="panel decision-panel">
       <div class="panel-heading">
         <div>
@@ -83,29 +80,6 @@
       </form>
     </div>
 
-    <div class="panel">
-      <div class="panel-heading">
-        <div>
-          <h2>今日、確認する銘柄</h2>
-          <p>期限が来たものと、まだ判断がないもの</p>
-        </div>
-        <span class="count-label" id="dueCount"></span>
-      </div>
-      <div id="dueList" class="due-list"></div>
-    </div>
-
-    <div class="panel">
-      <div class="panel-heading">
-        <div>
-          <h2>直近の判断</h2>
-          <p>保存した内容をすぐ確認</p>
-        </div>
-      </div>
-      <div id="recentDecisions" class="timeline"></div>
-    </div>
-  </section>
-
-  <section id="view-observe" class="view">
     <div class="panel">
       <div class="panel-heading">
         <div>

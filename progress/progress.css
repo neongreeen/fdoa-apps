@@ -73,6 +73,16 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .save-decision{height:43px;justify-content:center;grid-column:span 2}
 .execution-field.disabled{opacity:.48}
 
+#view-observe .panel{padding:14px 16px;margin-bottom:12px}
+#view-observe .panel-heading{gap:10px;margin-bottom:10px}
+#view-observe .panel-heading h2{font-size:16px;margin-bottom:0}
+#view-observe .panel-heading p{font-size:11px;line-height:1.4}
+#view-observe .count-label,#view-observe .save-state{font-size:10px;padding:2px 8px}
+#view-observe .decision-grid{gap:8px}
+#view-observe .field>span{font-size:10px}
+#view-observe .field input,#view-observe .field select{padding:7px 9px;border-radius:8px;font-size:13px}
+#view-observe .save-decision{height:36px;padding:7px 14px;font-size:12px}
+
 .due-list,.timeline,.log-list{display:flex;flex-direction:column}
 .due-row,.timeline-row,.log-row{
   display:grid;
@@ -111,22 +121,22 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .status-board{
   display:grid;
   grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:13px;
+  gap:8px;
   align-items:start;
 }
-.status-column{background:#f8f8f6;border:1px solid var(--line);border-radius:12px;padding:11px;min-height:150px}
-.status-column-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:1px 2px 11px}
-.status-column-title{font-size:13px;font-weight:750}
-.status-column-count{font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums}
+.status-column{background:#f8f8f6;border:1px solid var(--line);border-radius:10px;padding:8px;min-height:104px}
+.status-column-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 1px 6px}
+.status-column-title{font-size:11px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.status-column-count{font-size:10px;color:var(--sub);font-variant-numeric:tabular-nums}
 .stock-card{
   width:100%;
   border:1px solid var(--line);
   background:#fff;
-  border-radius:10px;
-  padding:12px;
+  border-radius:8px;
+  padding:8px;
   text-align:left;
   cursor:pointer;
-  margin-top:8px;
+  margin-top:6px;
   color:var(--ink);
   transition:border-color .15s,transform .15s,box-shadow .15s;
 }
@@ -134,9 +144,11 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .stock-card:hover{border-color:#c4c9c6;box-shadow:0 4px 12px rgba(0,0,0,.05);transform:translateY(-1px)}
 .stock-card .stock-card-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;min-width:0}
 .stock-card .stock-identity{flex:1 1 auto;min-width:0;overflow:hidden}
-.stock-card .stock-card-action{flex:0 0 auto;font-size:11px;color:var(--progress-blue);font-weight:700;white-space:nowrap}
-.stock-card .stock-card-memo{font-size:12px;color:var(--sub);margin-top:7px;line-height:1.45;min-height:18px}
-.stock-card .stock-card-date{font-size:11px;color:var(--sub);margin-top:7px}
+.stock-card .stock-name{font-size:11px}
+.stock-card .stock-symbol{font-size:10px}
+.stock-card .stock-card-action{flex:0 0 auto;font-size:10px;color:var(--progress-blue);font-weight:700;white-space:nowrap}
+.stock-card .stock-card-memo{font-size:10px;color:var(--sub);margin-top:4px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stock-card .stock-card-date{font-size:10px;color:var(--sub);margin-top:4px;white-space:nowrap}
 .no-status-column{grid-column:1/-1;background:#f8f8f6;border:1px dashed var(--line);border-radius:12px;padding:14px}
 .no-status-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
 
@@ -167,13 +179,16 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .settings-form{display:grid;grid-template-columns:minmax(240px,1fr) auto auto;gap:9px;align-items:end;margin-bottom:9px}
 .settings-form .btn{height:43px;text-decoration:none}
 
-.log-filters{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px}
-.log-filters select{width:auto;min-width:145px}
-.log-row{grid-template-columns:120px minmax(120px,1fr) minmax(100px,.7fr) minmax(100px,.7fr) minmax(170px,1.5fr) minmax(130px,.9fr);padding:12px 2px}
+.log-filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px}
+.log-filters select{width:auto;min-width:135px;padding:6px 8px;font-size:12px}
+.log-row{grid-template-columns:105px minmax(110px,1fr) minmax(90px,.7fr) minmax(90px,.7fr) minmax(160px,1.5fr) minmax(115px,.9fr);gap:8px;padding:8px 2px}
 .log-detail{min-width:0}
-.log-reason{font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.log-memo{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.log-execution{font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+.log-row .stock-name{font-size:11px}
+.log-row .stock-symbol,.log-row .timeline-date{font-size:10px}
+.log-row .status-pill,.log-row .action-pill,.log-row .side-pill{font-size:10px;padding:2px 7px}
+.log-reason{font-size:10px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.log-memo{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.log-execution{font-size:10px;text-align:right;font-variant-numeric:tabular-nums}
 
 .master-note{background:var(--warn-soft);color:#73542d;border-radius:10px;padding:10px 12px;font-size:12px;margin:-4px 0 18px}
 .master-section{border-top:1px solid var(--line);padding:20px 0 4px}
@@ -239,7 +254,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{
   .decision-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
   .field-stock,.field-memo{grid-column:span 2}
   .save-decision{grid-column:span 2}
-  .status-board{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stock-form{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stock-form .btn{grid-column:span 2}
   .log-row{grid-template-columns:100px minmax(115px,1fr) minmax(90px,.7fr) minmax(90px,.7fr) minmax(140px,1.4fr)}
@@ -259,7 +273,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{
   .due-row .due-action,.due-row .due-review{display:none}
   .timeline-row{grid-template-columns:88px minmax(100px,1fr) minmax(80px,.7fr);gap:8px}
   .timeline-memo{grid-column:2/-1;margin-top:-5px}
-  .status-board{grid-template-columns:1fr;gap:10px}
+  .status-board{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .status-column{min-height:0}
   .stock-form{grid-template-columns:1fr 1fr;gap:10px 8px}
   .stock-form .field:first-child,.stock-form .stock-url-field,.stock-form .btn{grid-column:span 2}
@@ -291,4 +305,5 @@ button:focus-visible,input:focus-visible,select:focus-visible{
   .settings-form .field{grid-column:1}
   .summary-grid{grid-template-columns:1fr 1fr}
   .summary-card{padding:11px}
+  .status-board{grid-template-columns:1fr}
 }

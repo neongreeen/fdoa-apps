@@ -392,56 +392,6 @@ function updateExecutionFields(){
   if(enabled&&!$("#dExecutedAt").value) $("#dExecutedAt").value=localDateTime();
 }
 
-function dueStocks(){
-  const today=localDate();
-  return activeStocks().map(stock=>({stock,decision:latestDecision(stock.id)}))
-    .filter(item=>!item.decision||!item.decision.nextReviewDate||item.decision.nextReviewDate<=today)
-    .sort((a,b)=>(a.decision?.nextReviewDate||"").localeCompare(b.decision?.nextReviewDate||""));
-}
-
-function renderTodaySummary(){
-  const active=activeStocks();
-  const due=dueStocks();
-  const today=localDate();
-  const decisionsToday=DB.decisions.filter(item=>localDate(new Date(item.decidedAt||item.createdAt))===today).length;
-  const executionsToday=DB.executions.filter(item=>localDate(new Date(item.executedAt||item.createdAt))===today).length;
-  const cards=[
-    ["今日の確認",due.length,"期限到来・初回"],
-    ["観察銘柄",active.length,"現在の対象"],
-    ["今日の判断",decisionsToday,"追加したログ"],
-    ["今日の実行",executionsToday,"売買記録"],
-  ];
-  $("#todaySummary").innerHTML=cards.map(card=>`<div class="summary-card"><span class="summary-label">${card[0]}</span><span class="summary-value">${card[1]}</span><span class="summary-sub">${card[2]}</span></div>`).join("");
-}
-
-function renderDueList(){
-  const items=dueStocks();
-  $("#dueCount").textContent=`${items.length}件`;
-  if(!items.length){$("#dueList").innerHTML='<div class="empty-compact">今日の確認はありません</div>';return;}
-  $("#dueList").innerHTML=items.map(({stock,decision})=>`<div class="due-row">
-    <div class="stock-identity"><div class="stock-name">${esc(stock.name)}</div><div class="stock-symbol">${esc(stock.ticker)}</div></div>
-    <div>${decision?statusPill(decision.statusId):'<span class="status-pill">初回</span>'}</div>
-    <div class="due-action"><span class="row-label">前回判断</span><span class="row-value">${esc(master("actions",decision?.actionId)?.label||"—")}</span></div>
-    <div class="due-review"><span class="row-label">確認予定</span><span class="row-value">${decision?.nextReviewDate?formatDate(`${decision.nextReviewDate}T12:00:00`):"未設定"}</span></div>
-    <button type="button" class="btn sec sm record-stock" data-stock="${esc(stock.id)}">記録</button>
-  </div>`).join("");
-  $$(".record-stock",$("#dueList")).forEach(button=>button.addEventListener("click",()=>goToDecision(button.dataset.stock)));
-}
-
-function renderRecentDecisions(){
-  const recent=DB.decisions.slice().sort((a,b)=>decisionTime(b)-decisionTime(a)).slice(0,8);
-  if(!recent.length){$("#recentDecisions").innerHTML='<div class="empty-compact">まだ判断ログがありません</div>';return;}
-  $("#recentDecisions").innerHTML=recent.map(decision=>{
-    const stock=stockById(decision.stockId);
-    return `<div class="timeline-row">
-      <div class="timeline-date">${formatDate(decision.decidedAt,true)}</div>
-      <div class="stock-identity"><div class="stock-name">${esc(stock?.name||"不明な銘柄")}</div><div class="stock-symbol">${esc(stock?.ticker||"")}</div></div>
-      <div>${actionPill(decision.actionId)}</div>
-      <div class="timeline-memo">${esc(decision.memo||master("subReasons",decision.subReasonId)?.label||"—")}</div>
-    </div>`;
-  }).join("");
-}
-
 function renderBoard(){
   const stocks=activeStocks();
   $("#stockCount").textContent=`${stocks.length}銘柄`;
@@ -603,9 +553,6 @@ function addMasterItem(section){
 function renderAll(){
   const view=currentView();
   renderDecisionOptions(true);
-  renderTodaySummary();
-  renderDueList();
-  renderRecentDecisions();
   renderBoard();
   renderStockTable();
   renderFilters();
@@ -625,7 +572,7 @@ function renderSettings(){
 }
 
 function goToDecision(stockId){
-  showView("today");
+  showView("observe");
   $("#dStock").value=stockId;
   applyStockDefaults(stockId);
   $(".decision-panel").scrollIntoView({behavior:"smooth",block:"start"});
