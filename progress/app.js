@@ -202,12 +202,12 @@ function safeExternalUrl(value){
 function openSbiWindow(url){
   const safeUrl=safeExternalUrl(url);
   if(!safeUrl) return false;
-  const width=1800;
   const availableLeft=Number.isFinite(Number(window.screen.availLeft))?Number(window.screen.availLeft):0;
   const availableTop=Number.isFinite(Number(window.screen.availTop))?Number(window.screen.availTop):0;
-  const availableWidth=Number(window.screen.availWidth)||width;
+  const availableWidth=Number(window.screen.availWidth)||1440;
   const availableHeight=Number(window.screen.availHeight)||900;
-  const left=Math.max(availableLeft,availableLeft+availableWidth-width);
+  const width=Math.round(availableWidth/2);
+  const left=availableLeft+availableWidth-width;
   const features=[
     "popup=yes",
     `width=${width}`,
