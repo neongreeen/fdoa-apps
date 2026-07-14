@@ -11,7 +11,7 @@ const CONFIG={
   legacyTokenKeys:["fdoa_bukken_gh_token"],
   storageKey:"progress_portfolio_v1",
   schemaVersion:2,
-  instrumentFiles:["data/instruments-jp.json","data/instruments-us.json"],
+  instrumentFiles:["data/instruments-curated.json","data/instruments-jp.json","data/instruments-us.json"],
 };
 
 const $=(selector,root=document)=>root.querySelector(selector);
@@ -212,10 +212,12 @@ async function loadInstrumentData(){
     instrumentMeta.push({source:payload.source||path,sourceUpdatedAt:payload.sourceUpdatedAt||null,generatedAt:payload.generatedAt||null,count:payload.instruments.length});
     return payload.instruments;
   }));
-  INSTRUMENTS=results.flatMap(result=>result.status==="fulfilled"?result.value:[]).map(item=>({
-    ...item,
-    searchText:normalizeSearchText(`${item.ticker} ${item.name} ${item.market||""}`),
-  }));
+  const unique=new Map();
+  results.flatMap(result=>result.status==="fulfilled"?result.value:[]).forEach(item=>{
+    const key=`${item.country||""}:${item.market||""}:${String(item.ticker||"").toUpperCase()}`;
+    if(!unique.has(key)) unique.set(key,item);
+  });
+  INSTRUMENTS=[...unique.values()].map(item=>({...item,searchText:normalizeSearchText(`${item.ticker} ${item.name} ${item.market||""}`)}));
   const failed=results.filter(result=>result.status==="rejected").length;
   $("#instrumentSource").textContent=INSTRUMENTS.length?`${INSTRUMENTS.length.toLocaleString("ja-JP")}銘柄${failed?"・一部読込失敗":""}`:"手動登録のみ";
   $("#instrumentSource").title=instrumentMeta.map(item=>`${item.source} ${item.sourceUpdatedAt||item.generatedAt||"更新日不明"}`).join(" / ");
@@ -260,6 +262,8 @@ function selectInstrument(item){
   $("#sMarket").value=item.market||"";
   $("#sCurrency").value=item.currency||"USD";
   $("#sCountry").value=item.country||"";
+  $("#sCompanyUrl").value=item.companyUrl||"";
+  $("#sIrUrl").value=item.irUrl||"";
   $("#instrumentQuery").value="";
   $("#instrumentResults").innerHTML="";
   $("#sCompanyUrl").focus();
