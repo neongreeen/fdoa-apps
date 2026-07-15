@@ -137,12 +137,16 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .timeline-memo{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .status-board{
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
+  display:flex;
+  flex-wrap:wrap;
   gap:8px;
-  align-items:start;
+  align-items:flex-start;
 }
-.status-column{background:#f8f8f6;border:1px solid var(--line);border-radius:8px;padding:6px;min-height:82px}
+.status-column{flex:1 1 0;min-width:0;background:#f8f8f6;border:1px solid var(--line);border-radius:8px;padding:6px;min-height:82px}
+.status-column.is-empty{flex:0 0 auto;min-height:0}
+.status-column.is-empty .status-column-head{gap:8px}
+.status-column.is-empty .status-column-title{overflow:visible;text-overflow:clip}
+.status-column.is-empty .empty-compact{padding:2px 1px 1px;text-align:left}
 .status-column-head{display:flex;align-items:center;justify-content:space-between;gap:5px;margin:0 1px 4px}
 .status-column-title{font-size:10px;line-height:1.2;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .status-column-count{font-size:9px;line-height:1.2;color:var(--sub);font-variant-numeric:tabular-nums}
@@ -227,7 +231,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .price-change.up{color:var(--accent)}
 .price-change.down{color:var(--danger)}
 .price-change.flat{color:var(--sub)}
-.no-status-column{grid-column:1/-1;background:#f8f8f6;border:1px dashed var(--line);border-radius:12px;padding:14px}
+.no-status-column{flex:1 1 100%;background:#f8f8f6;border:1px dashed var(--line);border-radius:12px;padding:14px}
 .no-status-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
 
 .stock-form{
@@ -384,8 +388,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{
   .due-row .due-action,.due-row .due-review{display:none}
   .timeline-row{grid-template-columns:88px minmax(100px,1fr) minmax(80px,.7fr);gap:8px}
   .timeline-memo{grid-column:2/-1;margin-top:-5px}
-  .status-board{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-  .status-column{min-height:0}
+  .status-board{gap:8px}
+  .status-column{flex-basis:calc(50% - 4px);min-height:0}
   .stock-form{grid-template-columns:1fr 1fr;gap:10px 8px}
   .stock-form .field:first-child,.stock-form .stock-url-field,.stock-form .btn{grid-column:span 2}
   .stock-table-row{grid-template-columns:minmax(120px,1fr) minmax(88px,.7fr) auto auto}
@@ -418,5 +422,5 @@ button:focus-visible,input:focus-visible,select:focus-visible{
   .settings-form .field{grid-column:1}
   .summary-grid{grid-template-columns:1fr 1fr}
   .summary-card{padding:11px}
-  .status-board{grid-template-columns:1fr}
+  .status-column{flex-basis:100%}
 }

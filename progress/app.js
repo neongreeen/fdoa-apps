@@ -815,7 +815,7 @@ function renderBoard(){
   });
   let html=statuses.map(status=>{
     const list=grouped.get(status.id)||[];
-    return `<div class="status-column">
+    return `<div class="status-column${list.length?"":" is-empty"}">
       <div class="status-column-head"><span class="status-column-title"><span class="status-head-dot" style="background:${statusColor(status)}"></span>${esc(status.label)}${status.active?"":"（停止）"}</span><span class="status-column-count">${list.length}</span></div>
       ${list.length?list.map(({stock,decision})=>stockCard(stock,decision)).join(""):'<div class="empty-compact">該当なし</div>'}
     </div>`;
