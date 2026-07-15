@@ -234,6 +234,70 @@ function formatQuotePrice(quote){
   }
 }
 
+function formatMoney(value,currency="USD",signed=false){
+  if(value==null||value==="") return "—";
+  const amount=Number(value);
+  if(!Number.isFinite(amount)) return "—";
+  const digits=currency==="JPY"?(amount%1===0?0:1):2;
+  let formatted;
+  try{
+    formatted=new Intl.NumberFormat("ja-JP",{style:"currency",currency,minimumFractionDigits:digits,maximumFractionDigits:digits}).format(amount);
+  }catch(error){
+    formatted=amount.toLocaleString("ja-JP",{minimumFractionDigits:digits,maximumFractionDigits:digits});
+  }
+  return signed&&amount>0?`+${formatted}`:formatted;
+}
+
+function formatSignedPercent(value){
+  if(value==null||value==="") return "—";
+  const percent=Number(value);
+  if(!Number.isFinite(percent)) return "—";
+  return `${percent>0?"+":""}${percent.toFixed(2)}%`;
+}
+
+function formatQuantity(value){
+  if(value==null||value==="") return "—";
+  const quantity=Number(value);
+  if(!Number.isFinite(quantity)) return "—";
+  return `${quantity.toLocaleString("ja-JP",{maximumFractionDigits:6})}株`;
+}
+
+function formatSbiAcquisitionDate(value){
+  const text=String(value||"").trim();
+  if(!text||/^[-/]+$/.test(text)) return "—";
+  return text.replace(/^0+(\d)/,"$1").replace(/\/0+(\d)/g,"/$1");
+}
+
+function sbiPositionHtml(stock){
+  const ticker=String(stock?.ticker||"").toUpperCase();
+  const position=SBI_PRICE_DATA?.quotes?.[ticker];
+  if(!position) return "";
+  const currency=position.currency||stock.currency||"USD";
+  const profitLoss=Number(position.profitLoss);
+  const profitLossPct=Number(position.profitLossPct);
+  const dailyChangePct=Number(position.changePct);
+  const costPrice=position.costPrice==null?NaN:Number(position.costPrice);
+  const quantity=position.quantity==null?NaN:Number(position.quantity);
+  const acquisitionAmount=costPrice*quantity;
+  const direction=profitLoss>0?"up":profitLoss<0?"down":"flat";
+  const dailyDirection=dailyChangePct>0?"up":dailyChangePct<0?"down":"flat";
+  const costLabel=position.costLabel==="参考単価"?"参考単価":"取得単価";
+  return `<span class="sbi-position" title="SBI証券のポートフォリオ画面から一時反映。再読み込みすると消えます">
+    <span class="sbi-position-main">
+      <span class="sbi-metric"><span class="sbi-metric-label">現在</span><strong>${esc(formatMoney(position.price,currency))}</strong></span>
+      <span class="sbi-metric sbi-profit ${direction}"><span class="sbi-metric-label">損益</span><strong>${esc(formatMoney(profitLoss,currency,true))}（${esc(formatSignedPercent(profitLossPct))}）</strong></span>
+    </span>
+    <span class="sbi-position-details">
+      <span class="sbi-metric"><span class="sbi-metric-label">前日</span><strong class="${dailyDirection}">${esc(formatSignedPercent(dailyChangePct))}</strong></span>
+      <span class="sbi-metric"><span class="sbi-metric-label">${esc(costLabel)}</span><strong>${esc(formatMoney(position.costPrice,currency))}</strong></span>
+      <span class="sbi-metric"><span class="sbi-metric-label">取得額</span><strong>${esc(formatMoney(Number.isFinite(acquisitionAmount)?acquisitionAmount:null,currency))}</strong></span>
+      <span class="sbi-metric"><span class="sbi-metric-label">保有</span><strong>${esc(formatQuantity(position.quantity))}</strong></span>
+      <span class="sbi-metric"><span class="sbi-metric-label">買付</span><strong>${esc(formatSbiAcquisitionDate(position.acquisitionDate))}</strong></span>
+      <span class="sbi-metric"><span class="sbi-metric-label">評価</span><strong>${esc(formatMoney(position.marketValue,currency))}</strong></span>
+    </span>
+  </span>`;
+}
+
 function quoteHtml(stock,className="stock-quote"){
   const quote=quoteFor(stock);
   if(!quote) return "";
@@ -325,6 +389,11 @@ function receiveSbiQuotes(event){
     const base=PRICE_DATA?.quotes?.[ticker]||{};
     const change=raw?.change==null?NaN:Number(raw.change);
     const changePct=raw?.changePct==null?NaN:Number(raw.changePct);
+    const optionalNumber=value=>{
+      if(value==null||value==="") return null;
+      const number=Number(value);
+      return Number.isFinite(number)?number:null;
+    };
     quotes[ticker]={
       ...base,
       symbol:base.symbol||ticker,
@@ -333,6 +402,13 @@ function receiveSbiQuotes(event){
       price,
       change:Number.isFinite(change)?change:null,
       changePct:Number.isFinite(changePct)?changePct:null,
+      acquisitionDate:String(raw?.acquisitionDate||"").slice(0,20),
+      quantity:optionalNumber(raw?.quantity),
+      costPrice:optionalNumber(raw?.costPrice),
+      costLabel:raw?.costLabel==="参考単価"?"参考単価":"取得単価",
+      profitLoss:optionalNumber(raw?.profitLoss),
+      profitLossPct:optionalNumber(raw?.profitLossPct),
+      marketValue:optionalNumber(raw?.marketValue),
       marketTime:marketTimeForSbi(stock,capturedAt,base.marketTime),
       fetchedAt:capturedAt,
       source:"SBI証券",
@@ -595,10 +671,12 @@ function renderBoard(){
 }
 
 function stockCard(stock,decision){
+  const sbiPosition=sbiPositionHtml(stock);
   return `<button type="button" class="stock-card" data-stock="${esc(stock.id)}">
     <span class="stock-card-top"><span class="stock-identity"><span class="stock-name" title="${esc(stock.name)}">${esc(stock.name)}</span><span class="stock-symbol">${esc(stock.ticker)}</span></span><span class="stock-card-action">${esc(master("actions",decision?.actionId)?.label||"判断する")}</span></span>
     <span class="stock-card-memo">${esc(decision?.memo||master("subReasons",decision?.subReasonId)?.label||"まだログがありません")}</span>
-    <span class="stock-card-bottom">${quoteHtml(stock,"stock-card-quote")}<span class="stock-card-date">次回 ${decision?.nextReviewDate?formatDate(`${decision.nextReviewDate}T12:00:00`):"未設定"}</span></span>
+    ${sbiPosition}
+    <span class="stock-card-bottom">${sbiPosition?'<span class="sbi-source-label">SBI一時反映</span>':quoteHtml(stock,"stock-card-quote")}<span class="stock-card-date">次回 ${decision?.nextReviewDate?formatDate(`${decision.nextReviewDate}T12:00:00`):"未設定"}</span></span>
   </button>`;
 }
 
