@@ -23,10 +23,10 @@ const clone=value=>JSON.parse(JSON.stringify(value));
 
 const DEFAULT_MASTERS={
   statuses:[
-    {id:"status_hold",label:"ガチホ",active:true,order:10,isDefault:true},
-    {id:"status_profit_watch",label:"利確様子見",active:true,order:20,isDefault:false},
-    {id:"status_loss_watch",label:"損切り様子見",active:true,order:30,isDefault:false},
-    {id:"status_buy_watch",label:"買い見込み／再買い",active:true,order:40,isDefault:false},
+    {id:"status_hold",label:"ガチホ",color:"#48675f",active:true,order:10,isDefault:true},
+    {id:"status_profit_watch",label:"利確様子見",color:"#9b6f2f",active:true,order:20,isDefault:false},
+    {id:"status_loss_watch",label:"損切り様子見",color:"#a65242",active:true,order:30,isDefault:false},
+    {id:"status_buy_watch",label:"買い見込み／再買い",color:"#4a637e",active:true,order:40,isDefault:false},
   ],
   actions:[
     {id:"action_continue",label:"継続",executionSide:null,active:true,order:10,isDefault:true},
@@ -63,6 +63,25 @@ const DEFAULT_MASTERS={
     {id:"review_month",label:"1か月後",days:30,active:true,order:50,isDefault:false},
   ],
 };
+
+const STATUS_FALLBACK_COLORS=["#7a6a8a","#4f7d7d","#8a5f74"];
+const STATUS_NONE_COLOR="#6e6e73";
+
+function sanitizeHexColor(value){
+  return /^#[0-9a-fA-F]{6}$/.test(String(value||""))?String(value).toLowerCase():"";
+}
+
+function defaultStatusColor(statusId,index=0){
+  const preset=DEFAULT_MASTERS.statuses.find(item=>item.id===statusId);
+  return preset?.color||STATUS_FALLBACK_COLORS[index%STATUS_FALLBACK_COLORS.length];
+}
+
+function statusColor(statusOrId){
+  const item=typeof statusOrId==="string"?master("statuses",statusOrId):statusOrId;
+  if(!item) return STATUS_NONE_COLOR;
+  const index=Math.max(0,ordered("statuses",true).findIndex(entry=>entry.id===item.id));
+  return sanitizeHexColor(item.color)||defaultStatusColor(item.id,index);
+}
 
 function seed(){
   return{
@@ -115,6 +134,7 @@ function normalize(data){
       isDefault:item.isDefault===true,
       ...(kind==="actions"?{executionSide:["buy","sell"].includes(item.executionSide)?item.executionSide:null}:{}),
       ...(kind==="reviewPresets"?{days:Number.isFinite(Number(item.days))?Number(item.days):1}:{}),
+      ...(kind==="statuses"?{color:sanitizeHexColor(item.color)||defaultStatusColor(item.id,index)}:{}),
     }));
   });
   return result;
@@ -298,22 +318,6 @@ function sbiPositionHtml(stock){
   </span>`;
 }
 
-const PORTFOLIO_STATUS_COLORS={
-  status_hold:"var(--status-hold)",
-  status_profit_watch:"var(--status-profit)",
-  status_loss_watch:"var(--status-loss)",
-  status_buy_watch:"var(--status-buy)",
-};
-const PORTFOLIO_EXTRA_COLORS=["#7a6a8a","#4f7d7d","#8a5f74"];
-
-function portfolioStatusColor(statusId){
-  if(!statusId) return "var(--sub)";
-  if(PORTFOLIO_STATUS_COLORS[statusId]) return PORTFOLIO_STATUS_COLORS[statusId];
-  const extras=ordered("statuses",true).filter(item=>!PORTFOLIO_STATUS_COLORS[item.id]);
-  const index=extras.findIndex(item=>item.id===statusId);
-  return index>=0?PORTFOLIO_EXTRA_COLORS[index%PORTFOLIO_EXTRA_COLORS.length]:"var(--sub)";
-}
-
 function jpyAmount(value,currency,usdJpy){
   const amount=Number(value);
   if(!Number.isFinite(amount)) return null;
@@ -382,7 +386,7 @@ function renderPortfolio(){
 
   const bar=converted.length?`<div class="portfolio-bar" role="img" aria-label="評価額の構成比">${converted.map(item=>{
     const share=totalJpy>0?item.valueJpy/totalJpy*100:0;
-    return `<span class="pf-seg" style="flex-grow:${Math.max(item.valueJpy,1)};background:${portfolioStatusColor(item.status?.id)}" title="${esc(item.stock.name)} ${share.toFixed(1)}%・${esc(formatMoney(item.valueJpy,"JPY"))}・${esc(item.status?.label||"状態未定")}"></span>`;
+    return `<span class="pf-seg" style="flex-grow:${Math.max(item.valueJpy,1)};background:${statusColor(item.status)}" title="${esc(item.stock.name)} ${share.toFixed(1)}%・${esc(formatMoney(item.valueJpy,"JPY"))}・${esc(item.status?.label||"状態未定")}"></span>`;
   }).join("")}</div>`:"";
 
   const head=`<div class="pf-row pf-head" aria-hidden="true">
@@ -395,7 +399,7 @@ function renderPortfolio(){
     const plAmount=item.profitLossJpy!=null?formatMoney(item.profitLossJpy,"JPY",true):"—";
     const value=item.valueJpy!=null?formatMoney(item.valueJpy,"JPY"):formatMoney(item.marketValue,item.currency);
     return `<button type="button" class="pf-row" data-stock="${esc(item.stock.id)}">
-      <span class="pf-dot" style="background:${portfolioStatusColor(item.status?.id)}"></span>
+      <span class="pf-dot" style="background:${statusColor(item.status)}"></span>
       <span class="pf-name"><span class="stock-name">${esc(item.stock.name)}</span><span class="stock-symbol">${esc(item.stock.ticker)}</span></span>
       <span class="pf-status">${esc(item.status?.label||"状態未定")}</span>
       <span class="pf-share">${esc(share)}</span>
@@ -683,12 +687,6 @@ function selectItems(kind,selected){
   return ordered(kind,true).filter(item=>item.active||item.id===selected);
 }
 
-function statusColor(id){
-  const palette=["#48675f","#9b6f2f","#a65242","#4a637e","#6e5b7e","#5f6870"];
-  const index=Math.max(0,ordered("statuses",true).findIndex(item=>item.id===id));
-  return palette[index%palette.length];
-}
-
 function statusPill(id){
   const item=master("statuses",id);
   return item?`<span class="status-pill" style="background:${statusColor(id)}">${esc(item.label)}</span>`:`<span class="status-pill">未分類</span>`;
@@ -775,7 +773,7 @@ function renderBoard(){
   let html=statuses.map(status=>{
     const list=grouped.get(status.id)||[];
     return `<div class="status-column">
-      <div class="status-column-head"><span class="status-column-title">${esc(status.label)}${status.active?"":"（停止）"}</span><span class="status-column-count">${list.length}</span></div>
+      <div class="status-column-head"><span class="status-column-title"><span class="status-head-dot" style="background:${statusColor(status)}"></span>${esc(status.label)}${status.active?"":"（停止）"}</span><span class="status-column-count">${list.length}</span></div>
       ${list.length?list.map(({stock,decision})=>stockCard(stock,decision)).join(""):'<div class="empty-compact">該当なし</div>'}
     </div>`;
   }).join("");
@@ -849,7 +847,7 @@ function renderLog(){
 }
 
 const MASTER_META={
-  statuses:{title:"状態",prefix:"status"},
+  statuses:{title:"状態",prefix:"status",extra:"color"},
   actions:{title:"判断",prefix:"action",extra:"side"},
   reasons:{title:"理由",prefix:"reason"},
   subReasons:{title:"補助理由",prefix:"sub"},
@@ -889,6 +887,10 @@ function masterExtraInput(meta,item,isAdd){
   const className=isAdd?"master-add-extra":"master-extra";
   if(meta.extra==="side") return `<label class="field ${className}"><span>${isAdd?"売買方向":""}</span><select data-extra="side"><option value=""${!item?.executionSide?" selected":""}>実行なし</option><option value="buy"${item?.executionSide==="buy"?" selected":""}>買い</option><option value="sell"${item?.executionSide==="sell"?" selected":""}>売り</option></select></label>`;
   if(meta.extra==="days") return `<label class="field ${className}"><span>${isAdd?"日数":""}</span><input data-extra="days" type="number" step="1" min="0" value="${item?Number(item.days):1}"></label>`;
+  if(meta.extra==="color"){
+    const value=item?statusColor(item):STATUS_FALLBACK_COLORS[DB.masters.statuses.length%STATUS_FALLBACK_COLORS.length];
+    return `<label class="field ${className}"><span>${isAdd?"色":""}</span><input data-extra="color" type="color" value="${esc(value)}" title="観察ボード・ポートフォリオ全景で使う色"></label>`;
+  }
   return `<div class="${className} master-extra-empty"></div>`;
 }
 
@@ -905,6 +907,7 @@ function saveMasterRow(row){
   const extra=$("[data-extra]",row);
   if(kind==="actions") item.executionSide=extra.value||null;
   if(kind==="reviewPresets") item.days=Math.max(0,Number(extra.value)||0);
+  if(kind==="statuses"&&extra) item.color=sanitizeHexColor(extra.value)||item.color;
   save();renderAll();showView("master");showToast(`${MASTER_META[kind].title}を保存しました`);
 }
 
@@ -918,6 +921,7 @@ function addMasterItem(section){
   const extra=$("[data-extra]",$(".master-add",section));
   if(kind==="actions") item.executionSide=extra.value||null;
   if(kind==="reviewPresets") item.days=Math.max(0,Number(extra.value)||0);
+  if(kind==="statuses") item.color=sanitizeHexColor(extra?.value)||defaultStatusColor(item.id,DB.masters.statuses.length);
   DB.masters[kind].push(item);
   save();renderAll();showView("master");showToast(`${meta.title}を追加しました`);
 }
