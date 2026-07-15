@@ -232,8 +232,18 @@ function quoteHtml(stock,className="stock-quote"){
   const change=Number(quote.changePct);
   const changeText=Number.isFinite(change)?`${change>0?"+":""}${change.toFixed(2)}%`:"";
   const direction=change>0?"up":change<0?"down":"flat";
-  const marketTime=formatMarketTime(quote.marketTime);
-  return `<span class="${className}" title="${esc(PRICE_DATA.source||"参考株価")}・前営業日比・市場時刻 ${esc(formatPriceTime(quote.marketTime||quote.fetchedAt))}"><strong>${esc(formatQuotePrice(quote))}</strong>${changeText?`<span class="price-change ${direction}">${esc(changeText)}</span>`:""}${marketTime?`<small class="quote-time">${esc(marketTime)}時点</small>`:""}</span>`;
+  return `<span class="${className}" title="${esc(PRICE_DATA.source||"参考株価")}・前営業日比・市場時刻 ${esc(formatPriceTime(quote.marketTime||quote.fetchedAt))}"><strong>${esc(formatQuotePrice(quote))}</strong>${changeText?`<span class="price-change ${direction}">${esc(changeText)}</span>`:""}</span>`;
+}
+
+function marketTimeFor(stocks,country){
+  const times=stocks
+    .filter(stock=>stock.country===country)
+    .map(stock=>quoteFor(stock)?.marketTime)
+    .filter(Boolean)
+    .map(value=>new Date(value))
+    .filter(date=>!Number.isNaN(date.getTime()));
+  if(!times.length) return "";
+  return formatMarketTime(new Date(Math.max(...times.map(date=>date.getTime()))));
 }
 
 async function loadPriceData(){
@@ -455,9 +465,11 @@ function updateExecutionFields(){
 
 function renderBoard(){
   const stocks=activeStocks();
-  const updated=formatPriceTime(PRICE_DATA?.updatedAt);
-  $("#stockCount").textContent=`${stocks.length}銘柄${updated?`・取得 ${updated}`:""}`;
-  $("#stockCount").title=updated?`${PRICE_DATA.source||"参考株価"}・ファイル取得 ${updated}。各価格の時刻は銘柄内に表示`:"";
+  const jpTime=marketTimeFor(stocks,"JP");
+  const usTime=marketTimeFor(stocks,"US");
+  const marketTimes=[jpTime&&`日本株：${jpTime}`,usTime&&`アメリカ株：${usTime}`].filter(Boolean);
+  $("#stockCount").textContent=marketTimes.join("　")||`${stocks.length}銘柄`;
+  $("#stockCount").title=marketTimes.length?`${PRICE_DATA.source||"参考株価"}・実際の市場時刻`:"";
   const statuses=ordered("statuses",true);
   const grouped=new Map(statuses.map(status=>[status.id,[]]));
   const unclassified=[];
