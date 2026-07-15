@@ -467,7 +467,7 @@ function renderBoard(){
   const stocks=activeStocks();
   const jpTime=marketTimeFor(stocks,"JP");
   const usTime=marketTimeFor(stocks,"US");
-  const marketTimes=[jpTime&&`日本株：${jpTime}`,usTime&&`アメリカ株：${usTime}`].filter(Boolean);
+  const marketTimes=[jpTime&&`日本株：${jpTime}頃`,usTime&&`米株：${usTime}頃`].filter(Boolean);
   $("#stockCount").textContent=marketTimes.join("　")||`${stocks.length}銘柄`;
   $("#stockCount").title=marketTimes.length?`${PRICE_DATA.source||"参考株価"}・実際の市場時刻`:"";
   const statuses=ordered("statuses",true);
