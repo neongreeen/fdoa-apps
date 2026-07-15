@@ -17,9 +17,15 @@
     if(headerIndex<0) return;
     const headers=[...rows[headerIndex].cells].map(cell=>key(cell.innerText));
     const instrumentIndex=headers.findIndex(text=>text.includes("銘柄")&&text.includes("コード"));
+    const acquisitionDateIndex=headers.findIndex(text=>text==="買付日");
+    const quantityIndex=headers.findIndex(text=>text==="数量");
+    const costIndex=headers.findIndex(text=>text==="取得単価"||text==="参考単価");
     const priceIndex=headers.findIndex(text=>text==="現在値");
     const changeIndex=headers.findIndex(text=>text==="前日比");
     const changePctIndex=headers.findIndex(text=>text.includes("前日比")&&text.includes("%"));
+    const profitLossIndex=headers.findIndex(text=>text==="損益");
+    const profitLossPctIndex=headers.findIndex(text=>text.includes("損益")&&text.includes("%"));
+    const marketValueIndex=headers.findIndex(text=>text==="評価額");
     if(Math.min(instrumentIndex,priceIndex,changeIndex,changePctIndex)<0) return;
     rows.slice(headerIndex+1).forEach(row=>{
       const cells=[...row.cells];
@@ -33,6 +39,13 @@
         price,
         change:number(cells[changeIndex].innerText),
         changePct:number(cells[changePctIndex].innerText),
+        acquisitionDate:acquisitionDateIndex>=0&&cells[acquisitionDateIndex]?clean(cells[acquisitionDateIndex].innerText):"",
+        quantity:quantityIndex>=0&&cells[quantityIndex]?number(cells[quantityIndex].innerText):null,
+        costPrice:costIndex>=0&&cells[costIndex]?number(cells[costIndex].innerText):null,
+        costLabel:costIndex>=0?headers[costIndex]:"",
+        profitLoss:profitLossIndex>=0&&cells[profitLossIndex]?number(cells[profitLossIndex].innerText):null,
+        profitLossPct:profitLossPctIndex>=0&&cells[profitLossPctIndex]?number(cells[profitLossPctIndex].innerText):null,
+        marketValue:marketValueIndex>=0&&cells[marketValueIndex]?number(cells[marketValueIndex].innerText):null,
       };
     });
   });

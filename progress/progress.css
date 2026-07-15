@@ -166,6 +166,17 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .stock-card .stock-symbol{flex:0 0 auto;font-size:8px;line-height:1.2}
 .stock-card .stock-card-action{flex:0 0 auto;font-size:9px;line-height:1.2;color:var(--progress-blue);font-weight:700;white-space:nowrap}
 .stock-card .stock-card-memo{font-size:9px;color:var(--sub);margin-top:2px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sbi-position{display:block;margin-top:4px;padding-top:4px;border-top:1px solid #eeeeeb;font-variant-numeric:tabular-nums}
+.sbi-position-main{display:flex;align-items:baseline;justify-content:space-between;gap:6px;min-width:0}
+.sbi-position-details{display:flex;align-items:baseline;gap:3px 8px;flex-wrap:wrap;margin-top:2px}
+.sbi-metric{display:inline-flex;align-items:baseline;gap:3px;min-width:0;white-space:nowrap;font-size:8px;line-height:1.15;color:var(--sub)}
+.sbi-metric strong{font-size:9px;color:var(--ink)}
+.sbi-metric-label{color:var(--sub)}
+.sbi-profit{margin-left:auto}
+.sbi-profit.up strong,.sbi-metric strong.up{color:var(--accent)}
+.sbi-profit.down strong,.sbi-metric strong.down{color:var(--danger)}
+.sbi-profit.flat strong,.sbi-metric strong.flat{color:var(--sub)}
+.sbi-source-label{font-size:8px;line-height:1.2;color:var(--sub);white-space:nowrap}
 .stock-card .stock-card-bottom{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:2px;min-width:0}
 .stock-card .stock-card-date{font-size:8px;line-height:1.2;color:var(--sub);white-space:nowrap}
 .stock-card-quote,.stock-table-quote{display:inline-flex;align-items:baseline;gap:4px;min-width:0;white-space:nowrap;font-variant-numeric:tabular-nums}
