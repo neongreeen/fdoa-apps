@@ -813,13 +813,17 @@ function renderBoard(){
     if(decision&&grouped.has(decision.statusId)) grouped.get(decision.statusId).push({stock,decision});
     else unclassified.push({stock,decision});
   });
-  let html=statuses.map(status=>{
+  const statusBox=status=>{
     const list=grouped.get(status.id)||[];
     return `<div class="status-column${list.length?"":" is-empty"}">
       <div class="status-column-head"><span class="status-column-title"><span class="status-head-dot" style="background:${statusColor(status)}"></span>${esc(status.label)}${status.active?"":"（停止）"}</span><span class="status-column-count">${list.length}</span></div>
       ${list.length?list.map(({stock,decision})=>stockCard(stock,decision)).join(""):'<div class="empty-compact">該当なし</div>'}
     </div>`;
-  }).join("");
+  };
+  // 並び順の1〜3番目は各自の列、4番目以降は4列目に縦積み（並び替え＝項目マスター）
+  const columns=[[],[],[],[]];
+  statuses.forEach((status,index)=>columns[Math.min(index,3)].push(status));
+  let html=columns.filter(col=>col.length).map(col=>`<div class="board-col">${col.map(statusBox).join("")}</div>`).join("");
   if(unclassified.length){
     html+=`<div class="no-status-column"><strong>まだ状態を決めていない銘柄</strong><div class="no-status-list">${unclassified.map(({stock,decision})=>stockCard(stock,decision)).join("")}</div></div>`;
   }
