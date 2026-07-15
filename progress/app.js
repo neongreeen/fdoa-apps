@@ -202,6 +202,14 @@ function formatPriceTime(value){
   return new Intl.DateTimeFormat("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}).format(date);
 }
 
+function formatMarketTime(value){
+  if(!value) return "";
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime())) return "";
+  const sameDay=localDate(date)===localDate();
+  return new Intl.DateTimeFormat("ja-JP",sameDay?{hour:"2-digit",minute:"2-digit"}:{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}).format(date);
+}
+
 function quoteFor(stock){
   if(!stock||!PRICE_DATA?.quotes) return null;
   return PRICE_DATA.quotes[String(stock.ticker||"").toUpperCase()]||null;
@@ -224,7 +232,8 @@ function quoteHtml(stock,className="stock-quote"){
   const change=Number(quote.changePct);
   const changeText=Number.isFinite(change)?`${change>0?"+":""}${change.toFixed(2)}%`:"";
   const direction=change>0?"up":change<0?"down":"flat";
-  return `<span class="${className}" title="${esc(PRICE_DATA.source||"参考株価")}・${esc(formatPriceTime(quote.marketTime||quote.fetchedAt))}"><strong>${esc(formatQuotePrice(quote))}</strong>${changeText?`<span class="price-change ${direction}">${esc(changeText)}</span>`:""}</span>`;
+  const marketTime=formatMarketTime(quote.marketTime);
+  return `<span class="${className}" title="${esc(PRICE_DATA.source||"参考株価")}・前営業日比・市場時刻 ${esc(formatPriceTime(quote.marketTime||quote.fetchedAt))}"><strong>${esc(formatQuotePrice(quote))}</strong>${changeText?`<span class="price-change ${direction}">${esc(changeText)}</span>`:""}${marketTime?`<small class="quote-time">${esc(marketTime)}時点</small>`:""}</span>`;
 }
 
 async function loadPriceData(){
@@ -447,8 +456,8 @@ function updateExecutionFields(){
 function renderBoard(){
   const stocks=activeStocks();
   const updated=formatPriceTime(PRICE_DATA?.updatedAt);
-  $("#stockCount").textContent=`${stocks.length}銘柄${updated?`・株価 ${updated}`:""}`;
-  $("#stockCount").title=updated?`${PRICE_DATA.source||"参考株価"}・取得 ${updated}`:"";
+  $("#stockCount").textContent=`${stocks.length}銘柄${updated?`・取得 ${updated}`:""}`;
+  $("#stockCount").title=updated?`${PRICE_DATA.source||"参考株価"}・ファイル取得 ${updated}。各価格の時刻は銘柄内に表示`:"";
   const statuses=ordered("statuses",true);
   const grouped=new Map(statuses.map(status=>[status.id,[]]));
   const unclassified=[];
