@@ -424,14 +424,17 @@ function renderPortfolio(){
   $("#portfolioMeta").textContent=`SBI一時反映（${formatMarketTime(SBI_PRICE_DATA.updatedAt)}時点・再読み込みで消えます）${rate}`;
   $("#portfolioBody").innerHTML=tiles+bar+rows+note;
   panel.hidden=false;
-  // 帯に収まらない銘柄名は頭文字に縮め、それも無理なら消す（ツールチップで見る）
-  $$(".pf-seg",panel).forEach(seg=>{
-    const label=$(".pf-seg-label",seg);
-    if(!label||label.scrollWidth<=seg.clientWidth-4) return;
-    label.textContent=[...label.textContent.trim()][0]||"";
-    label.classList.add("pf-seg-initial");
-    if(label.scrollWidth>seg.clientWidth-2) label.remove();
-  });
+  // 帯に収まらない銘柄名は頭文字に縮め、それも無理なら消す（ツールチップで見る）。
+  // ビューが非表示だと幅が0に測れて全ラベルが消えるため、表示中のみ実行（再表示時はshowViewが再描画）
+  if(panel.offsetParent!==null){
+    $$(".pf-seg",panel).forEach(seg=>{
+      const label=$(".pf-seg-label",seg);
+      if(!label||label.scrollWidth<=seg.clientWidth-4) return;
+      label.textContent=[...label.textContent.trim()][0]||"";
+      label.classList.add("pf-seg-initial");
+      if(label.scrollWidth>seg.clientWidth-2) label.remove();
+    });
+  }
   $$(".pf-row",panel).forEach(button=>button.addEventListener("click",()=>goToDecision(button.dataset.stock)));
 }
 
@@ -720,6 +723,7 @@ function currentView(){return $("nav button.active")?.dataset.view||"today";}
 function showView(name){
   $$("nav button[data-view]").forEach(button=>button.classList.toggle("active",button.dataset.view===name));
   $$("main .view").forEach(view=>view.classList.toggle("active",view.id===`view-${name}`));
+  if(name==="observe"&&SBI_PRICE_DATA) renderPortfolio();
   window.scrollTo({top:0,behavior:"smooth"});
 }
 
