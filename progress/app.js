@@ -261,6 +261,24 @@ function zonedTimeParts(value,timeZone){
   return Object.fromEntries(parts.filter(part=>part.type!=="literal").map(part=>[part.type,part.value]));
 }
 
+function zonedMarketClose(parts,timeZone,hour,minute,dayOffset=0){
+  const date=new Date(`${parts.year}-${parts.month}-${parts.day}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate()+dayOffset);
+  const day=new Intl.DateTimeFormat("en-CA",{timeZone,year:"numeric",month:"2-digit",day:"2-digit"})
+    .formatToParts(date)
+    .reduce((result,part)=>{if(part.type!=="literal") result[part.type]=part.value;return result;},{});
+  const offset=timeZone==="Asia/Tokyo"?"+09:00":(() => {
+    const utcGuess=new Date(`${day.year}-${day.month}-${day.day}T${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}:00Z`);
+    const local=zonedTimeParts(utcGuess,timeZone);
+    const localAsUtc=Date.UTC(Number(local.year),Number(local.month)-1,Number(local.day),Number(local.hour),Number(local.minute));
+    const minutesOffset=Math.round((localAsUtc-utcGuess.getTime())/60000);
+    const sign=minutesOffset>=0?"+":"-";
+    const absolute=Math.abs(minutesOffset);
+    return `${sign}${String(Math.floor(absolute/60)).padStart(2,"0")}:${String(absolute%60).padStart(2,"0")}`;
+  })();
+  return new Date(`${day.year}-${day.month}-${day.day}T${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}:00${offset}`).toISOString();
+}
+
 function marketTimeForSbi(stock,capturedAt,fallback){
   const captured=new Date(capturedAt);
   if(Number.isNaN(captured.getTime())) return fallback||null;
@@ -271,13 +289,16 @@ function marketTimeForSbi(stock,capturedAt,fallback){
   const minutes=Number(parts.hour)*60+Number(parts.minute);
   if(stock.country==="JP"){
     if(weekday&&minutes>=9*60&&minutes<=15*60+30) return captured.toISOString();
-    if(weekday&&minutes>15*60+30){
-      const fallbackParts=fallback?zonedTimeParts(fallback,timeZone):null;
-      const sameSession=fallbackParts&&fallbackParts.year===parts.year&&fallbackParts.month===parts.month&&fallbackParts.day===parts.day;
-      if(sameSession) return new Date(`${parts.year}-${parts.month}-${parts.day}T15:30:00+09:00`).toISOString();
-    }
+    if(weekday&&minutes>15*60+30) return zonedMarketClose(parts,timeZone,15,30);
+    const dayOffset=parts.weekday==="Mon"?-3:parts.weekday==="Sun"?-2:-1;
+    return zonedMarketClose(parts,timeZone,15,30,dayOffset);
   }
-  if(stock.country==="US"&&weekday&&minutes>=9*60+30&&minutes<=16*60) return captured.toISOString();
+  if(stock.country==="US"){
+    if(weekday&&minutes>=9*60+30&&minutes<=16*60) return captured.toISOString();
+    if(weekday&&minutes>16*60) return zonedMarketClose(parts,timeZone,16,0);
+    const dayOffset=parts.weekday==="Mon"?-3:parts.weekday==="Sun"?-2:-1;
+    return zonedMarketClose(parts,timeZone,16,0,dayOffset);
+  }
   return fallback||captured.toISOString();
 }
 
