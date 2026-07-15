@@ -97,6 +97,7 @@ function seed(){
     stocks:[],
     decisions:[],
     executions:[],
+    reviews:[],
     masters:clone(DEFAULT_MASTERS),
     settings:{},
   };
@@ -129,6 +130,9 @@ function normalize(data){
       createdAt:execution.createdAt||execution.executedAt,
       revokedAt:execution.revokedAt||null,
     })),
+    reviews:(Array.isArray(data.reviews)?data.reviews:[])
+      .map(review=>({id:review.id||uid("review"),checkedAt:review.checkedAt}))
+      .filter(review=>review.checkedAt),
     masters:{},
     settings:data.settings&&typeof data.settings==="object"?data.settings:{},
   };
@@ -792,6 +796,8 @@ function updateExecutionFields(){
 
 function renderBoard(){
   renderPortfolio();
+  const lastReview=DB.reviews.slice().sort((a,b)=>new Date(b.checkedAt)-new Date(a.checkedAt))[0];
+  $("#lastCheckLabel").textContent=lastReview?`最終確認 ${formatDate(lastReview.checkedAt,true)}`:"";
   const stocks=activeStocks();
   const jpTime=marketTimeFor(stocks,"JP");
   const usTime=marketTimeFor(stocks,"US");
@@ -1117,6 +1123,11 @@ function bindEvents(){
   });
   $("#ghSyncNowBtn").addEventListener("click",async()=>{await store.syncNow();await loadPriceData();});
   $("#ghDisconnectBtn").addEventListener("click",()=>{if(confirm("この端末からGitHub同期を切断しますか？")){store.disconnect();PRICE_DATA=null;SBI_PRICE_DATA=null;renderBoard();renderStockTable();}});
+  $("#btnFullCheck").addEventListener("click",()=>{
+    DB.reviews.push({id:uid("review"),checkedAt:new Date().toISOString()});
+    save();renderBoard();
+    showToast("全体確認を記録しました。変わった銘柄だけ個別に判断を記録してください");
+  });
   $("#btnCopyBookmarklet").addEventListener("click",async()=>{
     try{
       const response=await fetch("sbi-bookmarklet.js",{cache:"no-cache"});

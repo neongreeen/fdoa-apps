@@ -205,6 +205,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .pf-value{text-align:right;font-variant-numeric:tabular-nums;font-weight:650}
 .pf-note{font-size:11px;color:var(--sub);margin-top:8px}
 .bookmarklet-steps{margin:10px 0 0 18px;display:flex;flex-direction:column;gap:6px}
+.board-check{display:flex;align-items:center;gap:10px;flex:none}
+.last-check{font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}
 @media(max-width:640px){
   .portfolio-summary{grid-template-columns:1fr;gap:8px}
   .pf-row{grid-template-columns:10px minmax(0,1.5fr) 56px minmax(96px,1fr);font-size:12px}

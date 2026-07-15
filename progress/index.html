@@ -7,7 +7,7 @@
   <title>Progress Portfolio</title>
   <link rel="icon" href="../jikyu/favicon.ico" sizes="any">
   <link rel="stylesheet" href="../shared/base.css?v=20260714-1532">
-  <link rel="stylesheet" href="progress.css?v=20260715-2320">
+  <link rel="stylesheet" href="progress.css?v=20260716-0010">
 </head>
 <body>
 <header>
@@ -96,7 +96,11 @@
           <h2>観察ボード</h2>
           <p>現在状態は各銘柄の最新判断から表示</p>
         </div>
-        <span class="count-label" id="stockCount"></span>
+        <div class="board-check">
+          <span class="count-label" id="stockCount"></span>
+          <span class="last-check" id="lastCheckLabel"></span>
+          <button type="button" class="btn sec sm" id="btnFullCheck">全体確認した</button>
+        </div>
       </div>
       <div id="statusBoard" class="status-board"></div>
     </div>
@@ -268,6 +272,6 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../shared/store.js?v=20260714-1532"></script>
-<script src="app.js?v=20260715-2350"></script>
+<script src="app.js?v=20260716-0010"></script>
 </body>
 </html>
