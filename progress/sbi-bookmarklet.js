@@ -38,7 +38,11 @@
   });
   const list=Object.values(quotes);
   if(!list.length){alert("SBIの株式ポートフォリオを読み取れませんでした");return;}
-  const target=window.open("https://neongreeen.github.io/fdoa-apps/progress/","progress-portfolio");
+  let target=window.opener&&!window.opener.closed?window.opener:window.__progressPortfolioTarget;
+  if(!target||target.closed){
+    target=window.open("https://neongreeen.github.io/fdoa-apps/progress/","_blank");
+    window.__progressPortfolioTarget=target;
+  }
   if(!target){alert("Progress Portfolioを開けませんでした");return;}
   const payload={type:"progress-portfolio:sbi-quotes",id:`sbi_${Date.now()}`,capturedAt:new Date().toISOString(),quotes:list};
   const send=()=>target.postMessage(payload,"https://neongreeen.github.io");

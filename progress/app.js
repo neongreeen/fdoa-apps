@@ -394,7 +394,7 @@ function openSbiWindow(url){
   try{
     popup.resizeTo(width,availableHeight);
     popup.moveTo(left,availableTop);
-    popup.opener=null;
+    if(!isSbiOrigin(new URL(safeUrl).origin)) popup.opener=null;
     popup.location.replace(safeUrl);
     popup.focus();
   }catch(error){
