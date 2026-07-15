@@ -175,6 +175,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .price-change.up{color:var(--accent)}
 .price-change.down{color:var(--danger)}
 .price-change.flat{color:var(--sub)}
+.quote-time{font-size:7px;line-height:1.1;color:var(--sub);font-weight:500}
 .no-status-column{grid-column:1/-1;background:#f8f8f6;border:1px dashed var(--line);border-radius:12px;padding:14px}
 .no-status-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
 
@@ -198,7 +199,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .instrument-result small,.instrument-country{font-size:11px;color:var(--sub)}
 .instrument-empty{padding:11px 12px;color:var(--sub);font-size:13px}
 .stock-table{border-top:1px solid var(--line)}
-.stock-table-row{display:grid;grid-template-columns:minmax(140px,1.2fr) minmax(95px,.72fr) .8fr .45fr .45fr .5fr auto;gap:12px;align-items:center;padding:10px 2px;border-bottom:1px solid #eeeeeb}
+.stock-table-row{display:grid;grid-template-columns:minmax(140px,1.2fr) minmax(150px,.9fr) .8fr .45fr .45fr .5fr auto;gap:12px;align-items:center;padding:10px 2px;border-bottom:1px solid #eeeeeb}
 .stock-table-row.inactive{opacity:.52}
 .stock-table-quote{font-size:11px;line-height:1.2}
 .stock-table-quote strong{font-size:11px}
@@ -334,6 +335,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{
   .stock-table-row{grid-template-columns:minmax(120px,1fr) minmax(88px,.7fr) auto auto}
   .stock-table-row .stock-market,.stock-table-row .stock-currency{display:none}
   .stock-table-row .stock-observation-state{display:none}
+  .stock-table-row .quote-time{display:none}
   .log-filters{display:grid;grid-template-columns:1fr 1fr}
   .log-filters select,.log-filters .btn{width:100%;min-width:0}
   .log-row{grid-template-columns:88px minmax(105px,1fr) minmax(85px,.7fr);gap:8px;padding:11px 0}
