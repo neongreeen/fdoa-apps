@@ -142,8 +142,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{
   gap:8px;
   align-items:flex-start;
 }
-.status-column{flex:1 1 0;min-width:0;background:#f8f8f6;border:1px solid var(--line);border-radius:8px;padding:6px;min-height:82px}
-.status-column.is-empty{flex:0 0 auto;min-height:0}
+.status-column{flex:0 0 auto;min-width:0;background:#f8f8f6;border:1px solid var(--line);border-radius:8px;padding:6px;min-height:82px}
+.status-column.is-empty{min-height:0}
 .status-column.is-empty .status-column-head{gap:8px}
 .status-column.is-empty .status-column-title{overflow:visible;text-overflow:clip}
 .status-column.is-empty .empty-compact{padding:2px 1px 1px;text-align:left}
@@ -151,11 +151,15 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .status-column-title{font-size:10px;line-height:1.2;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .status-column-count{font-size:9px;line-height:1.2;color:var(--sub);font-variant-numeric:tabular-nums}
 .stock-card{
-  width:100%;
+  width:140px;
+  aspect-ratio:1/1;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
   border:1px solid var(--line);
   background:#fff;
   border-radius:7px;
-  padding:6px;
+  padding:7px;
   text-align:left;
   cursor:pointer;
   margin-top:4px;
@@ -164,12 +168,12 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 }
 .stock-card:first-of-type{margin-top:0}
 .stock-card:hover{border-color:#c4c9c6;box-shadow:0 4px 12px rgba(0,0,0,.05);transform:translateY(-1px)}
-.stock-card .stock-card-top{display:flex;justify-content:space-between;gap:6px;align-items:center;min-width:0}
-.stock-card .stock-identity{display:flex;align-items:baseline;gap:4px;flex:1 1 auto;min-width:0;overflow:hidden}
-.stock-card .stock-name{flex:1 1 auto;min-width:0;font-size:10px;line-height:1.2}
+.stock-card .stock-card-top{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0}
+.stock-card .stock-identity{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 4px;min-width:0;max-width:100%}
+.stock-card .stock-name{min-width:0;font-size:11px;line-height:1.25;font-weight:700;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .stock-card .stock-symbol{flex:0 0 auto;font-size:8px;line-height:1.2}
 .stock-card .stock-card-action{flex:0 0 auto;font-size:9px;line-height:1.2;color:var(--progress-blue);font-weight:700;white-space:nowrap}
-.stock-card .stock-card-memo{font-size:9px;color:var(--sub);margin-top:2px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stock-card .stock-card-memo{font-size:9px;color:var(--sub);margin-top:1px;line-height:1.3;white-space:normal;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .sbi-position{display:block;margin-top:4px;padding-top:4px;border-top:1px solid #eeeeeb;font-variant-numeric:tabular-nums}
 .sbi-position-main{display:flex;align-items:baseline;justify-content:space-between;gap:6px;min-width:0}
 .sbi-position-details{display:flex;align-items:baseline;gap:3px 8px;flex-wrap:wrap;margin-top:2px}
@@ -222,7 +226,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .sbi-profit.down strong,.sbi-metric strong.down{color:var(--danger)}
 .sbi-profit.flat strong,.sbi-metric strong.flat{color:var(--sub)}
 .sbi-source-label{font-size:8px;line-height:1.2;color:var(--sub);white-space:nowrap}
-.stock-card .stock-card-bottom{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:2px;min-width:0}
+.stock-card .stock-card-bottom{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:2px 5px;margin-top:auto;padding-top:2px;min-width:0}
 .stock-card .stock-card-date{font-size:8px;line-height:1.2;color:var(--sub);white-space:nowrap}
 .stock-card-quote,.stock-table-quote{display:inline-flex;align-items:baseline;gap:4px;min-width:0;white-space:nowrap;font-variant-numeric:tabular-nums}
 .stock-card-quote{font-size:9px;line-height:1.2}
@@ -390,6 +394,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{
   .timeline-memo{grid-column:2/-1;margin-top:-5px}
   .status-board{gap:8px}
   .status-column{flex-basis:calc(50% - 4px);min-height:0}
+  .stock-card{width:100%}
   .stock-form{grid-template-columns:1fr 1fr;gap:10px 8px}
   .stock-form .field:first-child,.stock-form .stock-url-field,.stock-form .btn{grid-column:span 2}
   .stock-table-row{grid-template-columns:minmax(120px,1fr) minmax(88px,.7fr) auto auto}
@@ -423,4 +428,5 @@ button:focus-visible,input:focus-visible,select:focus-visible{
   .summary-grid{grid-template-columns:1fr 1fr}
   .summary-card{padding:11px}
   .status-column{flex-basis:100%}
+  .stock-card{width:100%;aspect-ratio:auto}
 }
