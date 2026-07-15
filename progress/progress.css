@@ -77,9 +77,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 #view-observe .panel{padding:10px 12px;margin-bottom:8px}
 #view-observe .panel-heading{gap:8px;margin-bottom:6px}
 #view-observe .panel-heading>div{display:flex;align-items:baseline;gap:7px;min-width:0}
-#view-observe .panel-heading h2{font-size:14px;line-height:1.2;margin-bottom:0}
+#view-observe .panel-heading h2{font-size:14px;line-height:1.2;margin-bottom:0;white-space:nowrap}
 #view-observe .panel-heading p{font-size:9px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#view-observe .count-label,#view-observe .save-state{font-size:9px;line-height:1.2;padding:2px 7px}
+#view-observe .count-label,#view-observe .save-state{font-size:9px;line-height:1.2;padding:2px 7px;white-space:nowrap}
 #view-observe .decision-grid{gap:5px 6px}
 #view-observe .field{gap:2px}
 #view-observe .field>span{font-size:9px;line-height:1.15}
@@ -92,9 +92,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .compact-admin-view .panel{padding:10px 12px;margin-bottom:8px}
 .compact-admin-view .panel-heading{align-items:center;gap:8px;margin-bottom:6px}
 .compact-admin-view .panel-heading>div{display:flex;align-items:baseline;gap:7px;min-width:0}
-.compact-admin-view .panel-heading h2{font-size:14px;line-height:1.2;margin-bottom:0}
+.compact-admin-view .panel-heading h2{font-size:14px;line-height:1.2;margin-bottom:0;white-space:nowrap}
 .compact-admin-view .panel-heading p{font-size:9px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.compact-admin-view .count-label{font-size:9px;line-height:1.2;padding:2px 7px}
+.compact-admin-view .count-label{font-size:9px;line-height:1.2;padding:2px 7px;white-space:nowrap}
 .compact-admin-view .field{gap:2px}
 .compact-admin-view .field>span{font-size:9px;line-height:1.15}
 .compact-admin-view input:not([type="checkbox"]):not([type="radio"]),.compact-admin-view select{padding:5px 7px;border-radius:7px;font-size:12px;line-height:1.2}
@@ -166,7 +166,15 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .stock-card .stock-symbol{flex:0 0 auto;font-size:8px;line-height:1.2}
 .stock-card .stock-card-action{flex:0 0 auto;font-size:9px;line-height:1.2;color:var(--progress-blue);font-weight:700;white-space:nowrap}
 .stock-card .stock-card-memo{font-size:9px;color:var(--sub);margin-top:2px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stock-card .stock-card-date{font-size:8px;line-height:1.2;color:var(--sub);margin-top:2px;white-space:nowrap}
+.stock-card .stock-card-bottom{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:2px;min-width:0}
+.stock-card .stock-card-date{font-size:8px;line-height:1.2;color:var(--sub);white-space:nowrap}
+.stock-card-quote,.stock-table-quote{display:inline-flex;align-items:baseline;gap:4px;min-width:0;white-space:nowrap;font-variant-numeric:tabular-nums}
+.stock-card-quote{font-size:9px;line-height:1.2}
+.stock-card-quote strong{font-size:10px}
+.price-change{font-weight:700}
+.price-change.up{color:var(--accent)}
+.price-change.down{color:var(--danger)}
+.price-change.flat{color:var(--sub)}
 .no-status-column{grid-column:1/-1;background:#f8f8f6;border:1px dashed var(--line);border-radius:12px;padding:14px}
 .no-status-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
 
@@ -190,8 +198,12 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .instrument-result small,.instrument-country{font-size:11px;color:var(--sub)}
 .instrument-empty{padding:11px 12px;color:var(--sub);font-size:13px}
 .stock-table{border-top:1px solid var(--line)}
-.stock-table-row{display:grid;grid-template-columns:minmax(140px,1.2fr) .8fr .55fr .55fr .55fr auto;gap:12px;align-items:center;padding:10px 2px;border-bottom:1px solid #eeeeeb}
+.stock-table-row{display:grid;grid-template-columns:minmax(140px,1.2fr) minmax(95px,.72fr) .8fr .45fr .45fr .5fr auto;gap:12px;align-items:center;padding:10px 2px;border-bottom:1px solid #eeeeeb}
 .stock-table-row.inactive{opacity:.52}
+.stock-table-quote{font-size:11px;line-height:1.2}
+.stock-table-quote strong{font-size:11px}
+.stock-table-quote .price-change{font-size:9px}
+.stock-table-quote.empty-quote{color:var(--sub)}
 .stock-links{display:flex;gap:8px;font-size:12px}
 .stock-links a{color:var(--progress-blue);font-weight:700;text-decoration:none}
 .settings-form{display:grid;grid-template-columns:minmax(240px,1fr) auto auto;gap:9px;align-items:end;margin-bottom:9px}
@@ -209,6 +221,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 #view-stocks .stock-table-row .stock-name{font-size:10px;line-height:1.2}
 #view-stocks .stock-table-row .stock-symbol{font-size:8px;line-height:1.2}
 #view-stocks .stock-links{gap:5px;font-size:9px}
+#view-stocks .stock-table-quote{font-size:9px}
+#view-stocks .stock-table-quote strong{font-size:10px}
+#view-stocks .stock-table-quote .price-change{font-size:8px}
 #view-stocks .stock-table-row .btn{font-size:9px;padding:4px 7px;min-height:25px}
 
 #view-master .settings-form{gap:5px;margin-bottom:4px}
@@ -316,8 +331,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{
   .status-column{min-height:0}
   .stock-form{grid-template-columns:1fr 1fr;gap:10px 8px}
   .stock-form .field:first-child,.stock-form .stock-url-field,.stock-form .btn{grid-column:span 2}
-  .stock-table-row{grid-template-columns:minmax(120px,1fr) .65fr auto}
+  .stock-table-row{grid-template-columns:minmax(120px,1fr) minmax(88px,.7fr) auto auto}
   .stock-table-row .stock-market,.stock-table-row .stock-currency{display:none}
+  .stock-table-row .stock-observation-state{display:none}
   .log-filters{display:grid;grid-template-columns:1fr 1fr}
   .log-filters select,.log-filters .btn{width:100%;min-width:0}
   .log-row{grid-template-columns:88px minmax(105px,1fr) minmax(85px,.7fr);gap:8px;padding:11px 0}
