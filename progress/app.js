@@ -135,8 +135,10 @@ let toastTimer=null;
 let INSTRUMENTS=[];
 let instrumentMeta=[];
 let PRICE_DATA=null;
+let SBI_PRICE_DATA=null;
 let priceLoadedAt=0;
 let priceLoading=false;
+let lastSbiImportId="";
 
 function save(){
   DB.meta.schemaVersion=CONFIG.schemaVersion;
@@ -211,8 +213,14 @@ function formatMarketTime(value){
 }
 
 function quoteFor(stock){
-  if(!stock||!PRICE_DATA?.quotes) return null;
-  return PRICE_DATA.quotes[String(stock.ticker||"").toUpperCase()]||null;
+  if(!stock) return null;
+  const ticker=String(stock.ticker||"").toUpperCase();
+  return SBI_PRICE_DATA?.quotes?.[ticker]||PRICE_DATA?.quotes?.[ticker]||null;
+}
+
+function quoteSource(stock){
+  const ticker=String(stock?.ticker||"").toUpperCase();
+  return SBI_PRICE_DATA?.quotes?.[ticker]?SBI_PRICE_DATA.source:(PRICE_DATA?.source||"参考株価");
 }
 
 function formatQuotePrice(quote){
@@ -232,7 +240,7 @@ function quoteHtml(stock,className="stock-quote"){
   const change=Number(quote.changePct);
   const changeText=Number.isFinite(change)?`${change>0?"+":""}${change.toFixed(2)}%`:"";
   const direction=change>0?"up":change<0?"down":"flat";
-  return `<span class="${className}" title="${esc(PRICE_DATA.source||"参考株価")}・前営業日比・市場時刻 ${esc(formatPriceTime(quote.marketTime||quote.fetchedAt))}"><strong>${esc(formatQuotePrice(quote))}</strong>${changeText?`<span class="price-change ${direction}">${esc(changeText)}</span>`:""}</span>`;
+  return `<span class="${className}" title="${esc(quoteSource(stock))}・前営業日比・市場時刻 ${esc(formatPriceTime(quote.marketTime||quote.fetchedAt))}"><strong>${esc(formatQuotePrice(quote))}</strong>${changeText?`<span class="price-change ${direction}">${esc(changeText)}</span>`:""}</span>`;
 }
 
 function marketTimeFor(stocks,country){
@@ -244,6 +252,78 @@ function marketTimeFor(stocks,country){
     .filter(date=>!Number.isNaN(date.getTime()));
   if(!times.length) return "";
   return formatMarketTime(new Date(Math.max(...times.map(date=>date.getTime()))));
+}
+
+function zonedTimeParts(value,timeZone){
+  const parts=new Intl.DateTimeFormat("en-CA",{
+    timeZone,year:"numeric",month:"2-digit",day:"2-digit",weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23",
+  }).formatToParts(new Date(value));
+  return Object.fromEntries(parts.filter(part=>part.type!=="literal").map(part=>[part.type,part.value]));
+}
+
+function marketTimeForSbi(stock,capturedAt,fallback){
+  const captured=new Date(capturedAt);
+  if(Number.isNaN(captured.getTime())) return fallback||null;
+  const timeZone=stock.country==="JP"?"Asia/Tokyo":stock.country==="US"?"America/New_York":null;
+  if(!timeZone) return fallback||captured.toISOString();
+  const parts=zonedTimeParts(captured,timeZone);
+  const weekday=!['Sat','Sun'].includes(parts.weekday);
+  const minutes=Number(parts.hour)*60+Number(parts.minute);
+  if(stock.country==="JP"){
+    if(weekday&&minutes>=9*60&&minutes<=15*60+30) return captured.toISOString();
+    if(weekday&&minutes>15*60+30){
+      const fallbackParts=fallback?zonedTimeParts(fallback,timeZone):null;
+      const sameSession=fallbackParts&&fallbackParts.year===parts.year&&fallbackParts.month===parts.month&&fallbackParts.day===parts.day;
+      if(sameSession) return new Date(`${parts.year}-${parts.month}-${parts.day}T15:30:00+09:00`).toISOString();
+    }
+  }
+  if(stock.country==="US"&&weekday&&minutes>=9*60+30&&minutes<=16*60) return captured.toISOString();
+  return fallback||captured.toISOString();
+}
+
+function isSbiOrigin(origin){
+  try{
+    const url=new URL(origin);
+    return url.protocol==="https:"&&(url.hostname==="sbisec.co.jp"||url.hostname.endsWith(".sbisec.co.jp"));
+  }catch(error){return false;}
+}
+
+function receiveSbiQuotes(event){
+  const message=event.data;
+  if(!isSbiOrigin(event.origin)||!message||message.type!=="progress-portfolio:sbi-quotes"||!Array.isArray(message.quotes)) return;
+  if(message.id&&message.id===lastSbiImportId) return;
+  const captured=new Date(message.capturedAt||Date.now());
+  if(Number.isNaN(captured.getTime())) return;
+  const capturedAt=captured.toISOString();
+  const quotes={};
+  message.quotes.forEach(raw=>{
+    const ticker=String(raw?.ticker||"").trim().toUpperCase();
+    const stock=DB.stocks.find(item=>item.active!==false&&item.ticker.toUpperCase()===ticker);
+    const price=Number(raw?.price);
+    if(!stock||!Number.isFinite(price)||price<=0) return;
+    const base=PRICE_DATA?.quotes?.[ticker]||{};
+    const change=raw?.change==null?NaN:Number(raw.change);
+    const changePct=raw?.changePct==null?NaN:Number(raw.changePct);
+    quotes[ticker]={
+      ...base,
+      symbol:base.symbol||ticker,
+      name:base.name||stock.name,
+      currency:stock.currency||base.currency,
+      price,
+      change:Number.isFinite(change)?change:null,
+      changePct:Number.isFinite(changePct)?changePct:null,
+      marketTime:marketTimeForSbi(stock,capturedAt,base.marketTime),
+      fetchedAt:capturedAt,
+      source:"SBI証券",
+    };
+  });
+  const count=Object.keys(quotes).length;
+  if(!count){showToast("SBIから一致する株式を読み取れませんでした","error");return;}
+  lastSbiImportId=String(message.id||capturedAt);
+  SBI_PRICE_DATA={updatedAt:capturedAt,source:"SBI証券（画面から一時反映）",quotes};
+  renderBoard();
+  renderStockTable();
+  showToast(`SBIから${count}銘柄を一時反映しました`);
 }
 
 async function loadPriceData(){
@@ -469,7 +549,8 @@ function renderBoard(){
   const usTime=marketTimeFor(stocks,"US");
   const marketTimes=[jpTime&&`日本株：${jpTime}頃`,usTime&&`米株：${usTime}頃`].filter(Boolean);
   $("#stockCount").textContent=marketTimes.join("　")||`${stocks.length}銘柄`;
-  $("#stockCount").title=marketTimes.length?`${PRICE_DATA.source||"参考株価"}・実際の市場時刻`:"";
+  const source=SBI_PRICE_DATA?.source||PRICE_DATA?.source||"参考株価";
+  $("#stockCount").title=marketTimes.length?`${source}・実際の市場時刻`:"";
   const statuses=ordered("statuses",true);
   const grouped=new Map(statuses.map(status=>[status.id,[]]));
   const unclassified=[];
@@ -777,7 +858,7 @@ function bindEvents(){
     await store.connect(token);$("#ghTokenInput").value="";await loadPriceData();
   });
   $("#ghSyncNowBtn").addEventListener("click",async()=>{await store.syncNow();await loadPriceData();});
-  $("#ghDisconnectBtn").addEventListener("click",()=>{if(confirm("この端末からGitHub同期を切断しますか？")){store.disconnect();PRICE_DATA=null;renderBoard();renderStockTable();}});
+  $("#ghDisconnectBtn").addEventListener("click",()=>{if(confirm("この端末からGitHub同期を切断しますか？")){store.disconnect();PRICE_DATA=null;SBI_PRICE_DATA=null;renderBoard();renderStockTable();}});
 }
 
 store=createCloudStore({
@@ -787,6 +868,8 @@ store=createCloudStore({
 });
 
 $("#repoLabel").textContent=`${CONFIG.github.owner}/${CONFIG.github.repo}/${CONFIG.file}`;
+window.name="progress-portfolio";
+window.addEventListener("message",receiveSbiQuotes);
 bindEvents();
 renderAll();
 store.init().then(loadPriceData);
