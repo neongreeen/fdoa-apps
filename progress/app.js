@@ -76,6 +76,14 @@ function defaultStatusColor(statusId,index=0){
   return preset?.color||STATUS_FALLBACK_COLORS[index%STATUS_FALLBACK_COLORS.length];
 }
 
+function readableTextColor(hexColor){
+  const hex=sanitizeHexColor(hexColor);
+  if(!hex) return "#ffffff";
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  const luma=(0.299*r+0.587*g+0.114*b)/255;
+  return luma>0.62?"#1d1d1f":"#ffffff";
+}
+
 function statusColor(statusOrId){
   const item=typeof statusOrId==="string"?master("statuses",statusOrId):statusOrId;
   if(!item) return STATUS_NONE_COLOR;
@@ -386,7 +394,9 @@ function renderPortfolio(){
 
   const bar=converted.length?`<div class="portfolio-bar" role="img" aria-label="評価額の構成比">${converted.map(item=>{
     const share=totalJpy>0?item.valueJpy/totalJpy*100:0;
-    return `<span class="pf-seg" style="flex-grow:${Math.max(item.valueJpy,1)};background:${statusColor(item.status)}" title="${esc(item.stock.name)} ${share.toFixed(1)}%・${esc(formatMoney(item.valueJpy,"JPY"))}・${esc(item.status?.label||"状態未定")}"></span>`;
+    const color=statusColor(item.status);
+    const label=`<span class="pf-seg-label" style="color:${readableTextColor(color)}">${esc(item.stock.name)}</span>`;
+    return `<span class="pf-seg" style="flex-grow:${Math.max(item.valueJpy,1)};background:${color}" title="${esc(item.stock.name)} ${share.toFixed(1)}%・${esc(formatMoney(item.valueJpy,"JPY"))}・${esc(item.status?.label||"状態未定")}">${label}</span>`;
   }).join("")}</div>`:"";
 
   const head=`<div class="pf-row pf-head" aria-hidden="true">
@@ -414,6 +424,11 @@ function renderPortfolio(){
   $("#portfolioMeta").textContent=`SBI一時反映（${formatMarketTime(SBI_PRICE_DATA.updatedAt)}時点・再読み込みで消えます）${rate}`;
   $("#portfolioBody").innerHTML=tiles+bar+rows+note;
   panel.hidden=false;
+  // 帯に収まらない銘柄名は消す（狭い帯はツールチップで見る）
+  $$(".pf-seg",panel).forEach(seg=>{
+    const label=$(".pf-seg-label",seg);
+    if(label&&label.scrollWidth>seg.clientWidth-4) label.remove();
+  });
   $$(".pf-row",panel).forEach(button=>button.addEventListener("click",()=>goToDecision(button.dataset.stock)));
 }
 
