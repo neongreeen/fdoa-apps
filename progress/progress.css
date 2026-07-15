@@ -180,6 +180,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .portfolio-bar{display:flex;gap:2px;height:18px;border-radius:4px;overflow:hidden;margin-bottom:12px}
 .pf-seg{flex-basis:0;min-width:3px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .pf-seg-label{font-size:9px;font-weight:650;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px;letter-spacing:.02em}
+.pf-seg-label.pf-seg-initial{padding:0 1px;letter-spacing:0;text-overflow:clip}
 .portfolio-rows{display:flex;flex-direction:column;border-top:1px solid var(--line)}
 .pf-row{
   display:grid;grid-template-columns:10px minmax(120px,1.4fr) minmax(72px,.9fr) 52px 64px minmax(110px,1fr) minmax(90px,.8fr);
