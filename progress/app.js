@@ -1,12 +1,13 @@
 "use strict";
 
-/* Progress Portfolio v0.1.x
+/* Progress Portfolio v0.2
    現在状態は stocks に保存せず、各銘柄の最新 decision から算出する。
    判断は上書きせず追加し、売買 execution は判断にだけ紐付ける。 */
 
 const CONFIG={
   github:{owner:"neongreeen",repo:"fdoa-app-data",branch:"main"},
   file:"progress.json",
+  priceFile:"prices.json",
   tokenKey:"fdoa_gh_token",
   legacyTokenKeys:["fdoa_bukken_gh_token"],
   storageKey:"progress_portfolio_v1",
@@ -133,6 +134,9 @@ let store=null;
 let toastTimer=null;
 let INSTRUMENTS=[];
 let instrumentMeta=[];
+let PRICE_DATA=null;
+let priceLoadedAt=0;
+let priceLoading=false;
 
 function save(){
   DB.meta.schemaVersion=CONFIG.schemaVersion;
@@ -189,6 +193,54 @@ function formatDate(value,withTime=false){
   const date=new Date(value);
   if(Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("ja-JP",withTime?{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}:{year:"numeric",month:"numeric",day:"numeric"}).format(date);
+}
+
+function formatPriceTime(value){
+  if(!value) return "";
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}).format(date);
+}
+
+function quoteFor(stock){
+  if(!stock||!PRICE_DATA?.quotes) return null;
+  return PRICE_DATA.quotes[String(stock.ticker||"").toUpperCase()]||null;
+}
+
+function formatQuotePrice(quote){
+  if(!quote||!Number.isFinite(Number(quote.price))) return "";
+  const currency=quote.currency||"";
+  const digits=currency==="JPY"?(Number(quote.price)%1===0?0:1):2;
+  try{
+    return new Intl.NumberFormat("ja-JP",{style:"currency",currency:currency||"USD",minimumFractionDigits:digits,maximumFractionDigits:digits}).format(Number(quote.price));
+  }catch(error){
+    return Number(quote.price).toLocaleString("ja-JP");
+  }
+}
+
+function quoteHtml(stock,className="stock-quote"){
+  const quote=quoteFor(stock);
+  if(!quote) return "";
+  const change=Number(quote.changePct);
+  const changeText=Number.isFinite(change)?`${change>0?"+":""}${change.toFixed(2)}%`:"";
+  const direction=change>0?"up":change<0?"down":"flat";
+  return `<span class="${className}" title="${esc(PRICE_DATA.source||"参考株価")}・${esc(formatPriceTime(quote.marketTime||quote.fetchedAt))}"><strong>${esc(formatQuotePrice(quote))}</strong>${changeText?`<span class="price-change ${direction}">${esc(changeText)}</span>`:""}</span>`;
+}
+
+async function loadPriceData(){
+  if(priceLoading||!store?.hasToken()) return;
+  priceLoading=true;
+  try{
+    const data=await store.fetchFile(CONFIG.priceFile);
+    PRICE_DATA=data&&data.quotes&&typeof data.quotes==="object"?data:null;
+  }catch(error){
+    PRICE_DATA=null;
+    console.warn("Price data load failed",error);
+  }
+  priceLoadedAt=Date.now();
+  priceLoading=false;
+  renderBoard();
+  renderStockTable();
 }
 
 function safeExternalUrl(value){
@@ -394,7 +446,9 @@ function updateExecutionFields(){
 
 function renderBoard(){
   const stocks=activeStocks();
-  $("#stockCount").textContent=`${stocks.length}銘柄`;
+  const updated=formatPriceTime(PRICE_DATA?.updatedAt);
+  $("#stockCount").textContent=`${stocks.length}銘柄${updated?`・株価 ${updated}`:""}`;
+  $("#stockCount").title=updated?`${PRICE_DATA.source||"参考株価"}・取得 ${updated}`:"";
   const statuses=ordered("statuses",true);
   const grouped=new Map(statuses.map(status=>[status.id,[]]));
   const unclassified=[];
@@ -421,7 +475,7 @@ function stockCard(stock,decision){
   return `<button type="button" class="stock-card" data-stock="${esc(stock.id)}">
     <span class="stock-card-top"><span class="stock-identity"><span class="stock-name" title="${esc(stock.name)}">${esc(stock.name)}</span><span class="stock-symbol">${esc(stock.ticker)}</span></span><span class="stock-card-action">${esc(master("actions",decision?.actionId)?.label||"判断する")}</span></span>
     <span class="stock-card-memo">${esc(decision?.memo||master("subReasons",decision?.subReasonId)?.label||"まだログがありません")}</span>
-    <span class="stock-card-date">次回 ${decision?.nextReviewDate?formatDate(`${decision.nextReviewDate}T12:00:00`):"未設定"}</span>
+    <span class="stock-card-bottom">${quoteHtml(stock,"stock-card-quote")}<span class="stock-card-date">次回 ${decision?.nextReviewDate?formatDate(`${decision.nextReviewDate}T12:00:00`):"未設定"}</span></span>
   </button>`;
 }
 
@@ -429,10 +483,11 @@ function renderStockTable(){
   if(!DB.stocks.length){$("#stockTable").innerHTML="";return;}
   $("#stockTable").innerHTML=DB.stocks.slice().sort((a,b)=>a.name.localeCompare(b.name,"ja")).map(stock=>`<div class="stock-table-row${stock.active===false?" inactive":""}">
     <div class="stock-identity"><div class="stock-name">${esc(stock.name)}</div><div class="stock-symbol">${esc(stock.ticker)}</div></div>
+    ${quoteHtml(stock,"stock-table-quote")||'<span class="stock-table-quote empty-quote">—</span>'}
     <div class="stock-market">${esc(stock.market||"—")}</div>
     <div class="stock-currency">${esc(stock.currency||"—")}</div>
     <div class="stock-links">${stock.companyUrl?`<a href="${esc(stock.companyUrl)}" target="_blank" rel="noopener noreferrer">企業</a>`:""}${stock.irUrl?`<a href="${esc(stock.irUrl)}" target="_blank" rel="noopener noreferrer">IR</a>`:""}${!stock.companyUrl&&!stock.irUrl?"—":""}</div>
-    <div>${stock.active===false?"休止":"観察中"}</div>
+    <div class="stock-observation-state">${stock.active===false?"休止":"観察中"}</div>
     <button type="button" class="btn sec sm toggle-stock" data-stock="${esc(stock.id)}">${stock.active===false?"再開":"休止"}</button>
   </div>`).join("");
   $$(".toggle-stock",$("#stockTable")).forEach(button=>button.addEventListener("click",()=>{
@@ -698,10 +753,10 @@ function bindEvents(){
   $("#ghConnectBtn").addEventListener("click",async()=>{
     const token=$("#ghTokenInput").value.trim();
     if(!token){showToast("アクセストークンを入力してください","error");return;}
-    await store.connect(token);$("#ghTokenInput").value="";
+    await store.connect(token);$("#ghTokenInput").value="";await loadPriceData();
   });
-  $("#ghSyncNowBtn").addEventListener("click",()=>store.syncNow());
-  $("#ghDisconnectBtn").addEventListener("click",()=>{if(confirm("この端末からGitHub同期を切断しますか？")) store.disconnect();});
+  $("#ghSyncNowBtn").addEventListener("click",async()=>{await store.syncNow();await loadPriceData();});
+  $("#ghDisconnectBtn").addEventListener("click",()=>{if(confirm("この端末からGitHub同期を切断しますか？")){store.disconnect();PRICE_DATA=null;renderBoard();renderStockTable();}});
 }
 
 store=createCloudStore({
@@ -713,8 +768,12 @@ store=createCloudStore({
 $("#repoLabel").textContent=`${CONFIG.github.owner}/${CONFIG.github.repo}/${CONFIG.file}`;
 bindEvents();
 renderAll();
-store.init();
+store.init().then(loadPriceData);
 loadInstrumentData().catch(error=>{
   console.warn(error);
   $("#instrumentSource").textContent="手動登録のみ";
 });
+window.addEventListener("focus",()=>{
+  if(Date.now()-priceLoadedAt>5*60*1000) loadPriceData();
+});
+setInterval(loadPriceData,15*60*1000);
