@@ -990,7 +990,7 @@ function goToDecision(stockId){
   showView("observe");
   $("#dStock").value=stockId;
   applyStockDefaults(stockId);
-  $(".decision-panel").scrollIntoView({behavior:"smooth",block:"start"});
+  window.scrollTo({top:0,behavior:"smooth"});
 }
 
 function submitDecision(event){
