@@ -127,6 +127,7 @@ function normalize(data){
       stockId:execution.stockId,
       executedAt:execution.executedAt,
       createdAt:execution.createdAt||execution.executedAt,
+      revokedAt:execution.revokedAt||null,
     })),
     masters:{},
     settings:data.settings&&typeof data.settings==="object"?data.settings:{},
@@ -194,7 +195,21 @@ function stockById(id){return DB.stocks.find(stock=>stock.id===id)||null;}
 function executionFor(decisionId){return DB.executions.find(execution=>execution.decisionId===decisionId)||null;}
 function decisionTime(decision){return new Date(decision.decidedAt||decision.createdAt||0).getTime();}
 function latestDecision(stockId){
-  return DB.decisions.filter(decision=>decision.stockId===stockId).sort((a,b)=>decisionTime(b)-decisionTime(a))[0]||null;
+  return DB.decisions.filter(decision=>decision.stockId===stockId&&!decision.revokedAt).sort((a,b)=>decisionTime(b)-decisionTime(a))[0]||null;
+}
+
+/* 判断の取り消し：行は消さず revokedAt を立てて時系列に残す（訂正は新しい判断として記録） */
+function revokeDecision(decisionId){
+  const decision=DB.decisions.find(item=>item.id===decisionId);
+  if(!decision||decision.revokedAt) return;
+  const stock=stockById(decision.stockId);
+  if(!confirm(`${stock?.name||"この銘柄"}の判断を取り消しますか？\n行は消えず「取り消し済み」として残ります。訂正する場合は取り消した後、フォームから新しく記録してください。`)) return;
+  const now=new Date().toISOString();
+  decision.revokedAt=now;
+  DB.executions.forEach(execution=>{
+    if(execution.decisionId===decisionId&&!execution.revokedAt) execution.revokedAt=now;
+  });
+  save();renderAll();showToast("判断を取り消しました");
 }
 function activeStocks(){return DB.stocks.filter(stock=>stock.active!==false).slice().sort((a,b)=>a.name.localeCompare(b.name,"ja"));}
 
@@ -857,15 +872,17 @@ function renderLog(){
     const execution=executionFor(decision.id);
     const action=master("actions",decision.actionId);
     const side=action?.executionSide;
-    return `<div class="log-row">
+    return `<div class="log-row${decision.revokedAt?" revoked":""}">
       <div class="timeline-date">${formatDate(decision.decidedAt,true)}</div>
       <div class="stock-identity"><div class="stock-name" title="${esc(stock?.name||"不明な銘柄")}">${esc(stock?.name||"不明な銘柄")}</div><div class="stock-symbol">${esc(stock?.ticker||"")}</div></div>
       <div class="log-status">${statusPill(decision.statusId)}</div>
       <div>${actionPill(decision.actionId)}</div>
       <div class="log-detail"><div class="log-memo">${esc(decision.memo||"—")}</div><div class="log-reason">${esc(master("reasons",decision.reasonId)?.label||"—")} ／ ${esc(master("subReasons",decision.subReasonId)?.label||"—")} ／ 次回 ${decision.nextReviewDate?formatDate(`${decision.nextReviewDate}T12:00:00`):"—"}</div></div>
       <div class="log-execution">${execution?`<span class="side-pill ${side}">${side==="buy"?"買付":"売却"}</span> ${formatDate(execution.executedAt,true)}`:"未実行"}</div>
+      <div class="log-revoke">${decision.revokedAt?`<span class="revoked-label">取り消し済み<br>${formatDate(decision.revokedAt,true)}</span>`:`<button type="button" class="btn sec sm revoke-decision" data-id="${esc(decision.id)}">取り消す</button>`}</div>
     </div>`;
   }).join("");
+  $$(".revoke-decision",$("#logList")).forEach(button=>button.addEventListener("click",()=>revokeDecision(button.dataset.id)));
 }
 
 const MASTER_META={
@@ -1100,6 +1117,17 @@ function bindEvents(){
   });
   $("#ghSyncNowBtn").addEventListener("click",async()=>{await store.syncNow();await loadPriceData();});
   $("#ghDisconnectBtn").addEventListener("click",()=>{if(confirm("この端末からGitHub同期を切断しますか？")){store.disconnect();PRICE_DATA=null;SBI_PRICE_DATA=null;renderBoard();renderStockTable();}});
+  $("#btnCopyBookmarklet").addEventListener("click",async()=>{
+    try{
+      const response=await fetch("sbi-bookmarklet.js",{cache:"no-cache"});
+      if(!response.ok) throw new Error(`HTTP ${response.status}`);
+      const code=await response.text();
+      await navigator.clipboard.writeText(`javascript:${encodeURIComponent(code)}`);
+      showToast("取込みコードをコピーしました。ブックマークのURL欄に貼り付けてください");
+    }catch(error){
+      showToast("コピーに失敗しました。ページを再読み込みして試してください","error");
+    }
+  });
 }
 
 store=createCloudStore({

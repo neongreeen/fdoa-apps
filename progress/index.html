@@ -7,7 +7,7 @@
   <title>Progress Portfolio</title>
   <link rel="icon" href="../jikyu/favicon.ico" sizes="any">
   <link rel="stylesheet" href="../shared/base.css?v=20260714-1532">
-  <link rel="stylesheet" href="progress.css?v=20260715-2100">
+  <link rel="stylesheet" href="progress.css?v=20260715-2320">
 </head>
 <body>
 <header>
@@ -244,12 +244,30 @@
         <label class="btn sec file-button">JSONから復元<input type="file" id="jsonImport" accept=".json,application/json"></label>
       </div>
     </div>
+
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>SBI取込みボタンの登録</h2>
+          <p>SBIのポートフォリオ画面から現在値・損益を一時取込みするブックマークです。端末を替えた時・消してしまった時はここから再登録できます</p>
+        </div>
+      </div>
+      <div class="backup-actions">
+        <button type="button" class="btn" id="btnCopyBookmarklet">取込みコードをコピー</button>
+      </div>
+      <ol class="note bookmarklet-steps">
+        <li>上のボタンで取込みコードをコピーする</li>
+        <li><strong>Mac：</strong>このページをブックマークに追加 → ブックマークを編集して、URL欄にコピーしたコードを貼り付け → 名前を「SBI取込み」などに変更</li>
+        <li><strong>iPhone（Safari）：</strong>共有ボタン → 「ブックマークを追加」 → 追加後にブックマーク一覧の「編集」でURLをコピーしたコードに貼り替え</li>
+        <li>SBIのポートフォリオ画面を開いた状態で、そのブックマークを開くと取込みが実行されます</li>
+      </ol>
+    </div>
   </section>
 </main>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../shared/store.js?v=20260714-1532"></script>
-<script src="app.js?v=20260715-2100"></script>
+<script src="app.js?v=20260715-2320"></script>
 </body>
 </html>
