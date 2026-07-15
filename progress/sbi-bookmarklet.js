@@ -1,4 +1,5 @@
 (()=>{
+  const originalTitle=document.title;
   const clean=value=>String(value||"").normalize("NFKC").replace(/\s+/g," ").trim();
   const key=value=>clean(value).replace(/\s+/g,"");
   const number=value=>{
@@ -42,5 +43,6 @@
   const payload={type:"progress-portfolio:sbi-quotes",id:`sbi_${Date.now()}`,capturedAt:new Date().toISOString(),quotes:list};
   const send=()=>target.postMessage(payload,"https://neongreeen.github.io");
   [100,500,1200,2200].forEach(delay=>setTimeout(send,delay));
+  setTimeout(()=>{document.title=originalTitle;},0);
   target.focus();
 })();
