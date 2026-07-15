@@ -298,6 +298,121 @@ function sbiPositionHtml(stock){
   </span>`;
 }
 
+const PORTFOLIO_STATUS_COLORS={
+  status_hold:"var(--status-hold)",
+  status_profit_watch:"var(--status-profit)",
+  status_loss_watch:"var(--status-loss)",
+  status_buy_watch:"var(--status-buy)",
+};
+const PORTFOLIO_EXTRA_COLORS=["#7a6a8a","#4f7d7d","#8a5f74"];
+
+function portfolioStatusColor(statusId){
+  if(!statusId) return "var(--sub)";
+  if(PORTFOLIO_STATUS_COLORS[statusId]) return PORTFOLIO_STATUS_COLORS[statusId];
+  const extras=ordered("statuses",true).filter(item=>!PORTFOLIO_STATUS_COLORS[item.id]);
+  const index=extras.findIndex(item=>item.id===statusId);
+  return index>=0?PORTFOLIO_EXTRA_COLORS[index%PORTFOLIO_EXTRA_COLORS.length]:"var(--sub)";
+}
+
+function jpyAmount(value,currency,usdJpy){
+  const amount=Number(value);
+  if(!Number.isFinite(amount)) return null;
+  if(currency==="JPY") return amount;
+  if(currency==="USD"&&Number.isFinite(usdJpy)) return Math.round(amount*usdJpy);
+  return null;
+}
+
+/* SBI取込みデータがある間だけ出す「ポートフォリオ全景」。
+   表示のみ・何も保存しない（SBI_PRICE_DATAと同じ寿命）。 */
+function renderPortfolio(){
+  const panel=$("#portfolioPanel");
+  if(!panel) return;
+  const usdJpy=Number(PRICE_DATA?.usdJpy);
+  const statuses=ordered("statuses",true);
+  const statusOrder=new Map(statuses.map((status,index)=>[status.id,index]));
+  const positions=activeStocks().map(stock=>{
+    const position=SBI_PRICE_DATA?.quotes?.[String(stock.ticker||"").toUpperCase()];
+    const marketValue=position==null?NaN:Number(position.marketValue);
+    if(!position||!Number.isFinite(marketValue)||marketValue<=0) return null;
+    const currency=position.currency||stock.currency||"USD";
+    const decision=latestDecision(stock.id);
+    const status=master("statuses",decision?.statusId);
+    const quantity=position.quantity==null?NaN:Number(position.quantity);
+    const change=position.change==null?NaN:Number(position.change);
+    return{
+      stock,status,currency,marketValue,
+      valueJpy:jpyAmount(marketValue,currency,usdJpy),
+      profitLossJpy:jpyAmount(position.profitLoss,currency,usdJpy),
+      profitLossPct:position.profitLossPct==null?null:Number(position.profitLossPct),
+      dayChangeJpy:Number.isFinite(change)&&Number.isFinite(quantity)?jpyAmount(change*quantity,currency,usdJpy):null,
+      dayChangePct:position.changePct==null?null:Number(position.changePct),
+    };
+  }).filter(Boolean);
+  if(!positions.length){panel.hidden=true;$("#portfolioBody").innerHTML="";return;}
+
+  positions.sort((a,b)=>{
+    const orderA=a.status?statusOrder.get(a.status.id)??99:99;
+    const orderB=b.status?statusOrder.get(b.status.id)??99:99;
+    if(orderA!==orderB) return orderA-orderB;
+    return (b.valueJpy??0)-(a.valueJpy??0);
+  });
+
+  const converted=positions.filter(item=>item.valueJpy!=null);
+  const unconverted=positions.filter(item=>item.valueJpy==null);
+  const totalJpy=converted.reduce((sum,item)=>sum+item.valueJpy,0);
+  const totalPlJpy=converted.every(item=>item.profitLossJpy!=null)?converted.reduce((sum,item)=>sum+item.profitLossJpy,0):null;
+  const totalCostJpy=totalPlJpy==null?null:totalJpy-totalPlJpy;
+  const totalPlPct=totalCostJpy>0?totalPlJpy/totalCostJpy*100:null;
+  const dayItems=converted.filter(item=>item.dayChangeJpy!=null);
+  const totalDayJpy=dayItems.length?dayItems.reduce((sum,item)=>sum+item.dayChangeJpy,0):null;
+  const dayBaseJpy=dayItems.reduce((sum,item)=>sum+item.valueJpy,0)-(totalDayJpy||0);
+  const totalDayPct=totalDayJpy!=null&&dayBaseJpy>0?totalDayJpy/dayBaseJpy*100:null;
+  const jpTotal=converted.filter(item=>item.currency==="JPY").reduce((sum,item)=>sum+item.valueJpy,0);
+  const usTotalUsd=positions.filter(item=>item.currency==="USD").reduce((sum,item)=>sum+item.marketValue,0);
+
+  const plDirection=totalPlJpy>0?"up":totalPlJpy<0?"down":"flat";
+  const dayDirection=totalDayJpy>0?"up":totalDayJpy<0?"down":"flat";
+  const breakdown=[jpTotal>0?`日本株 ${formatMoney(jpTotal,"JPY")}`:"",usTotalUsd>0?`米国株 ${formatMoney(usTotalUsd,"USD")}`:""].filter(Boolean).join("　");
+
+  const tiles=`<div class="portfolio-summary">
+    <div class="summary-card"><span class="summary-label">評価額合計（円換算）</span><span class="summary-value">${esc(formatMoney(Math.round(totalJpy),"JPY"))}</span><span class="summary-sub">${esc(breakdown)}</span></div>
+    <div class="summary-card"><span class="summary-label">評価損益</span><span class="summary-value pf-num ${plDirection}">${esc(formatMoney(totalPlJpy==null?null:Math.round(totalPlJpy),"JPY",true))}</span><span class="summary-sub">${totalPlPct!=null?`取得額比 ${esc(formatSignedPercent(totalPlPct))}`:"—"}</span></div>
+    <div class="summary-card"><span class="summary-label">今日の動き</span><span class="summary-value pf-num ${dayDirection}">${esc(formatMoney(totalDayJpy==null?null:Math.round(totalDayJpy),"JPY",true))}</span><span class="summary-sub">${totalDayPct!=null?`前営業日比 ${esc(formatSignedPercent(totalDayPct))}`:"—"}</span></div>
+  </div>`;
+
+  const bar=converted.length?`<div class="portfolio-bar" role="img" aria-label="評価額の構成比">${converted.map(item=>{
+    const share=totalJpy>0?item.valueJpy/totalJpy*100:0;
+    return `<span class="pf-seg" style="flex-grow:${Math.max(item.valueJpy,1)};background:${portfolioStatusColor(item.status?.id)}" title="${esc(item.stock.name)} ${share.toFixed(1)}%・${esc(formatMoney(item.valueJpy,"JPY"))}・${esc(item.status?.label||"状態未定")}"></span>`;
+  }).join("")}</div>`:"";
+
+  const head=`<div class="pf-row pf-head" aria-hidden="true">
+    <span></span><span>銘柄</span><span class="pf-status">状態</span><span class="pf-share">構成比</span><span class="pf-day">前日</span><span class="pf-pl">損益</span><span class="pf-value">評価額</span>
+  </div>`;
+  const rows=`<div class="portfolio-rows">${head}${positions.map(item=>{
+    const share=item.valueJpy!=null&&totalJpy>0?`${(item.valueJpy/totalJpy*100).toFixed(1)}%`:"—";
+    const dayDir=item.dayChangePct>0?"up":item.dayChangePct<0?"down":"flat";
+    const plDir=item.profitLossPct>0?"up":item.profitLossPct<0?"down":"flat";
+    const plAmount=item.profitLossJpy!=null?formatMoney(item.profitLossJpy,"JPY",true):"—";
+    const value=item.valueJpy!=null?formatMoney(item.valueJpy,"JPY"):formatMoney(item.marketValue,item.currency);
+    return `<button type="button" class="pf-row" data-stock="${esc(item.stock.id)}">
+      <span class="pf-dot" style="background:${portfolioStatusColor(item.status?.id)}"></span>
+      <span class="pf-name"><span class="stock-name">${esc(item.stock.name)}</span><span class="stock-symbol">${esc(item.stock.ticker)}</span></span>
+      <span class="pf-status">${esc(item.status?.label||"状態未定")}</span>
+      <span class="pf-share">${esc(share)}</span>
+      <span class="pf-num pf-day ${dayDir}">${esc(formatSignedPercent(item.dayChangePct))}</span>
+      <span class="pf-num pf-pl ${plDir}">${esc(plAmount)}<small>${esc(formatSignedPercent(item.profitLossPct))}</small></span>
+      <span class="pf-value">${esc(value)}</span>
+    </button>`;
+  }).join("")}</div>`;
+
+  const note=unconverted.length?`<p class="pf-note">※ ${esc(unconverted.map(item=>item.stock.name).join("・"))} は円換算レート未取得のため合計・構成比に含めていません</p>`:"";
+  const rate=Number.isFinite(usdJpy)&&usTotalUsd>0?`・換算 ${usdJpy.toFixed(2)}円/$`:"";
+  $("#portfolioMeta").textContent=`SBI一時反映（${formatMarketTime(SBI_PRICE_DATA.updatedAt)}時点・再読み込みで消えます）${rate}`;
+  $("#portfolioBody").innerHTML=tiles+bar+rows+note;
+  panel.hidden=false;
+  $$(".pf-row",panel).forEach(button=>button.addEventListener("click",()=>goToDecision(button.dataset.stock)));
+}
+
 function quoteHtml(stock,className="stock-quote"){
   const quote=quoteFor(stock);
   if(!quote) return "";
@@ -641,6 +756,7 @@ function updateExecutionFields(){
 }
 
 function renderBoard(){
+  renderPortfolio();
   const stocks=activeStocks();
   const jpTime=marketTimeFor(stocks,"JP");
   const usTime=marketTimeFor(stocks,"US");
