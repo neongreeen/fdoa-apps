@@ -224,12 +224,6 @@ function localDate(date=new Date()){
   return `${y}-${m}-${d}`;
 }
 
-function localDateTime(date=new Date()){
-  const hh=String(date.getHours()).padStart(2,"0");
-  const mm=String(date.getMinutes()).padStart(2,"0");
-  return `${localDate(date)}T${hh}:${mm}`;
-}
-
 function addDays(days){
   const date=new Date();
   date.setHours(12,0,0,0);
@@ -763,7 +757,6 @@ function renderDecisionOptions(preserve=true){
   if(!selectItems("reasons",selected.reason).some(item=>item.id===selected.reason)) $("#dReason").value=defaultMaster("reasons")?.id||"";
   if(!selectItems("subReasons",selected.subReason).some(item=>item.id===selected.subReason)) $("#dSubReason").value=defaultMaster("subReasons")?.id||"";
   if(!selectItems("reviewPresets",selected.review).some(item=>item.id===selected.review)) $("#dReviewPreset").value=defaultMaster("reviewPresets")?.id||"";
-  updateExecutionFields();
 }
 
 function applyStockDefaults(stockId){
@@ -774,24 +767,8 @@ function applyStockDefaults(stockId){
   $("#dSubReason").value=defaultMaster("subReasons")?.id||"";
   $("#dReviewPreset").value=defaultMaster("reviewPresets")?.id||"";
   $("#dMemo").value="";
-  $("#dExecutionState").value="pending";
-  $("#dExecutedAt").value="";
   $("#formState").textContent=decision?`前回 ${formatDate(decision.decidedAt,true)}`:"初回判断";
   $("#formState").className="save-state ready";
-  updateExecutionFields();
-}
-
-function updateExecutionFields(){
-  const action=master("actions",$("#dAction").value);
-  const canExecute=Boolean(action?.executionSide);
-  $("#dExecutionState").disabled=!canExecute;
-  if(!canExecute) $("#dExecutionState").value="pending";
-  const enabled=canExecute&&$("#dExecutionState").value==="executed";
-  [$("#dExecutedAt")].forEach(input=>{
-    input.disabled=!enabled;
-    input.closest(".execution-field").classList.toggle("disabled",!enabled);
-  });
-  if(enabled&&!$("#dExecutedAt").value) $("#dExecutedAt").value=localDateTime();
 }
 
 function renderBoard(){
@@ -888,7 +865,7 @@ function renderLog(){
       <div class="log-status">${statusPill(decision.statusId)}</div>
       <div>${actionPill(decision.actionId)}</div>
       <div class="log-detail"><div class="log-memo">${esc(decision.memo||"—")}</div><div class="log-reason">${esc(master("reasons",decision.reasonId)?.label||"—")} ／ ${esc(master("subReasons",decision.subReasonId)?.label||"—")} ／ 次回 ${decision.nextReviewDate?formatDate(`${decision.nextReviewDate}T12:00:00`):"—"}</div></div>
-      <div class="log-execution">${execution?`<span class="side-pill ${side}">${side==="buy"?"買付":"売却"}</span> ${formatDate(execution.executedAt,true)}`:"未実行"}</div>
+      <div class="log-execution">${execution?`<span class="side-pill ${side}">${side==="buy"?"買付":"売却"}</span> ${formatDate(execution.executedAt,true)}`:""}</div>
       <div class="log-revoke">${decision.revokedAt?`<span class="revoked-label">取り消し済み<br>${formatDate(decision.revokedAt,true)}</span>`:`<button type="button" class="btn sec sm revoke-decision" data-id="${esc(decision.id)}">取り消す</button>`}</div>
     </div>`;
   }).join("");
@@ -1023,24 +1000,13 @@ function submitDecision(event){
   };
   if(!decision.statusId||!decision.actionId||!decision.reasonId||!decision.subReasonId){showToast("選択項目を確認してください","error");return;}
 
-  const action=master("actions",decision.actionId);
-  const executed=$("#dExecutionState").value==="executed";
-  let execution=null;
-  if(executed){
-    if(!action?.executionSide){showToast("売買を伴う判断を選択してください","error");return;}
-    const executedAt=$("#dExecutedAt").value;
-    if(!executedAt){showToast("実行日時を入力してください","error");return;}
-    execution={id:uid("execution"),decisionId:decision.id,stockId,executedAt:new Date(executedAt).toISOString(),createdAt:now};
-  }
-
   DB.decisions.push(decision);
-  if(execution) DB.executions.push(execution);
   save();
   renderAll();
   $("#dStock").value=stockId;
   applyStockDefaults(stockId);
   $("#formState").textContent="保存済み";
-  showToast(execution?"判断と実行を保存しました":"判断を保存しました");
+  showToast("判断を保存しました");
 }
 
 function submitStock(event){
@@ -1098,8 +1064,6 @@ function bindEvents(){
   $("#stockForm").addEventListener("submit",submitStock);
   $("#instrumentQuery").addEventListener("input",renderInstrumentResults);
   $("#dStock").addEventListener("change",event=>applyStockDefaults(event.target.value));
-  $("#dAction").addEventListener("change",updateExecutionFields);
-  $("#dExecutionState").addEventListener("change",updateExecutionFields);
   [$("#fStock"),$("#fStatus"),$("#fAction")].forEach(select=>select.addEventListener("change",renderLog));
   $("#clearFilters").addEventListener("click",()=>{$("#fStock").value="";$("#fStatus").value="";$("#fAction").value="";renderLog();});
   $("#btnJsonExport").addEventListener("click",exportJson);

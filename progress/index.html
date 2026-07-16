@@ -7,7 +7,7 @@
   <title>Progress Portfolio</title>
   <link rel="icon" href="../jikyu/favicon.ico" sizes="any">
   <link rel="stylesheet" href="../shared/base.css?v=20260714-1532">
-  <link rel="stylesheet" href="progress.css?v=20260715-2330">
+  <link rel="stylesheet" href="progress.css?v=20260716-1713">
 </head>
 <body>
 <header>
@@ -63,17 +63,6 @@
           <label class="field field-memo">
             <span>一言メモ</span>
             <input id="dMemo" type="text" maxlength="240" placeholder="今回変わったこと">
-          </label>
-          <label class="field">
-            <span>実行状態</span>
-            <select id="dExecutionState">
-              <option value="pending">未実行</option>
-              <option value="executed">実行済み</option>
-            </select>
-          </label>
-          <label class="field execution-field">
-            <span>実行日時</span>
-            <input id="dExecutedAt" type="datetime-local" disabled>
           </label>
           <button class="btn save-decision" type="submit" id="saveDecision">判断を保存</button>
         </div>
@@ -272,6 +261,6 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../shared/store.js?v=20260714-1532"></script>
-<script src="app.js?v=20260715-2330"></script>
+<script src="app.js?v=20260716-1713"></script>
 </body>
 </html>

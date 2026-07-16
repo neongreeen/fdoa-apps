@@ -71,7 +71,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .field-stock{grid-column:span 2}
 .field-memo{grid-column:span 2}
 .save-decision{height:43px;justify-content:center;grid-column:span 1}
-.execution-field.disabled{opacity:.48}
 
 #view-observe{font-size:12px;line-height:1.3}
 #view-observe .panel{padding:10px 12px;margin-bottom:8px}
