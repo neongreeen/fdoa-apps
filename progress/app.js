@@ -100,6 +100,8 @@ function normalize(data){
       country:String(stock.country||""),
       companyUrl:safeExternalUrl(stock.companyUrl),
       irUrl:safeExternalUrl(stock.irUrl),
+      note:String(stock.note||""),
+      noteUpdatedAt:stock.noteUpdatedAt||null,
       active:stock.active!==false,
       createdAt:stock.createdAt||new Date().toISOString(),
       updatedAt:stock.updatedAt||stock.createdAt||new Date().toISOString(),
@@ -728,6 +730,7 @@ function openRecordModal(stockId){
   RECORD={stockId,statusId:currentStatus,tagId:null,reviewId:null};
   $("#recordModalTitle").innerHTML=`${esc(stock.name)} <small>${esc(stock.ticker)}</small>`;
   $("#recordModalSub").textContent=decision?`前回 ${formatDate(decision.decidedAt,true)}`:"初回の記録";
+  $("#recordNoteBtn").textContent=noteButtonLabel(stock);
   $("#recordMemo").value="";
   renderRecordModal();
   $("#recordModal").hidden=false;
@@ -761,6 +764,47 @@ function renderRecordModal(){
     ?`${statusPill(to.id)}<span class="transition-note">継続</span>`
     :`${statusPill(from.id)}<span class="transition-arrow">→</span>${statusPill(to.id)}`;
   $("#recordSave").disabled=!to;
+}
+
+/* 銘柄ノート：銘柄ごとの研究文書（長文OK・上書き編集・過去版はgit履歴が保持） */
+let NOTE_STOCK_ID=null;
+
+function noteButtonLabel(stock){
+  return stock?.note?"ノートを開く":"ノートを書く";
+}
+
+function openNoteModal(stockId){
+  const stock=stockById(stockId);
+  if(!stock) return;
+  NOTE_STOCK_ID=stockId;
+  $("#noteModalTitle").innerHTML=`${esc(stock.name)} <small>${esc(stock.ticker)}</small>`;
+  $("#noteModalSub").textContent=stock.noteUpdatedAt?`最終更新 ${formatDate(stock.noteUpdatedAt,true)}`:"銘柄の分析・仮説を書き溜める場所。何度でも上書きできます";
+  $("#noteText").value=stock.note||"";
+  $("#noteModal").hidden=false;
+  document.body.classList.add("modal-open");
+}
+
+function closeNoteModal(){
+  $("#noteModal").hidden=true;
+  NOTE_STOCK_ID=null;
+  if($("#recordModal").hidden) document.body.classList.remove("modal-open");
+}
+
+function saveNote(){
+  const stock=stockById(NOTE_STOCK_ID);
+  if(!stock) return;
+  const text=$("#noteText").value.replace(/\s+$/,"");
+  const changed=text!==(stock.note||"");
+  if(changed){
+    stock.note=text;
+    stock.noteUpdatedAt=new Date().toISOString();
+    stock.updatedAt=stock.noteUpdatedAt;
+    save();
+  }
+  closeNoteModal();
+  renderAll();
+  if(!$("#recordModal").hidden&&RECORD.stockId===stock.id) $("#recordNoteBtn").textContent=noteButtonLabel(stock);
+  showToast(changed?`${stock.name}のノートを保存しました`:"変更はありませんでした");
 }
 
 function saveRecord(){
@@ -836,7 +880,7 @@ function stockCard(stock,decision){
     <span class="stock-card-top"><span class="stock-identity"><span class="stock-name" title="${esc(stock.name)}">${esc(stock.name)}</span><span class="stock-symbol">${esc(stock.ticker)}</span></span><span class="stock-card-when">${decision?esc(formatDate(decision.decidedAt,true)):"未記録"}</span></span>
     <span class="stock-card-memo">${esc(memo)}</span>
     ${sbiPosition}
-    <span class="stock-card-bottom">${sbiPosition?'<span class="sbi-source-label">SBI一時反映</span>':quoteHtml(stock,"stock-card-quote")}<span class="stock-card-date">${decision?.nextReviewDate?`次回 ${formatDate(`${decision.nextReviewDate}T12:00:00`)}`:""}</span></span>
+    <span class="stock-card-bottom">${sbiPosition?'<span class="sbi-source-label">SBI一時反映</span>':quoteHtml(stock,"stock-card-quote")}<span class="stock-card-date">${stock.note?'<span class="note-flag" title="銘柄ノートあり">📝</span>':""}${decision?.nextReviewDate?`次回 ${formatDate(`${decision.nextReviewDate}T12:00:00`)}`:""}</span></span>
   </button>`;
 }
 
@@ -1093,7 +1137,15 @@ function bindEvents(){
   $("#clearFilters").addEventListener("click",()=>{$("#fStock").value="";$("#fStatus").value="";$("#fTag").value="";renderLog();});
   $("#recordModalClose").addEventListener("click",closeRecordModal);
   $("#recordModal").addEventListener("click",event=>{if(event.target===$("#recordModal")) closeRecordModal();});
-  document.addEventListener("keydown",event=>{if(event.key==="Escape"&&!$("#recordModal").hidden) closeRecordModal();});
+  document.addEventListener("keydown",event=>{
+    if(event.key!=="Escape") return;
+    if(!$("#noteModal").hidden) closeNoteModal();
+    else if(!$("#recordModal").hidden) closeRecordModal();
+  });
+  $("#recordNoteBtn").addEventListener("click",()=>openNoteModal(RECORD.stockId));
+  $("#noteModalClose").addEventListener("click",closeNoteModal);
+  $("#noteModal").addEventListener("click",event=>{if(event.target===$("#noteModal")) closeNoteModal();});
+  $("#noteSave").addEventListener("click",saveNote);
   $("#recordSave").addEventListener("click",saveRecord);
   $("#recordMemo").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();if(!$("#recordSave").disabled) saveRecord();}});
   $("#recordStatuses").addEventListener("click",event=>{

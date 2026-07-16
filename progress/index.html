@@ -7,7 +7,7 @@
   <title>Progress Portfolio</title>
   <link rel="icon" href="../jikyu/favicon.ico" sizes="any">
   <link rel="stylesheet" href="../shared/base.css?v=20260714-1532">
-  <link rel="stylesheet" href="progress.css?v=20260716-1812">
+  <link rel="stylesheet" href="progress.css?v=20260716-1911">
 </head>
 <body>
 <header>
@@ -221,7 +221,10 @@
         <h2 id="recordModalTitle"></h2>
         <p id="recordModalSub"></p>
       </div>
-      <button type="button" class="modal-close" id="recordModalClose" aria-label="閉じる">×</button>
+      <div class="record-head-actions">
+        <button type="button" class="btn sec sm" id="recordNoteBtn">ノートを書く</button>
+        <button type="button" class="modal-close" id="recordModalClose" aria-label="閉じる">×</button>
+      </div>
     </div>
     <div class="record-section-label">行き先の状態</div>
     <div class="record-statuses" id="recordStatuses"></div>
@@ -240,9 +243,25 @@
   </div>
 </div>
 
+<div class="modal-overlay note-overlay" id="noteModal" hidden>
+  <div class="record-modal note-modal" role="dialog" aria-modal="true" aria-labelledby="noteModalTitle">
+    <div class="record-modal-head">
+      <div>
+        <h2 id="noteModalTitle"></h2>
+        <p id="noteModalSub"></p>
+      </div>
+      <button type="button" class="modal-close" id="noteModalClose" aria-label="閉じる">×</button>
+    </div>
+    <textarea id="noteText" maxlength="20000" placeholder="この銘柄の分析・仮説・調べたことを自由に。&#10;判断ログの一言メモは速記用、じっくり書くのはここ。&#10;上書き保存でも過去の版はGitHubの履歴に残っています。"></textarea>
+    <div class="record-actions">
+      <button type="button" class="btn" id="noteSave">ノートを保存</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../shared/store.js?v=20260716-1828"></script>
-<script src="app.js?v=20260716-1812"></script>
+<script src="app.js?v=20260716-1911"></script>
 </body>
 </html>
