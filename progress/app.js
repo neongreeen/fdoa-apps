@@ -868,6 +868,11 @@ function renderBoard(){
   }
   $("#statusBoard").innerHTML=html||'<div class="empty-compact">銘柄を追加すると、ここに表示されます</div>';
   $$(".stock-card",$("#statusBoard")).forEach(button=>button.addEventListener("click",()=>openRecordModal(button.dataset.stock)));
+  // 📝はノートへの直行便（カード本体のタップ＝記録モーダルはそのまま）
+  $$(".note-flag",$("#statusBoard")).forEach(flag=>flag.addEventListener("click",event=>{
+    event.stopPropagation();
+    openNoteModal(event.target.closest(".stock-card").dataset.stock);
+  }));
 }
 
 function stockCard(stock,decision){
@@ -880,7 +885,7 @@ function stockCard(stock,decision){
     <span class="stock-card-top"><span class="stock-identity"><span class="stock-name" title="${esc(stock.name)}">${esc(stock.name)}</span><span class="stock-symbol">${esc(stock.ticker)}</span></span><span class="stock-card-when">${decision?esc(formatDate(decision.decidedAt,true)):"未記録"}</span></span>
     <span class="stock-card-memo">${esc(memo)}</span>
     ${sbiPosition}
-    <span class="stock-card-bottom">${sbiPosition?'<span class="sbi-source-label">SBI一時反映</span>':quoteHtml(stock,"stock-card-quote")}<span class="stock-card-date">${stock.note?'<span class="note-flag" title="銘柄ノートあり">📝</span>':""}${decision?.nextReviewDate?`次回 ${formatDate(`${decision.nextReviewDate}T12:00:00`)}`:""}</span></span>
+    <span class="stock-card-bottom">${sbiPosition?'<span class="sbi-source-label">SBI一時反映</span>':quoteHtml(stock,"stock-card-quote")}<span class="stock-card-date">${stock.note?'<span class="note-flag" role="button" title="ノートを開く">📝</span>':""}${decision?.nextReviewDate?`次回 ${formatDate(`${decision.nextReviewDate}T12:00:00`)}`:""}</span></span>
   </button>`;
 }
 
