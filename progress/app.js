@@ -24,10 +24,10 @@ const clone=value=>JSON.parse(JSON.stringify(value));
 
 const DEFAULT_MASTERS={
   statuses:[
-    {id:"status_hold",label:"ガチホ",color:"#48675f",active:true,order:10,isDefault:true},
-    {id:"status_profit_watch",label:"利確様子見",color:"#9b6f2f",active:true,order:20,isDefault:false},
-    {id:"status_loss_watch",label:"損切り様子見",color:"#a65242",active:true,order:30,isDefault:false},
-    {id:"status_buy_watch",label:"買い見込み／再買い",color:"#4a637e",active:true,order:40,isDefault:false},
+    {id:"status_hold",label:"ガチホ",color:"#48675f",active:true,order:10,isDefault:true,boardColumn:1},
+    {id:"status_profit_watch",label:"利確様子見",color:"#9b6f2f",active:true,order:20,isDefault:false,boardColumn:2},
+    {id:"status_loss_watch",label:"損切り様子見",color:"#a65242",active:true,order:30,isDefault:false,boardColumn:3},
+    {id:"status_buy_watch",label:"買い見込み／再買い",color:"#4a637e",active:true,order:40,isDefault:false,boardColumn:4},
   ],
   reasonTags:[
     {id:"sub_no_change",label:"前提に変化なし",active:true,order:10,isDefault:false},
@@ -138,6 +138,11 @@ function normalize(data){
   // 廃止済みマスター（判断・理由・補助理由）は旧ログの表示互換のためデータ内に温存する
   ["actions","reasons","subReasons"].forEach(kind=>{
     if(data.masters&&Array.isArray(data.masters[kind])&&data.masters[kind].length) result.masters[kind]=data.masters[kind];
+  });
+  // ボード表示列が未指定の既存データは従来ルール（表示順の1〜3番目＝各列・4番目以降＝4列目）で補完
+  result.masters.statuses.slice().sort((a,b)=>Number(a.order)-Number(b.order)).forEach((status,index)=>{
+    const column=Number(status.boardColumn);
+    status.boardColumn=Number.isInteger(column)&&column>=1&&column<=4?column:Math.min(index+1,4);
   });
   return result;
 }
@@ -807,9 +812,12 @@ function renderBoard(){
       ${list.length?list.map(({stock,decision})=>stockCard(stock,decision)).join(""):'<div class="empty-compact">該当なし</div>'}
     </div>`;
   };
-  // 並び順の1〜3番目は各自の列、4番目以降は4列目に縦積み（並び替え＝項目マスター）
+  // 表示列＝状態マスターのboardColumn（1〜4）。同じ列は表示順の小さい順に縦積み（設定＝項目マスター）
   const columns=[[],[],[],[]];
-  statuses.forEach((status,index)=>columns[Math.min(index,3)].push(status));
+  statuses.forEach(status=>{
+    const column=Math.min(4,Math.max(1,Number(status.boardColumn)||4));
+    columns[column-1].push(status);
+  });
   let html=columns.filter(col=>col.length).map(col=>`<div class="board-col">${col.map(statusBox).join("")}</div>`).join("");
   if(unclassified.length){
     html+=`<div class="no-status-column"><strong>まだ状態を決めていない銘柄</strong><div class="no-status-list">${unclassified.map(({stock,decision})=>stockCard(stock,decision)).join("")}</div></div>`;
@@ -933,6 +941,7 @@ function renderMasterSections(){
     const rows=ordered(kind,true).map(item=>masterRow(kind,item,meta)).join("");
     return `<section class="master-section" data-kind="${kind}">
       <div class="master-section-head"><h3>${meta.title}</h3><span class="muted">${DB.masters[kind].length}項目</span></div>
+      ${kind==="statuses"?'<p class="master-hint">表示列＝観察ボードの何列目（1〜4）に出すか。同じ列に複数入れると縦に積まれ、列の中は「表示順」の小さい順に上から並びます。</p>':""}
       <div class="master-list">${rows}</div>
       <div class="master-add">
         <label class="field"><span>新しい${meta.title}</span><input class="master-add-label" type="text" maxlength="50" placeholder="名称"></label>
@@ -961,7 +970,12 @@ function masterExtraInput(meta,item,isAdd){
   if(meta.extra==="days") return `<label class="field ${className}"><span>${isAdd?"日数":""}</span><input data-extra="days" type="number" step="1" min="0" value="${item?Number(item.days):1}"></label>`;
   if(meta.extra==="color"){
     const value=item?statusColor(item):STATUS_FALLBACK_COLORS[DB.masters.statuses.length%STATUS_FALLBACK_COLORS.length];
-    return `<label class="field ${className}"><span>${isAdd?"色":""}</span><input data-extra="color" type="color" value="${esc(value)}" title="観察ボード・ポートフォリオ全景で使う色"></label>`;
+    const column=item?Math.min(4,Math.max(1,Number(item.boardColumn)||4)):4;
+    const options=[1,2,3,4].map(n=>`<option value="${n}"${n===column?" selected":""}>${n}列目</option>`).join("");
+    return `<div class="${className} master-extra-status">
+      <label class="field"><span>色</span><input data-extra="color" type="color" value="${esc(value)}" title="観察ボード・ポートフォリオ全景で使う色"></label>
+      <label class="field"><span>表示列</span><select data-extra="column" title="観察ボードの何列目に出すか。同じ列は表示順の小さい順に上から並びます">${options}</select></label>
+    </div>`;
   }
   return `<div class="${className} master-extra-empty"></div>`;
 }
@@ -975,9 +989,13 @@ function saveMasterRow(row){
   item.label=label;
   item.order=Number($(".master-order",row).value)||0;
   item.active=$(".master-active",row).checked;
-  const extra=$("[data-extra]",row);
-  if(kind==="reviewPresets") item.days=Math.max(0,Number(extra.value)||0);
-  if(kind==="statuses"&&extra) item.color=sanitizeHexColor(extra.value)||item.color;
+  if(kind==="reviewPresets") item.days=Math.max(0,Number($("[data-extra]",row).value)||0);
+  if(kind==="statuses"){
+    const color=$('[data-extra="color"]',row);
+    const column=$('[data-extra="column"]',row);
+    if(color) item.color=sanitizeHexColor(color.value)||item.color;
+    if(column) item.boardColumn=Math.min(4,Math.max(1,Number(column.value)||4));
+  }
   save();renderAll();showView("master");showToast(`${MASTER_META[kind].title}を保存しました`);
 }
 
@@ -988,9 +1006,12 @@ function addMasterItem(section){
   if(!label){showToast("名称を入力してください","error");return;}
   const maxOrder=Math.max(0,...DB.masters[kind].map(item=>Number(item.order)||0));
   const item={id:uid(meta.prefix),label,active:true,order:maxOrder+10,isDefault:false};
-  const extra=$("[data-extra]",$(".master-add",section));
-  if(kind==="reviewPresets") item.days=Math.max(0,Number(extra.value)||0);
-  if(kind==="statuses") item.color=sanitizeHexColor(extra?.value)||defaultStatusColor(item.id,DB.masters.statuses.length);
+  const addArea=$(".master-add",section);
+  if(kind==="reviewPresets") item.days=Math.max(0,Number($("[data-extra]",addArea).value)||0);
+  if(kind==="statuses"){
+    item.color=sanitizeHexColor($('[data-extra="color"]',addArea)?.value)||defaultStatusColor(item.id,DB.masters.statuses.length);
+    item.boardColumn=Math.min(4,Math.max(1,Number($('[data-extra="column"]',addArea)?.value)||4));
+  }
   DB.masters[kind].push(item);
   save();renderAll();showView("master");showToast(`${meta.title}を追加しました`);
 }
