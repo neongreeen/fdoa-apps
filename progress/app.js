@@ -1,8 +1,9 @@
 "use strict";
 
-/* Progress Portfolio v0.2
+/* Progress Portfolio v0.3「ボード・ファースト」
    現在状態は stocks に保存せず、各銘柄の最新 decision から算出する。
-   判断は上書きせず追加し、売買 execution は判断にだけ紐付ける。 */
+   記録＝カードをタップ→行き先の状態を選ぶ→一言（判断フォームは廃止）。
+   「買った/売った」は状態遷移そのものが表す。記録は上書きせず追加する。 */
 
 const CONFIG={
   github:{owner:"neongreeen",repo:"fdoa-app-data",branch:"main"},
@@ -28,32 +29,14 @@ const DEFAULT_MASTERS={
     {id:"status_loss_watch",label:"損切り様子見",color:"#a65242",active:true,order:30,isDefault:false},
     {id:"status_buy_watch",label:"買い見込み／再買い",color:"#4a637e",active:true,order:40,isDefault:false},
   ],
-  actions:[
-    {id:"action_continue",label:"継続",executionSide:null,active:true,order:10,isDefault:true},
-    {id:"action_wait",label:"様子見",executionSide:null,active:true,order:20,isDefault:false},
-    {id:"action_buy",label:"買う",executionSide:"buy",active:true,order:30,isDefault:false},
-    {id:"action_rebuy",label:"再買い",executionSide:"buy",active:true,order:40,isDefault:false},
-    {id:"action_sell",label:"売る",executionSide:"sell",active:true,order:50,isDefault:false},
-    {id:"action_partial_sell",label:"一部売却",executionSide:"sell",active:true,order:60,isDefault:false},
-    {id:"action_pass",label:"見送る",executionSide:null,active:true,order:70,isDefault:false},
-  ],
-  reasons:[
-    {id:"reason_company",label:"企業動向",active:true,order:10,isDefault:true},
-    {id:"reason_market",label:"市場心理",active:true,order:20,isDefault:false},
-    {id:"reason_chart",label:"チャート",active:true,order:30,isDefault:false},
-    {id:"reason_volume",label:"出来高",active:true,order:40,isDefault:false},
-    {id:"reason_board",label:"板",active:true,order:50,isDefault:false},
-    {id:"reason_earnings",label:"決算",active:true,order:60,isDefault:false},
-    {id:"reason_macro",label:"マクロ",active:true,order:70,isDefault:false},
-  ],
-  subReasons:[
-    {id:"sub_no_change",label:"前提に変化なし",active:true,order:10,isDefault:true},
+  reasonTags:[
+    {id:"sub_no_change",label:"前提に変化なし",active:true,order:10,isDefault:false},
     {id:"sub_support_break",label:"支持線割れ",active:true,order:20,isDefault:false},
     {id:"sub_price_target",label:"注目価格へ接近",active:true,order:30,isDefault:false},
     {id:"sub_price_discovery",label:"価格発見中",active:true,order:40,isDefault:false},
     {id:"sub_overheat",label:"過熱／過度な悲観",active:true,order:50,isDefault:false},
     {id:"sub_material",label:"新しい材料",active:true,order:60,isDefault:false},
-    {id:"sub_execution",label:"実行条件を満たした",active:true,order:70,isDefault:false},
+    {id:"sub_earnings",label:"決算",active:true,order:70,isDefault:false},
   ],
   reviewPresets:[
     {id:"review_today",label:"今日",days:0,active:true,order:10,isDefault:false},
@@ -137,18 +120,24 @@ function normalize(data){
     settings:data.settings&&typeof data.settings==="object"?data.settings:{},
   };
   Object.keys(DEFAULT_MASTERS).forEach(kind=>{
-    const list=data.masters&&Array.isArray(data.masters[kind])?data.masters[kind]:base.masters[kind];
-    result.masters[kind]=list.map((item,index)=>({
+    // 理由タグは初回、旧・補助理由マスターをIDごと引き継ぐ（旧ログもタグ検索に掛かる）
+    const source=kind==="reasonTags"&&!Array.isArray(data.masters?.reasonTags)&&Array.isArray(data.masters?.subReasons)
+      ?data.masters.subReasons
+      :(data.masters&&Array.isArray(data.masters[kind])?data.masters[kind]:base.masters[kind]);
+    result.masters[kind]=source.map((item,index)=>({
       ...item,
       id:item.id||uid(kind.slice(0,3)),
       label:String(item.label||"名称未設定"),
       active:item.active!==false,
       order:Number.isFinite(Number(item.order))?Number(item.order):(index+1)*10,
       isDefault:item.isDefault===true,
-      ...(kind==="actions"?{executionSide:["buy","sell"].includes(item.executionSide)?item.executionSide:null}:{}),
       ...(kind==="reviewPresets"?{days:Number.isFinite(Number(item.days))?Number(item.days):1}:{}),
       ...(kind==="statuses"?{color:sanitizeHexColor(item.color)||defaultStatusColor(item.id,index)}:{}),
     }));
+  });
+  // 廃止済みマスター（判断・理由・補助理由）は旧ログの表示互換のためデータ内に温存する
+  ["actions","reasons","subReasons"].forEach(kind=>{
+    if(data.masters&&Array.isArray(data.masters[kind])&&data.masters[kind].length) result.masters[kind]=data.masters[kind];
   });
   return result;
 }
@@ -194,7 +183,6 @@ function ordered(kind,includeInactive=true){
 }
 
 function master(kind,id){return (DB.masters[kind]||[]).find(item=>item.id===id)||null;}
-function defaultMaster(kind){return ordered(kind,false).find(item=>item.isDefault)||ordered(kind,false)[0]||null;}
 function stockById(id){return DB.stocks.find(stock=>stock.id===id)||null;}
 function executionFor(decisionId){return DB.executions.find(execution=>execution.decisionId===decisionId)||null;}
 function decisionTime(decision){return new Date(decision.decidedAt||decision.createdAt||0).getTime();}
@@ -207,7 +195,7 @@ function revokeDecision(decisionId){
   const decision=DB.decisions.find(item=>item.id===decisionId);
   if(!decision||decision.revokedAt) return;
   const stock=stockById(decision.stockId);
-  if(!confirm(`${stock?.name||"この銘柄"}の判断を取り消しますか？\n行は消えず「取り消し済み」として残ります。訂正する場合は取り消した後、フォームから新しく記録してください。`)) return;
+  if(!confirm(`${stock?.name||"この銘柄"}の記録を取り消しますか？\n行は消えず「取り消し済み」として残ります。訂正する場合は取り消した後、ボードのカードから新しく記録してください。`)) return;
   const now=new Date().toISOString();
   decision.revokedAt=now;
   DB.executions.forEach(execution=>{
@@ -448,7 +436,7 @@ function renderPortfolio(){
       if(label.scrollWidth>seg.clientWidth-2) label.remove();
     });
   }
-  $$(".pf-row",panel).forEach(button=>button.addEventListener("click",()=>goToDecision(button.dataset.stock)));
+  $$(".pf-row",panel).forEach(button=>button.addEventListener("click",()=>openRecordModal(button.dataset.stock)));
 }
 
 function quoteHtml(stock,className="stock-quote"){
@@ -710,25 +698,9 @@ function showToast(message,type="ok"){
   toastTimer=setTimeout(()=>{node.className="toast";},2200);
 }
 
-function optionHtml(items,selected,placeholder=""){
-  const rows=[];
-  if(placeholder) rows.push(`<option value="">${esc(placeholder)}</option>`);
-  items.forEach(item=>rows.push(`<option value="${esc(item.id)}"${item.id===selected?" selected":""}>${esc(item.label)}${item.active===false?"（停止）":""}</option>`));
-  return rows.join("");
-}
-
-function selectItems(kind,selected){
-  return ordered(kind,true).filter(item=>item.active||item.id===selected);
-}
-
 function statusPill(id){
   const item=master("statuses",id);
   return item?`<span class="status-pill" style="background:${statusColor(id)}">${esc(item.label)}</span>`:`<span class="status-pill">未分類</span>`;
-}
-
-function actionPill(id){
-  const item=master("actions",id);
-  return item?`<span class="action-pill">${esc(item.label)}</span>`:`<span class="action-pill">未設定</span>`;
 }
 
 function currentView(){return $("nav button.active")?.dataset.view||"today";}
@@ -740,35 +712,73 @@ function showView(name){
   window.scrollTo({top:0,behavior:"smooth"});
 }
 
-function renderDecisionOptions(preserve=true){
-  const selected=preserve?{
-    stock:$("#dStock").value,status:$("#dStatus").value,action:$("#dAction").value,
-    reason:$("#dReason").value,subReason:$("#dSubReason").value,review:$("#dReviewPreset").value,
-  }:{};
-  $("#dStock").innerHTML=optionHtml(activeStocks().map(stock=>({id:stock.id,label:`${stock.name}  ${stock.ticker}`})),selected.stock,"銘柄を選択");
-  $("#dStatus").innerHTML=optionHtml(selectItems("statuses",selected.status),selected.status);
-  $("#dAction").innerHTML=optionHtml(selectItems("actions",selected.action),selected.action);
-  $("#dReason").innerHTML=optionHtml(selectItems("reasons",selected.reason),selected.reason);
-  $("#dSubReason").innerHTML=optionHtml(selectItems("subReasons",selected.subReason),selected.subReason);
-  $("#dReviewPreset").innerHTML=optionHtml(selectItems("reviewPresets",selected.review),selected.review);
+/* 記録モーダル：カードをタップ→行き先の状態を選ぶ→一言→保存（2〜3タップ） */
+let RECORD={stockId:null,statusId:null,tagId:null,reviewId:null};
 
-  if(!selectItems("statuses",selected.status).some(item=>item.id===selected.status)) $("#dStatus").value=defaultMaster("statuses")?.id||"";
-  if(!selectItems("actions",selected.action).some(item=>item.id===selected.action)) $("#dAction").value=defaultMaster("actions")?.id||"";
-  if(!selectItems("reasons",selected.reason).some(item=>item.id===selected.reason)) $("#dReason").value=defaultMaster("reasons")?.id||"";
-  if(!selectItems("subReasons",selected.subReason).some(item=>item.id===selected.subReason)) $("#dSubReason").value=defaultMaster("subReasons")?.id||"";
-  if(!selectItems("reviewPresets",selected.review).some(item=>item.id===selected.review)) $("#dReviewPreset").value=defaultMaster("reviewPresets")?.id||"";
+function openRecordModal(stockId){
+  const stock=stockById(stockId);
+  if(!stock) return;
+  const decision=latestDecision(stockId);
+  const currentStatus=decision&&master("statuses",decision.statusId)?decision.statusId:null;
+  RECORD={stockId,statusId:currentStatus,tagId:null,reviewId:null};
+  $("#recordModalTitle").innerHTML=`${esc(stock.name)} <small>${esc(stock.ticker)}</small>`;
+  $("#recordModalSub").textContent=decision?`前回 ${formatDate(decision.decidedAt,true)}`:"初回の記録";
+  $("#recordMemo").value="";
+  renderRecordModal();
+  $("#recordModal").hidden=false;
+  document.body.classList.add("modal-open");
 }
 
-function applyStockDefaults(stockId){
-  const decision=latestDecision(stockId);
-  $("#dStatus").value=decision?.statusId||defaultMaster("statuses")?.id||"";
-  $("#dAction").value=defaultMaster("actions")?.id||"";
-  $("#dReason").value=defaultMaster("reasons")?.id||"";
-  $("#dSubReason").value=defaultMaster("subReasons")?.id||"";
-  $("#dReviewPreset").value=defaultMaster("reviewPresets")?.id||"";
-  $("#dMemo").value="";
-  $("#formState").textContent=decision?`前回 ${formatDate(decision.decidedAt,true)}`:"初回判断";
-  $("#formState").className="save-state ready";
+function closeRecordModal(){
+  $("#recordModal").hidden=true;
+  document.body.classList.remove("modal-open");
+}
+
+function renderRecordModal(){
+  const current=latestDecision(RECORD.stockId)?.statusId||null;
+  $("#recordStatuses").innerHTML=ordered("statuses",false).map(status=>{
+    const color=statusColor(status);
+    const selected=status.id===RECORD.statusId;
+    const style=selected?`background:${color};border-color:${color};color:${readableTextColor(color)}`:"";
+    return `<button type="button" class="record-status${selected?" selected":""}" data-id="${esc(status.id)}" style="${style}">
+      ${selected?"":`<span class="status-head-dot" style="background:${color}"></span>`}${esc(status.label)}${status.id===current?'<small class="record-current">いま</small>':""}
+    </button>`;
+  }).join("");
+  $("#recordTags").innerHTML=ordered("reasonTags",false).map(tag=>`<button type="button" class="record-chip${tag.id===RECORD.tagId?" selected":""}" data-id="${esc(tag.id)}">${esc(tag.label)}</button>`).join("");
+  $("#recordReviews").innerHTML=[{id:"",label:"なし"},...ordered("reviewPresets",false)].map(preset=>`<button type="button" class="record-chip${(RECORD.reviewId||"")===preset.id?" selected":""}" data-id="${esc(preset.id)}">${esc(preset.label)}</button>`).join("");
+  const from=current?master("statuses",current):null;
+  const to=RECORD.statusId?master("statuses",RECORD.statusId):null;
+  $("#recordPreview").innerHTML=!to
+    ?'<span class="record-preview-hint">行き先の状態を選んでください</span>'
+    :!from
+    ?`${statusPill(to.id)}<span class="transition-note">新規</span>`
+    :from.id===to.id
+    ?`${statusPill(to.id)}<span class="transition-note">継続</span>`
+    :`${statusPill(from.id)}<span class="transition-arrow">→</span>${statusPill(to.id)}`;
+  $("#recordSave").disabled=!to;
+}
+
+function saveRecord(){
+  const stock=stockById(RECORD.stockId);
+  const status=master("statuses",RECORD.statusId);
+  if(!stock||!status){showToast("行き先の状態を選んでください","error");return;}
+  const previous=latestDecision(stock.id);
+  const review=RECORD.reviewId?master("reviewPresets",RECORD.reviewId):null;
+  const now=new Date().toISOString();
+  DB.decisions.push({
+    id:uid("decision"),stockId:stock.id,decidedAt:now,createdAt:now,
+    statusId:status.id,
+    memo:$("#recordMemo").value.trim(),
+    reasonTagId:RECORD.tagId||null,
+    nextReviewDate:review?addDays(review.days):null,
+  });
+  save();
+  closeRecordModal();
+  renderAll();
+  const fromLabel=previous?master("statuses",previous.statusId)?.label:null;
+  showToast(!fromLabel?`${stock.name}：${status.label} を記録しました`
+    :fromLabel===status.label?`${stock.name}：${status.label} のまま継続を記録しました`
+    :`${stock.name}：${fromLabel} → ${status.label} を記録しました`);
 }
 
 function renderBoard(){
@@ -805,16 +815,20 @@ function renderBoard(){
     html+=`<div class="no-status-column"><strong>まだ状態を決めていない銘柄</strong><div class="no-status-list">${unclassified.map(({stock,decision})=>stockCard(stock,decision)).join("")}</div></div>`;
   }
   $("#statusBoard").innerHTML=html||'<div class="empty-compact">銘柄を追加すると、ここに表示されます</div>';
-  $$(".stock-card",$("#statusBoard")).forEach(button=>button.addEventListener("click",()=>goToDecision(button.dataset.stock)));
+  $$(".stock-card",$("#statusBoard")).forEach(button=>button.addEventListener("click",()=>openRecordModal(button.dataset.stock)));
 }
 
 function stockCard(stock,decision){
   const sbiPosition=sbiPositionHtml(stock);
-  return `<button type="button" class="stock-card" data-stock="${esc(stock.id)}">
-    <span class="stock-card-top"><span class="stock-identity"><span class="stock-name" title="${esc(stock.name)}">${esc(stock.name)}</span><span class="stock-symbol">${esc(stock.ticker)}</span></span><span class="stock-card-action">${esc(master("actions",decision?.actionId)?.label||"判断する")}</span></span>
-    <span class="stock-card-memo">${esc(decision?.memo||master("subReasons",decision?.subReasonId)?.label||"まだログがありません")}</span>
+  const memo=decision?.memo
+    ||master("reasonTags",decision?.reasonTagId)?.label
+    ||master("subReasons",decision?.subReasonId)?.label
+    ||"まだログがありません";
+  return `<button type="button" class="stock-card" data-stock="${esc(stock.id)}" title="タップして記録">
+    <span class="stock-card-top"><span class="stock-identity"><span class="stock-name" title="${esc(stock.name)}">${esc(stock.name)}</span><span class="stock-symbol">${esc(stock.ticker)}</span></span><span class="stock-card-when">${decision?esc(formatDate(decision.decidedAt,true)):"未記録"}</span></span>
+    <span class="stock-card-memo">${esc(memo)}</span>
     ${sbiPosition}
-    <span class="stock-card-bottom">${sbiPosition?'<span class="sbi-source-label">SBI一時反映</span>':quoteHtml(stock,"stock-card-quote")}<span class="stock-card-date">次回 ${decision?.nextReviewDate?formatDate(`${decision.nextReviewDate}T12:00:00`):"未設定"}</span></span>
+    <span class="stock-card-bottom">${sbiPosition?'<span class="sbi-source-label">SBI一時反映</span>':quoteHtml(stock,"stock-card-quote")}<span class="stock-card-date">${decision?.nextReviewDate?`次回 ${formatDate(`${decision.nextReviewDate}T12:00:00`)}`:""}</span></span>
   </button>`;
 }
 
@@ -839,32 +853,68 @@ function renderStockTable(){
 }
 
 function renderFilters(){
-  const values={stock:$("#fStock").value,status:$("#fStatus").value,action:$("#fAction").value};
+  const values={stock:$("#fStock").value,status:$("#fStatus").value,tag:$("#fTag").value};
   $("#fStock").innerHTML='<option value="">全銘柄</option>'+DB.stocks.slice().sort((a,b)=>a.name.localeCompare(b.name,"ja")).map(stock=>`<option value="${esc(stock.id)}">${esc(stock.name)}</option>`).join("");
   $("#fStatus").innerHTML='<option value="">全状態</option>'+ordered("statuses",true).map(item=>`<option value="${esc(item.id)}">${esc(item.label)}</option>`).join("");
-  $("#fAction").innerHTML='<option value="">全判断</option>'+ordered("actions",true).map(item=>`<option value="${esc(item.id)}">${esc(item.label)}</option>`).join("");
-  $("#fStock").value=values.stock;$("#fStatus").value=values.status;$("#fAction").value=values.action;
+  $("#fTag").innerHTML='<option value="">全タグ</option>'+ordered("reasonTags",true).map(item=>`<option value="${esc(item.id)}">${esc(item.label)}</option>`).join("");
+  $("#fStock").value=values.stock;$("#fStatus").value=values.status;$("#fTag").value=values.tag;
+}
+
+/* 各記録の「遷移元」＝同じ銘柄の直前の有効（未取り消し）記録の状態。取り消すと後続の矢印も繋ぎ直る */
+function transitionSources(){
+  const byStock=new Map();
+  DB.decisions.slice().sort((a,b)=>decisionTime(a)-decisionTime(b)).forEach(decision=>{
+    if(!byStock.has(decision.stockId)) byStock.set(decision.stockId,[]);
+    byStock.get(decision.stockId).push(decision);
+  });
+  const sources=new Map();
+  byStock.forEach(list=>{
+    let lastValid=null;
+    list.forEach(decision=>{
+      sources.set(decision.id,lastValid?lastValid.statusId:null);
+      if(!decision.revokedAt) lastValid=decision;
+    });
+  });
+  return sources;
+}
+
+function legacyDetailText(decision){
+  const bits=[];
+  if(decision.actionId) bits.push(`判断 ${master("actions",decision.actionId)?.label||"—"}`);
+  if(decision.reasonId) bits.push(master("reasons",decision.reasonId)?.label||"");
+  if(decision.subReasonId) bits.push(master("subReasons",decision.subReasonId)?.label||"");
+  return bits.filter(Boolean).join("・");
 }
 
 function renderLog(){
   let list=DB.decisions.slice().sort((a,b)=>decisionTime(b)-decisionTime(a));
-  const stockId=$("#fStock").value,statusId=$("#fStatus").value,actionId=$("#fAction").value;
+  const stockId=$("#fStock").value,statusId=$("#fStatus").value,tagId=$("#fTag").value;
   if(stockId) list=list.filter(item=>item.stockId===stockId);
   if(statusId) list=list.filter(item=>item.statusId===statusId);
-  if(actionId) list=list.filter(item=>item.actionId===actionId);
+  if(tagId) list=list.filter(item=>(item.reasonTagId||item.subReasonId)===tagId);
   $("#logCount").textContent=`${list.length}件`;
   if(!list.length){$("#logList").innerHTML='<div class="empty-compact">条件に合うログはありません</div>';return;}
+  const sources=transitionSources();
   $("#logList").innerHTML=list.map(decision=>{
     const stock=stockById(decision.stockId);
     const execution=executionFor(decision.id);
-    const action=master("actions",decision.actionId);
-    const side=action?.executionSide;
+    const side=master("actions",decision.actionId)?.executionSide;
+    const from=sources.get(decision.id);
+    const transition=from==null
+      ?`${statusPill(decision.statusId)}<span class="transition-note">新規</span>`
+      :from===decision.statusId
+      ?`${statusPill(decision.statusId)}<span class="transition-note">継続</span>`
+      :`${statusPill(from)}<span class="transition-arrow">→</span>${statusPill(decision.statusId)}`;
+    const tagLabel=decision.reasonTagId?master("reasonTags",decision.reasonTagId)?.label:"";
+    const metaBits=[
+      tagLabel?`#${tagLabel}`:legacyDetailText(decision),
+      decision.nextReviewDate?`次回 ${formatDate(`${decision.nextReviewDate}T12:00:00`)}`:"",
+    ].filter(Boolean);
     return `<div class="log-row${decision.revokedAt?" revoked":""}">
       <div class="timeline-date">${formatDate(decision.decidedAt,true)}</div>
       <div class="stock-identity"><div class="stock-name" title="${esc(stock?.name||"不明な銘柄")}">${esc(stock?.name||"不明な銘柄")}</div><div class="stock-symbol">${esc(stock?.ticker||"")}</div></div>
-      <div class="log-status">${statusPill(decision.statusId)}</div>
-      <div>${actionPill(decision.actionId)}</div>
-      <div class="log-detail"><div class="log-memo">${esc(decision.memo||"—")}</div><div class="log-reason">${esc(master("reasons",decision.reasonId)?.label||"—")} ／ ${esc(master("subReasons",decision.subReasonId)?.label||"—")} ／ 次回 ${decision.nextReviewDate?formatDate(`${decision.nextReviewDate}T12:00:00`):"—"}</div></div>
+      <div class="log-transition">${transition}</div>
+      <div class="log-detail"><div class="log-memo">${esc(decision.memo||"—")}</div>${metaBits.length?`<div class="log-reason">${esc(metaBits.join(" ／ "))}</div>`:""}</div>
       <div class="log-execution">${execution?`<span class="side-pill ${side}">${side==="buy"?"買付":"売却"}</span> ${formatDate(execution.executedAt,true)}`:""}</div>
       <div class="log-revoke">${decision.revokedAt?`<span class="revoked-label">取り消し済み<br>${formatDate(decision.revokedAt,true)}</span>`:`<button type="button" class="btn sec sm revoke-decision" data-id="${esc(decision.id)}">取り消す</button>`}</div>
     </div>`;
@@ -873,10 +923,8 @@ function renderLog(){
 }
 
 const MASTER_META={
-  statuses:{title:"状態",prefix:"status",extra:"color"},
-  actions:{title:"判断",prefix:"action",extra:"side"},
-  reasons:{title:"理由",prefix:"reason"},
-  subReasons:{title:"補助理由",prefix:"sub"},
+  statuses:{title:"状態（ボードの列）",prefix:"status",extra:"color"},
+  reasonTags:{title:"理由タグ",prefix:"tag"},
   reviewPresets:{title:"次回確認",prefix:"review",extra:"days"},
 };
 
@@ -903,7 +951,6 @@ function masterRow(kind,item,meta){
     <input class="master-label" type="text" maxlength="50" value="${esc(item.label)}" aria-label="表示名">
     <input class="master-order" type="number" step="1" value="${Number(item.order)}" aria-label="表示順">
     <label class="master-check"><input class="master-active" type="checkbox"${item.active?" checked":""}>使用</label>
-    <label class="master-check"><input class="master-default" type="radio" name="default-${kind}"${item.isDefault?" checked":""}>既定</label>
     ${masterExtraInput(meta,item,false)}
     <button type="button" class="btn sec sm master-save save-master">保存</button>
   </div>`;
@@ -911,7 +958,6 @@ function masterRow(kind,item,meta){
 
 function masterExtraInput(meta,item,isAdd){
   const className=isAdd?"master-add-extra":"master-extra";
-  if(meta.extra==="side") return `<label class="field ${className}"><span>${isAdd?"売買方向":""}</span><select data-extra="side"><option value=""${!item?.executionSide?" selected":""}>実行なし</option><option value="buy"${item?.executionSide==="buy"?" selected":""}>買い</option><option value="sell"${item?.executionSide==="sell"?" selected":""}>売り</option></select></label>`;
   if(meta.extra==="days") return `<label class="field ${className}"><span>${isAdd?"日数":""}</span><input data-extra="days" type="number" step="1" min="0" value="${item?Number(item.days):1}"></label>`;
   if(meta.extra==="color"){
     const value=item?statusColor(item):STATUS_FALLBACK_COLORS[DB.masters.statuses.length%STATUS_FALLBACK_COLORS.length];
@@ -929,9 +975,7 @@ function saveMasterRow(row){
   item.label=label;
   item.order=Number($(".master-order",row).value)||0;
   item.active=$(".master-active",row).checked;
-  if($(".master-default",row).checked){DB.masters[kind].forEach(entry=>entry.isDefault=entry.id===item.id);}
   const extra=$("[data-extra]",row);
-  if(kind==="actions") item.executionSide=extra.value||null;
   if(kind==="reviewPresets") item.days=Math.max(0,Number(extra.value)||0);
   if(kind==="statuses"&&extra) item.color=sanitizeHexColor(extra.value)||item.color;
   save();renderAll();showView("master");showToast(`${MASTER_META[kind].title}を保存しました`);
@@ -943,9 +987,8 @@ function addMasterItem(section){
   const label=$(".master-add-label",section).value.trim();
   if(!label){showToast("名称を入力してください","error");return;}
   const maxOrder=Math.max(0,...DB.masters[kind].map(item=>Number(item.order)||0));
-  const item={id:uid(meta.prefix),label,active:true,order:maxOrder+10,isDefault:!DB.masters[kind].some(entry=>entry.isDefault&&entry.active)};
+  const item={id:uid(meta.prefix),label,active:true,order:maxOrder+10,isDefault:false};
   const extra=$("[data-extra]",$(".master-add",section));
-  if(kind==="actions") item.executionSide=extra.value||null;
   if(kind==="reviewPresets") item.days=Math.max(0,Number(extra.value)||0);
   if(kind==="statuses") item.color=sanitizeHexColor(extra?.value)||defaultStatusColor(item.id,DB.masters.statuses.length);
   DB.masters[kind].push(item);
@@ -954,7 +997,6 @@ function addMasterItem(section){
 
 function renderAll(){
   const view=currentView();
-  renderDecisionOptions(true);
   renderBoard();
   renderStockTable();
   renderFilters();
@@ -971,42 +1013,6 @@ function renderSettings(){
   $("#sbiQuickLink").textContent=url?"SBIを開く":"SBIを設定";
   $("#testSbiUrl").hidden=!url;
   $("#testSbiUrl").href=url||"#";
-}
-
-function goToDecision(stockId){
-  showView("observe");
-  $("#dStock").value=stockId;
-  applyStockDefaults(stockId);
-  window.scrollTo({top:0,behavior:"smooth"});
-}
-
-function submitDecision(event){
-  event.preventDefault();
-  const stockId=$("#dStock").value;
-  const stock=stockById(stockId);
-  if(!stock){showToast("銘柄を選択してください","error");return;}
-  const review=master("reviewPresets",$("#dReviewPreset").value);
-  if(!review){showToast("次回確認を選択してください","error");return;}
-  const now=new Date().toISOString();
-  const decision={
-    id:uid("decision"),stockId,decidedAt:now,
-    statusId:$("#dStatus").value,
-    actionId:$("#dAction").value,
-    reasonId:$("#dReason").value,
-    subReasonId:$("#dSubReason").value,
-    memo:$("#dMemo").value.trim(),
-    nextReviewDate:addDays(review.days),
-    createdAt:now,
-  };
-  if(!decision.statusId||!decision.actionId||!decision.reasonId||!decision.subReasonId){showToast("選択項目を確認してください","error");return;}
-
-  DB.decisions.push(decision);
-  save();
-  renderAll();
-  $("#dStock").value=stockId;
-  applyStockDefaults(stockId);
-  $("#formState").textContent="保存済み";
-  showToast("判断を保存しました");
 }
 
 function submitStock(event){
@@ -1060,12 +1066,33 @@ function updateSyncState(state,message=""){
 
 function bindEvents(){
   $$("nav button[data-view]").forEach(button=>button.addEventListener("click",()=>showView(button.dataset.view)));
-  $("#decisionForm").addEventListener("submit",submitDecision);
   $("#stockForm").addEventListener("submit",submitStock);
   $("#instrumentQuery").addEventListener("input",renderInstrumentResults);
-  $("#dStock").addEventListener("change",event=>applyStockDefaults(event.target.value));
-  [$("#fStock"),$("#fStatus"),$("#fAction")].forEach(select=>select.addEventListener("change",renderLog));
-  $("#clearFilters").addEventListener("click",()=>{$("#fStock").value="";$("#fStatus").value="";$("#fAction").value="";renderLog();});
+  [$("#fStock"),$("#fStatus"),$("#fTag")].forEach(select=>select.addEventListener("change",renderLog));
+  $("#clearFilters").addEventListener("click",()=>{$("#fStock").value="";$("#fStatus").value="";$("#fTag").value="";renderLog();});
+  $("#recordModalClose").addEventListener("click",closeRecordModal);
+  $("#recordModal").addEventListener("click",event=>{if(event.target===$("#recordModal")) closeRecordModal();});
+  document.addEventListener("keydown",event=>{if(event.key==="Escape"&&!$("#recordModal").hidden) closeRecordModal();});
+  $("#recordSave").addEventListener("click",saveRecord);
+  $("#recordMemo").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();if(!$("#recordSave").disabled) saveRecord();}});
+  $("#recordStatuses").addEventListener("click",event=>{
+    const button=event.target.closest("[data-id]");
+    if(!button) return;
+    RECORD.statusId=button.dataset.id;
+    renderRecordModal();
+  });
+  $("#recordTags").addEventListener("click",event=>{
+    const button=event.target.closest("[data-id]");
+    if(!button) return;
+    RECORD.tagId=RECORD.tagId===button.dataset.id?null:button.dataset.id;
+    renderRecordModal();
+  });
+  $("#recordReviews").addEventListener("click",event=>{
+    const button=event.target.closest("[data-id]");
+    if(!button) return;
+    RECORD.reviewId=button.dataset.id||null;
+    renderRecordModal();
+  });
   $("#btnJsonExport").addEventListener("click",exportJson);
   $("#jsonImport").addEventListener("change",importJson);
   $("#saveSbiUrl").addEventListener("click",()=>{

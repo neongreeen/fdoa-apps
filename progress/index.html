@@ -7,7 +7,7 @@
   <title>Progress Portfolio</title>
   <link rel="icon" href="../jikyu/favicon.ico" sizes="any">
   <link rel="stylesheet" href="../shared/base.css?v=20260714-1532">
-  <link rel="stylesheet" href="progress.css?v=20260716-1713">
+  <link rel="stylesheet" href="progress.css?v=20260716-1742">
 </head>
 <body>
 <header>
@@ -25,50 +25,6 @@
 
 <main>
   <section id="view-observe" class="view active">
-    <div class="panel decision-panel">
-      <div class="panel-heading">
-        <div>
-          <h2>判断を記録</h2>
-          <p>変わったところだけ確認して保存</p>
-        </div>
-        <span class="save-state" id="formState">未保存</span>
-      </div>
-
-      <form id="decisionForm" novalidate>
-        <div class="decision-grid">
-          <label class="field field-stock">
-            <span>銘柄</span>
-            <select id="dStock" required></select>
-          </label>
-          <label class="field">
-            <span>状態</span>
-            <select id="dStatus" required></select>
-          </label>
-          <label class="field">
-            <span>判断</span>
-            <select id="dAction" required></select>
-          </label>
-          <label class="field">
-            <span>理由</span>
-            <select id="dReason" required></select>
-          </label>
-          <label class="field">
-            <span>補助理由</span>
-            <select id="dSubReason" required></select>
-          </label>
-          <label class="field">
-            <span>次回確認</span>
-            <select id="dReviewPreset" required></select>
-          </label>
-          <label class="field field-memo">
-            <span>一言メモ</span>
-            <input id="dMemo" type="text" maxlength="240" placeholder="今回変わったこと">
-          </label>
-          <button class="btn save-decision" type="submit" id="saveDecision">判断を保存</button>
-        </div>
-      </form>
-    </div>
-
     <div class="panel" id="portfolioPanel" hidden>
       <div class="panel-heading">
         <div>
@@ -83,7 +39,7 @@
       <div class="panel-heading">
         <div>
           <h2>観察ボード</h2>
-          <p>現在状態は各銘柄の最新判断から表示</p>
+          <p>カードをタップ→行き先の列を選んで記録</p>
         </div>
         <div class="board-check">
           <span class="count-label" id="stockCount"></span>
@@ -98,14 +54,14 @@
       <div class="panel-heading">
         <div>
           <h2>判断ログ</h2>
-          <p>判断は上書きせず、すべて時系列で残ります</p>
+          <p>状態の遷移がすべてを語る。記録は上書きせず時系列で残ります</p>
         </div>
         <span class="count-label" id="logCount"></span>
       </div>
       <div class="log-filters">
         <select id="fStock"><option value="">全銘柄</option></select>
         <select id="fStatus"><option value="">全状態</option></select>
-        <select id="fAction"><option value="">全判断</option></select>
+        <select id="fTag"><option value="">全タグ</option></select>
         <button type="button" class="btn sec sm" id="clearFilters">条件クリア</button>
       </div>
       <div id="logList" class="log-list"></div>
@@ -258,9 +214,35 @@
   </section>
 </main>
 
+<div class="modal-overlay" id="recordModal" hidden>
+  <div class="record-modal" role="dialog" aria-modal="true" aria-labelledby="recordModalTitle">
+    <div class="record-modal-head">
+      <div>
+        <h2 id="recordModalTitle"></h2>
+        <p id="recordModalSub"></p>
+      </div>
+      <button type="button" class="modal-close" id="recordModalClose" aria-label="閉じる">×</button>
+    </div>
+    <div class="record-section-label">行き先の状態</div>
+    <div class="record-statuses" id="recordStatuses"></div>
+    <div class="record-preview" id="recordPreview"></div>
+    <label class="field record-memo-field">
+      <span>一言メモ</span>
+      <input id="recordMemo" type="text" maxlength="240" placeholder="心が動いた理由をひとこと" autocomplete="off">
+    </label>
+    <div class="record-section-label">理由タグ（任意・あとで判断のクセを振り返る用）</div>
+    <div class="record-chips" id="recordTags"></div>
+    <div class="record-section-label">次回確認（任意・決算日など日を決めて見たい時だけ）</div>
+    <div class="record-chips" id="recordReviews"></div>
+    <div class="record-actions">
+      <button type="button" class="btn" id="recordSave">記録する</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../shared/store.js?v=20260714-1532"></script>
-<script src="app.js?v=20260716-1713"></script>
+<script src="app.js?v=20260716-1742"></script>
 </body>
 </html>

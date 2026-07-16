@@ -58,19 +58,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .summary-card .summary-value{display:block;font-size:25px;font-weight:750;font-variant-numeric:tabular-nums;line-height:1.25}
 .summary-card .summary-sub{display:block;font-size:11px;color:var(--sub);margin-top:3px}
 
-.decision-panel{border-color:#d7dfdc}
-.decision-grid{
-  display:grid;
-  grid-template-columns:repeat(6,minmax(0,1fr));
-  gap:13px 12px;
-  align-items:end;
-}
 .field{display:flex;flex-direction:column;gap:5px;min-width:0}
 .field>span{font-size:12px;color:var(--sub);font-weight:650;white-space:nowrap}
 .field input,.field select{width:100%;min-width:0}
-.field-stock{grid-column:span 2}
-.field-memo{grid-column:span 2}
-.save-decision{height:43px;justify-content:center;grid-column:span 1}
 
 #view-observe{font-size:12px;line-height:1.3}
 #view-observe .panel{padding:10px 12px;margin-bottom:8px}
@@ -79,11 +69,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 #view-observe .panel-heading h2{font-size:14px;line-height:1.2;margin-bottom:0;white-space:nowrap}
 #view-observe .panel-heading p{font-size:9px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #view-observe .count-label,#view-observe .save-state{font-size:9px;line-height:1.2;padding:2px 7px;white-space:nowrap}
-#view-observe .decision-grid{gap:5px 6px}
 #view-observe .field{gap:2px}
 #view-observe .field>span{font-size:9px;line-height:1.15}
 #view-observe .field input,#view-observe .field select{padding:5px 7px;border-radius:7px;font-size:12px;line-height:1.2}
-#view-observe .save-decision{height:30px;min-height:30px;padding:5px 9px;font-size:11px}
 #view-observe .empty-compact{padding:9px 5px;font-size:10px;line-height:1.25}
 
 /* 銘柄・項目マスターは観察画面と同じ表示密度と見出し規則で揃える */
@@ -172,7 +160,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .stock-card .stock-identity{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 4px;min-width:0;max-width:100%}
 .stock-card .stock-name{min-width:0;font-size:11px;line-height:1.25;font-weight:700;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .stock-card .stock-symbol{flex:0 0 auto;font-size:8px;line-height:1.2}
-.stock-card .stock-card-action{flex:0 0 auto;font-size:9px;line-height:1.2;color:var(--progress-blue);font-weight:700;white-space:nowrap}
+.stock-card .stock-card-when{flex:0 0 auto;font-size:8px;line-height:1.2;color:var(--sub);white-space:nowrap;font-variant-numeric:tabular-nums}
 .stock-card .stock-card-memo{font-size:9px;color:var(--sub);margin-top:1px;line-height:1.3;white-space:normal;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .sbi-position{display:block;margin-top:4px;padding-top:4px;border-top:1px solid #eeeeeb;font-variant-numeric:tabular-nums}
 .sbi-position-main{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:2px 6px;min-width:0}
@@ -293,7 +281,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .log-filters{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px}
 .log-filters select{width:auto;min-width:118px;padding:4px 6px;font-size:10px;line-height:1.2}
 .log-filters .btn{min-height:26px;padding:4px 9px;font-size:10px}
-.log-row{grid-template-columns:82px minmax(130px,1.1fr) 78px 62px minmax(185px,1.8fr) 62px 64px;gap:5px;padding:5px 2px;line-height:1.2}
+.log-row{grid-template-columns:82px minmax(120px,1fr) minmax(160px,1.2fr) minmax(175px,1.7fr) 62px 64px;gap:5px;padding:5px 2px;line-height:1.2}
+.log-transition{display:flex;align-items:center;gap:3px;flex-wrap:wrap;min-width:0}
+.transition-arrow{color:var(--sub);font-size:10px;font-weight:700;flex:0 0 auto}
+.transition-note{font-size:8px;color:var(--sub);font-weight:650;white-space:nowrap}
 .log-row.revoked>div:not(.log-revoke){opacity:.42}
 .log-row.revoked .log-memo,.log-row.revoked .stock-name{text-decoration:line-through}
 .log-revoke{text-align:right}
@@ -318,7 +309,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .master-list{display:flex;flex-direction:column}
 .master-row{
   display:grid;
-  grid-template-columns:minmax(150px,1.5fr) 86px 90px 88px minmax(120px,.9fr) auto;
+  grid-template-columns:minmax(150px,1.5fr) 86px 90px minmax(120px,.9fr) auto;
   gap:5px;
   align-items:center;
   padding:4px 0;
@@ -370,13 +361,69 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 
 .empty-compact{padding:18px 8px;color:var(--sub);font-size:13px;text-align:center}
 
+/* 記録モーダル（カードタップ→行き先の列→一言→保存） */
+body.modal-open{overflow:hidden}
+.modal-overlay[hidden]{display:none}
+.modal-overlay{
+  position:fixed;inset:0;z-index:90;
+  background:rgba(29,29,31,.42);
+  display:flex;align-items:center;justify-content:center;
+  padding:18px;
+}
+.record-modal{
+  width:min(560px,100%);
+  max-height:min(86vh,720px);
+  overflow-y:auto;
+  background:var(--card,#fff);
+  border-radius:14px;
+  box-shadow:0 18px 48px rgba(0,0,0,.22);
+  padding:16px 18px 18px;
+}
+.record-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.record-modal-head h2{font-size:16px;line-height:1.25;margin:0}
+.record-modal-head h2 small{font-size:10px;color:var(--sub);font-weight:600;letter-spacing:.03em;margin-left:4px}
+.record-modal-head p{font-size:10px;color:var(--sub);margin-top:2px}
+.modal-close{
+  flex:0 0 auto;width:28px;height:28px;border:none;border-radius:50%;
+  background:#efefec;color:var(--sub);font-size:15px;line-height:1;cursor:pointer;
+}
+.modal-close:hover{background:#e4e4e0}
+.record-section-label{font-size:10px;color:var(--sub);font-weight:650;margin:10px 0 5px}
+.record-statuses{display:flex;flex-wrap:wrap;gap:6px}
+.record-status{
+  display:inline-flex;align-items:center;gap:5px;
+  border:1.5px solid var(--line);border-radius:999px;
+  background:#fff;color:var(--ink);
+  padding:7px 13px;font-size:12px;font-weight:700;line-height:1.2;
+  cursor:pointer;transition:border-color .12s,background .12s;
+}
+.record-status:hover{border-color:#c4c9c6}
+.record-status .record-current{font-size:8px;font-weight:650;opacity:.75;margin-left:1px}
+.record-preview{display:flex;align-items:center;gap:4px;flex-wrap:wrap;min-height:22px;margin-top:9px}
+.record-preview-hint{font-size:10px;color:var(--sub)}
+.record-memo-field{margin-top:10px}
+.record-memo-field input{padding:8px 10px;font-size:13px}
+.record-chips{display:flex;flex-wrap:wrap;gap:5px}
+.record-chip{
+  border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--sub);
+  padding:5px 11px;font-size:11px;font-weight:650;line-height:1.2;cursor:pointer;
+  transition:border-color .12s,background .12s,color .12s;
+}
+.record-chip:hover{border-color:#c4c9c6}
+.record-chip.selected{background:var(--ink);border-color:var(--ink);color:#fff}
+.record-actions{display:flex;justify-content:flex-end;margin-top:14px}
+.record-actions .btn{min-width:140px;justify-content:center}
+.record-actions .btn:disabled{opacity:.4;cursor:not-allowed}
+@media(max-width:640px){
+  .modal-overlay{padding:0;align-items:flex-end}
+  .record-modal{width:100%;max-height:88vh;border-radius:14px 14px 0 0;padding:14px 14px calc(16px + env(safe-area-inset-bottom))}
+  .record-actions .btn{width:100%}
+}
+
 @media(max-width:980px){
-  .decision-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
-  .field-stock,.field-memo{grid-column:span 2}
-  .save-decision{grid-column:span 1}
   .stock-form{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stock-form .btn{grid-column:span 2}
-  .log-row{grid-template-columns:72px minmax(105px,1fr) 68px 54px minmax(130px,1.4fr) 58px 60px}
+  .log-row{grid-template-columns:72px minmax(100px,1fr) minmax(140px,1.1fr) minmax(120px,1.4fr) 58px 60px}
   .log-execution{grid-column:auto;text-align:right;margin-top:0}
 }
 
@@ -386,9 +433,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{
   .summary-card{padding:13px 14px}
   .summary-card .summary-value{font-size:21px}
   .panel-heading{margin-bottom:13px}
-  .decision-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-  .field-stock,.field-memo{grid-column:span 2}
-  .save-decision{grid-column:span 2;width:100%}
   .due-row{grid-template-columns:minmax(110px,1.3fr) minmax(96px,.9fr) auto;padding:11px 0}
   .due-row .due-action,.due-row .due-review{display:none}
   .timeline-row{grid-template-columns:88px minmax(100px,1fr) minmax(80px,.7fr);gap:8px}
@@ -402,11 +446,11 @@ button:focus-visible,input:focus-visible,select:focus-visible{
   .stock-table-row .stock-observation-state{display:none}
   .log-filters{display:grid;grid-template-columns:1fr 1fr}
   .log-filters select,.log-filters .btn{width:100%;min-width:0}
-  .log-row{grid-template-columns:88px minmax(105px,1fr) minmax(85px,.7fr);gap:8px;padding:11px 0}
-  .log-row .log-status{display:none}
-  .log-detail{grid-column:2/-1}
-  .log-execution{grid-column:2/-1;text-align:left;margin-top:-3px}
-  .log-revoke{grid-column:2/-1;text-align:left}
+  .log-row{grid-template-columns:88px minmax(0,1fr);gap:3px 8px;padding:11px 0}
+  .log-transition{grid-column:2}
+  .log-detail{grid-column:1/-1}
+  .log-execution{grid-column:1/-1;text-align:left;margin-top:-3px}
+  .log-revoke{grid-column:1/-1;text-align:left}
   .master-row{grid-template-columns:minmax(125px,1fr) 72px 74px auto;gap:6px}
   .master-row .master-extra{grid-column:1/3}
   .master-row .master-save{grid-column:4;grid-row:1/3}
@@ -421,8 +465,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 }
 
 @media(max-width:390px){
-  .decision-grid{grid-template-columns:1fr}
-  .field-stock,.field-memo,.save-decision{grid-column:span 1}
   .settings-form{grid-template-columns:1fr}
   .settings-form .field{grid-column:1}
   .summary-grid{grid-template-columns:1fr 1fr}
