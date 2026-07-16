@@ -64,12 +64,14 @@ function createCloudStore(cfg){
         }
       }
       const db=cfg.getData();
-      const body={message:'保存：'+(cfg.label||cfg.path)+' '+new Date().toLocaleString('ja-JP'),content:b64enc(JSON.stringify(db,null,1)),branch:cfg.branch};
+      const content=JSON.stringify(db,null,1);
+      const sentStamp=savedAtOf(db); // 送信中にsave()が走ってもズレないよう「送った中身」のsavedAtを控える（自分の保存を他端末と誤認する競合の防止）
+      const body={message:'保存：'+(cfg.label||cfg.path)+' '+new Date().toLocaleString('ja-JP'),content:b64enc(content),branch:cfg.branch};
       if(sha)body.sha=sha;
       const res=await api('PUT',cfg.path,body);
       if(!res.ok)throw new Error('保存失敗（'+res.status+'）');
       const j=await res.json();
-      sha=j.content.sha;stamp=savedAtOf(db);
+      sha=j.content.sha;stamp=sentStamp;
       state('saved');
     }catch(e){
       state(navigator.onLine?'error':'offline',navigator.onLine?e.message:'');
