@@ -207,9 +207,14 @@
       <ol class="note bookmarklet-steps">
         <li>上のボタンで取込みコードをコピーする</li>
         <li><strong>Mac：</strong>このページをブックマークに追加 → ブックマークを編集して、URL欄にコピーしたコードを貼り付け → 名前を「SBI取込み」などに変更</li>
-        <li><strong>iPhone（Safari）：</strong>共有ボタン → 「ブックマークを追加」 → 追加後にブックマーク一覧の「編集」でURLをコピーしたコードに貼り替え</li>
+        <li><strong>iPhone / iPad（Safari）：</strong>共有ボタン → 「ブックマークを追加」 → 追加後にブックマーク一覧の「編集」でURLをコピーしたコードに貼り替え。MacとはiCloudでブックマークが同期されるので、Mac側で貼り替えれば全端末に反映されます</li>
         <li>SBIのポートフォリオ画面を開いた状態で、そのブックマークを開くと取込みが実行されます</li>
       </ol>
+      <div class="note" id="sbiDebug" hidden>
+        <p><strong>取込み診断</strong>：直近の取込みで読み取れなかった内容の記録です。下のボタンでコピーして百に渡すと原因を特定できます</p>
+        <textarea id="sbiDebugText" readonly rows="8" style="width:100%;font-size:11px"></textarea>
+        <button type="button" class="btn sec" id="btnCopySbiDebug">診断をコピー</button>
+      </div>
     </div>
   </section>
 </main>
@@ -262,6 +267,6 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../shared/store.js?v=20260716-1828"></script>
-<script src="app.js?v=20260716-1919"></script>
+<script src="app.js?v=20260717-1100"></script>
 </body>
 </html>

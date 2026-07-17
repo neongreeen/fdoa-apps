@@ -168,6 +168,7 @@ let SBI_PRICE_DATA=null;
 let priceLoadedAt=0;
 let priceLoading=false;
 let lastSbiImportId="";
+let lastSbiFailId="";
 
 function save(){
   DB.meta.schemaVersion=CONFIG.schemaVersion;
@@ -521,15 +522,106 @@ function isSbiOrigin(origin){
   }catch(error){return false;}
 }
 
-function receiveSbiQuotes(event){
-  const message=event.data;
-  if(!isSbiOrigin(event.origin)||!message||message.type!=="progress-portfolio:sbi-quotes"||!Array.isArray(message.quotes)) return;
-  if(message.id&&message.id===lastSbiImportId) return;
+/* v0.4：SBI取込みの解析はアプリ側で行う。ブックマークは表データを送るだけの送信係。
+   SBIの画面構成が変わったらparseSbiTablesを直す＝ブックマーク貼り替え不要で全端末に効く。 */
+function parseSbiTables(tables){
+  const clean=value=>String(value||"").normalize("NFKC").replace(/\s+/g," ").trim();
+  const key=value=>clean(value).replace(/\s+/g,"");
+  const toNumber=value=>{
+    const normalized=clean(value).replace(/[,%￥¥$円]/g,"").replace(/[−–—]/g,"-").replace(/^\+/,"");
+    if(!normalized) return null;
+    const result=Number(normalized);
+    return Number.isFinite(result)?result:null;
+  };
+  const tickerOf=text=>{
+    const cleaned=clean(text);
+    const patterns=[
+      /(?:^|\s)(\d[0-9A-Z]{3})(?:\s|$)/,
+      /[（(](\d[0-9A-Z]{3})[)）]/,
+      /(?:^|\s)([A-Z]{1,6}(?:[.-][A-Z0-9]+)?)(?:\s|$)/,
+      /[（(]([A-Z]{1,6}(?:[.-][A-Z0-9]+)?)[)）]/,
+    ];
+    for(const pattern of patterns){
+      const match=cleaned.match(pattern);
+      if(match) return match[1].toUpperCase();
+    }
+    return null;
+  };
+  const quotes={};
+  tables.forEach(rows=>{
+    const headerIndex=rows.findIndex(cells=>{
+      if(cells.length<4) return false;
+      const joined=key(cells.join("|"));
+      return joined.includes("銘柄")&&joined.includes("現在値");
+    });
+    if(headerIndex<0) return;
+    const headers=rows[headerIndex].map(cell=>key(cell));
+    const find=predicate=>headers.findIndex(predicate);
+    const instrumentIndex=find(text=>text.includes("銘柄"));
+    const priceIndex=find(text=>text.includes("現在値"));
+    if(instrumentIndex<0||priceIndex<0||instrumentIndex===priceIndex) return;
+    const acquisitionDateIndex=find(text=>text.includes("買付日"));
+    const quantityIndex=find(text=>text==="数量"||text==="保有数量"||text==="株数"||text==="保有株数");
+    const costIndex=find(text=>text==="取得単価"||text==="参考単価"||text==="平均取得単価");
+    const changePctIndex=find(text=>text.includes("前日比")&&text.includes("%"));
+    const changeIndex=find(text=>text.includes("前日比")&&!text.includes("%"));
+    const profitLossPctIndex=find(text=>text.includes("損益")&&text.includes("%"));
+    const profitLossIndex=find(text=>(text==="損益"||text.includes("評価損益"))&&!text.includes("%"));
+    const marketValueIndex=find(text=>text==="評価額"||text==="時価評価額");
+    rows.slice(headerIndex+1).forEach(cells=>{
+      if(cells.length<=Math.max(instrumentIndex,priceIndex)) return;
+      const ticker=tickerOf(cells[instrumentIndex]);
+      const price=toNumber(cells[priceIndex]);
+      if(!ticker||price==null||price<=0) return;
+      const pick=index=>index>=0&&cells[index]!=null?toNumber(cells[index]):null;
+      quotes[ticker]={
+        ticker,
+        price,
+        change:pick(changeIndex),
+        changePct:pick(changePctIndex),
+        acquisitionDate:acquisitionDateIndex>=0&&cells[acquisitionDateIndex]?clean(cells[acquisitionDateIndex]):"",
+        quantity:pick(quantityIndex),
+        costPrice:pick(costIndex),
+        costLabel:costIndex>=0?headers[costIndex]:"",
+        profitLoss:pick(profitLossIndex),
+        profitLossPct:pick(profitLossPctIndex),
+        marketValue:pick(marketValueIndex),
+      };
+    });
+  });
+  return Object.values(quotes);
+}
+
+function sbiDebugText(message,parsed){
+  const lines=[
+    `取込み時刻: ${new Date().toLocaleString("ja-JP")}`,
+    `ページ: ${String(message.pageUrl||"不明")}`,
+    `受信した表: ${message.tables.length}個`,
+    `銘柄として読めた行: ${parsed.length}件${parsed.length?`（${parsed.map(q=>q.ticker).join(", ")}）`:""}`,
+  ];
+  message.tables.forEach((rows,i)=>{
+    rows.forEach((cells,j)=>{
+      if(lines.length>=80) return;
+      const text=cells.join(" | ").replace(/\s+/g," ").trim();
+      if(text&&(j===0||/銘柄|現在値|前日比|評価額|取得単価/.test(text))) lines.push(`表${i+1}行${j+1}: ${text.slice(0,160)}`);
+    });
+  });
+  return lines.join("\n");
+}
+
+function renderSbiDebug(text){
+  const box=$("#sbiDebug");
+  if(!box) return;
+  $("#sbiDebugText").value=text;
+  box.hidden=false;
+}
+
+function applySbiQuotes(list,message){
   const captured=new Date(message.capturedAt||Date.now());
-  if(Number.isNaN(captured.getTime())) return;
+  if(Number.isNaN(captured.getTime())) return null;
   const capturedAt=captured.toISOString();
   const quotes={};
-  message.quotes.forEach(raw=>{
+  list.forEach(raw=>{
     const ticker=String(raw?.ticker||"").trim().toUpperCase();
     const stock=DB.stocks.find(item=>item.active!==false&&item.ticker.toUpperCase()===ticker);
     const price=Number(raw?.price);
@@ -562,13 +654,43 @@ function receiveSbiQuotes(event){
       source:"SBI証券",
     };
   });
-  const count=Object.keys(quotes).length;
-  if(!count){showToast("SBIから一致する株式を読み取れませんでした","error");return;}
-  lastSbiImportId=String(message.id||capturedAt);
-  SBI_PRICE_DATA={updatedAt:capturedAt,source:"SBI証券（画面から一時反映）",quotes};
+  return {quotes,capturedAt};
+}
+
+function commitSbiImport(applied,message){
+  const count=applied?Object.keys(applied.quotes).length:0;
+  if(!count) return false;
+  lastSbiImportId=String(message.id||applied.capturedAt);
+  SBI_PRICE_DATA={updatedAt:applied.capturedAt,source:"SBI証券（画面から一時反映）",quotes:applied.quotes};
   renderBoard();
   renderStockTable();
   showToast(`SBIから${count}銘柄を一時反映しました`);
+  return true;
+}
+
+/* 旧ブックマーク（解析済みquotesを送ってくる版）との互換用 */
+function receiveSbiQuotes(event){
+  const message=event.data;
+  if(!isSbiOrigin(event.origin)||!message||message.type!=="progress-portfolio:sbi-quotes"||!Array.isArray(message.quotes)) return;
+  if(message.id&&message.id===lastSbiImportId) return;
+  if(commitSbiImport(applySbiQuotes(message.quotes,message),message)) return;
+  if(message.id&&message.id===lastSbiFailId) return;
+  lastSbiFailId=String(message.id||"");
+  showToast("SBIから一致する株式を読み取れませんでした","error");
+}
+
+function receiveSbiTables(event){
+  const message=event.data;
+  if(!isSbiOrigin(event.origin)||!message||message.type!=="progress-portfolio:sbi-tables"||!Array.isArray(message.tables)) return;
+  if(message.id&&(message.id===lastSbiImportId||message.id===lastSbiFailId)) return;
+  const tables=message.tables.filter(rows=>Array.isArray(rows)&&rows.every(cells=>Array.isArray(cells))).slice(0,150);
+  const parsed=parseSbiTables(tables);
+  if(commitSbiImport(applySbiQuotes(parsed,message),message)) return;
+  lastSbiFailId=String(message.id||"");
+  renderSbiDebug(sbiDebugText({...message,tables},parsed));
+  showToast(parsed.length
+    ?"SBIの表は読み取れましたが登録銘柄と一致しませんでした。同期・バックアップ画面に診断を出しました"
+    :"SBIの表を読み取れませんでした。同期・バックアップ画面に診断を出しました","error");
 }
 
 async function loadPriceData(){
@@ -1212,6 +1334,14 @@ function bindEvents(){
       showToast("コピーに失敗しました。ページを再読み込みして試してください","error");
     }
   });
+  $("#btnCopySbiDebug")?.addEventListener("click",async()=>{
+    try{
+      await navigator.clipboard.writeText($("#sbiDebugText").value);
+      showToast("診断をコピーしました。百に貼り付けて渡してください");
+    }catch(error){
+      showToast("コピーに失敗しました。テキストを直接選択してコピーしてください","error");
+    }
+  });
 }
 
 store=createCloudStore({
@@ -1223,6 +1353,7 @@ store=createCloudStore({
 $("#repoLabel").textContent=`${CONFIG.github.owner}/${CONFIG.github.repo}/${CONFIG.file}`;
 window.name="progress-portfolio";
 window.addEventListener("message",receiveSbiQuotes);
+window.addEventListener("message",receiveSbiTables);
 bindEvents();
 renderAll();
 store.init().then(loadPriceData);
