@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>エクストラチャージ｜FDOA</title>
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="../shared/base.css?v=1">
+<style>
+/* ---- このページ固有：Markdown表示まわりだけ ---- */
+.md h2{font-size:17px;margin:20px 0 8px;padding-top:4px}
+.md h2:first-child{margin-top:0}
+.md h3{font-size:15px;margin:16px 0 6px;padding:6px 10px;background:#f5f5f3;border-radius:8px}
+.md p{margin:6px 0}
+.md ul{margin:6px 0 10px;padding-left:22px}
+.md li{margin:3px 0}
+.md table{margin:8px 0 12px;font-size:13px}
+.md td{padding:7px 10px}
+.md hr{border:none;border-top:1px solid var(--line);margin:16px 0}
+.md code{background:#f0f0ee;border-radius:5px;padding:1px 6px;font-size:12px;font-family:ui-monospace,Menlo,monospace;word-break:break-all}
+.md strong{font-weight:700}
+.stamp{font-size:12px;color:var(--sub)}
+#ruleCard summary{cursor:pointer;font-size:18px;font-weight:700;list-style:none;display:flex;align-items:center;gap:8px}
+#ruleCard summary::after{content:"開く ▾";font-size:12px;font-weight:600;color:var(--sub);margin-left:auto;
+  border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+#ruleCard details[open] summary::after{content:"閉じる ▴"}
+#connectCard input{width:340px;max-width:100%}
+.errbox{background:var(--danger-soft);color:var(--danger);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:14px;display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-in">
+    <h1>エクストラチャージ <small id="fetchInfo"></small></h1>
+    <nav>
+      <button id="reloadBtn">再読込</button>
+      <a class="applink" href="../bukken/" title="物件進捗管理を開く">物件管理 ↗</a>
+      <a class="applink" href="../jikyu/" title="時給プロジェクト管理を開く">時給管理 ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="errbox" id="errBox"></div>
+
+  <!-- 未接続時：トークン入力 -->
+  <div class="card" id="connectCard" style="display:none">
+    <h2>クラウド接続</h2>
+    <p class="note" style="margin-bottom:10px">
+      規定データは非公開リポジトリ（fdoa-app-data）にあるため、閲覧にはアクセストークンが必要。<br>
+      <strong>物件管理・時給管理を使っている端末（同じブラウザ）なら自動で繋がる</strong>ので、この画面が出るのは新しい端末・別ブラウザの時だけ。トークンは3アプリと共通のものを貼ればいい。
+    </p>
+    <div class="frm">
+      <label>アクセストークン
+        <input type="password" id="tokenInput" placeholder="github_pat_...">
+      </label>
+      <button class="btn" id="connectBtn">接続</button>
+    </div>
+  </div>
+
+  <!-- 現在の状態（正本mdの状態セクション） -->
+  <div class="card" id="statusCard" style="display:none">
+    <h2>現在の状態</h2>
+    <div class="md" id="statusMd"></div>
+  </div>
+
+  <!-- 規定本文（折りたたみ） -->
+  <div class="card" id="ruleCard" style="display:none">
+    <details>
+      <summary>発動規定（本文）</summary>
+      <div class="md" id="ruleMd" style="margin-top:12px"></div>
+    </details>
+  </div>
+
+  <p class="note">正本＝Macの <code>_MOMO/エクストラチャージ発動規定.md</code>。毎営業日18:30の自動監視が状態を更新するたびに、このページのデータも自動で差し替わる。ここは閲覧専用（編集はできない）。</p>
+</main>
+
+<script>
+'use strict';
+const CONFIG={owner:'neongreeen',repo:'fdoa-app-data',branch:'main',path:'extra-charge.md',tokenKey:'fdoa_gh_token'};
+const $=id=>document.getElementById(id);
+
+function b64dec(s){const bin=atob(s.replace(/\s/g,''));const b=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)b[i]=bin.charCodeAt(i);return new TextDecoder().decode(b);}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function inline(s){return s
+  .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+  .replace(/`([^`]+)`/g,'<code>$1</code>');}
+
+/* 最小Markdownレンダラ（見出し・表・箇条書き・区切り線・段落・太字・code） */
+function mdToHtml(md){
+  const lines=md.split('\n');let html='',i=0;
+  while(i<lines.length){
+    const ln=lines[i];
+    if(/^\s*$/.test(ln)){i++;continue;}
+    if(/^---+\s*$/.test(ln)){html+='<hr>';i++;continue;}
+    let m;
+    if((m=ln.match(/^(#{1,4})\s+(.*)$/))){html+='<h'+m[1].length+'>'+inline(esc(m[2]))+'</h'+m[1].length+'>';i++;continue;}
+    if(/^\|/.test(ln)){ // 表
+      const rows=[];while(i<lines.length&&/^\|/.test(lines[i])){rows.push(lines[i]);i++;}
+      const cells=r=>r.replace(/^\||\|$/g,'').split('|').map(c=>inline(esc(c.trim())));
+      let t='<div class="tblwrap"><table>';
+      rows.forEach((r,ri)=>{
+        if(/^\|[\s:|-]+\|?$/.test(r))return; // 区切り行
+        const tag=ri===0?'th':'td';
+        t+='<tr>'+cells(r).map(c=>'<'+tag+'>'+c+'</'+tag+'>').join('')+'</tr>';
+      });
+      html+=t+'</table></div>';continue;
+    }
+    if(/^\s*-\s+/.test(ln)){ // 箇条書き
+      let l='<ul>';
+      while(i<lines.length&&/^\s*-\s+/.test(lines[i])){l+='<li>'+inline(esc(lines[i].replace(/^\s*-\s+/,'')))+'</li>';i++;}
+      html+=l+'</ul>';continue;
+    }
+    html+='<p>'+inline(esc(ln))+'</p>';i++;
+  }
+  return html;
+}
+
+function showErr(msg){$('errBox').textContent=msg;$('errBox').style.display='block';}
+
+async function load(){
+  $('errBox').style.display='none';
+  const token=localStorage.getItem(CONFIG.tokenKey)||'';
+  if(!token){$('connectCard').style.display='block';$('statusCard').style.display='none';$('ruleCard').style.display='none';return;}
+  $('connectCard').style.display='none';
+  $('fetchInfo').textContent='読込中…';
+  try{
+    const url='https://api.github.com/repos/'+CONFIG.owner+'/'+CONFIG.repo+'/contents/'+CONFIG.path+'?ref='+CONFIG.branch+'&_='+Date.now();
+    const res=await fetch(url,{cache:'no-store',headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'}});
+    if(res.status===401){localStorage.removeItem(CONFIG.tokenKey);showErr('トークンが無効（401）。接続し直して。');load();return;}
+    if(!res.ok)throw new Error('GitHub応答 '+res.status);
+    const j=await res.json();
+    const md=b64dec(j.content);
+
+    // 「## 現在の状態」で前後に分割（状態を上・規定本文を折りたたみ下に）
+    const idx=md.search(/^## 現在の状態.*$/m);
+    let rule=md,status='';
+    if(idx>=0){
+      rule=md.slice(0,idx).replace(/---+\s*$/,'');
+      status=md.slice(idx).replace(/^## 現在の状態.*$/m,'').trim(); // 見出しはカードのh2で出すので除去
+    }
+    // 規定側の先頭タイトル（# エクストラチャージ発動規定）はヘッダーと重複するので除去
+    rule=rule.replace(/^# .*$/m,'').trim();
+
+    $('statusMd').innerHTML=mdToHtml(status||'（状態セクションが見つからない）');
+    $('ruleMd').innerHTML=mdToHtml(rule);
+    $('statusCard').style.display='block';
+    $('ruleCard').style.display='block';
+    $('fetchInfo').textContent='取得 '+new Date().toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    $('fetchInfo').textContent='';
+    showErr(navigator.onLine?('読み込み失敗：'+e.message):'オフライン。電波のある所で再読込して。');
+  }
+}
+
+$('reloadBtn').addEventListener('click',load);
+$('connectBtn').addEventListener('click',()=>{
+  const t=$('tokenInput').value.trim();
+  if(!t)return;
+  localStorage.setItem(CONFIG.tokenKey,t);
+  $('tokenInput').value='';
+  load();
+});
+load();
+</script>
+</body>
+</html>
