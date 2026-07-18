@@ -80,8 +80,17 @@
 
 <script>
 'use strict';
-const CONFIG={owner:'neongreeen',repo:'fdoa-app-data',branch:'main',path:'extra-charge.md',tokenKey:'fdoa_gh_token'};
+const CONFIG={owner:'neongreeen',repo:'fdoa-app-data',branch:'main',path:'extra-charge.md',
+  tokenKey:'fdoa_gh_token',legacyTokenKeys:['fdoa_bukken_gh_token']}; // 他アプリと同じ：旧キーも読む
 const $=id=>document.getElementById(id);
+
+function getToken(){
+  let t=localStorage.getItem(CONFIG.tokenKey);
+  if(t)return t;
+  t=CONFIG.legacyTokenKeys.map(k=>localStorage.getItem(k)).find(Boolean)||'';
+  if(t)localStorage.setItem(CONFIG.tokenKey,t); // 旧キーで見つけたら新キーへ写す（次回から迷わない）
+  return t;
+}
 
 function b64dec(s){const bin=atob(s.replace(/\s/g,''));const b=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)b[i]=bin.charCodeAt(i);return new TextDecoder().decode(b);}
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -123,14 +132,17 @@ function showErr(msg){$('errBox').textContent=msg;$('errBox').style.display='blo
 
 async function load(){
   $('errBox').style.display='none';
-  const token=localStorage.getItem(CONFIG.tokenKey)||'';
+  const token=getToken();
   if(!token){$('connectCard').style.display='block';$('statusCard').style.display='none';$('ruleCard').style.display='none';return;}
   $('connectCard').style.display='none';
   $('fetchInfo').textContent='読込中…';
   try{
     const url='https://api.github.com/repos/'+CONFIG.owner+'/'+CONFIG.repo+'/contents/'+CONFIG.path+'?ref='+CONFIG.branch+'&_='+Date.now();
     const res=await fetch(url,{cache:'no-store',headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'}});
-    if(res.status===401){localStorage.removeItem(CONFIG.tokenKey);showErr('トークンが無効（401）。接続し直して。');load();return;}
+    if(res.status===401){ // トークン無効。共通キーは消さない（物件・時給の接続を巻き添えにしない）
+      $('fetchInfo').textContent='';
+      showErr('トークンが無効（401）。下の欄に貼り直すと直る（物件・時給とも共通のトークン）。');
+      $('connectCard').style.display='block';return;}
     if(!res.ok)throw new Error('GitHub応答 '+res.status);
     const j=await res.json();
     const md=b64dec(j.content);
