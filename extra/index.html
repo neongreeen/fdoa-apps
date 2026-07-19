@@ -23,10 +23,11 @@
 .md code{background:#f0f0ee;border-radius:5px;padding:1px 6px;font-size:12px;font-family:ui-monospace,Menlo,monospace;word-break:break-all}
 .md strong{font-weight:700}
 .stamp{font-size:12px;color:var(--sub)}
-#ruleCard summary{cursor:pointer;font-size:18px;font-weight:700;list-style:none;display:flex;align-items:center;gap:8px}
-#ruleCard summary::after{content:"開く ▾";font-size:12px;font-weight:600;color:var(--sub);margin-left:auto;
+.ruleFold summary{cursor:pointer;font-size:18px;font-weight:700;list-style:none;display:flex;align-items:center;gap:8px}
+.ruleFold summary::after{content:"開く ▾";font-size:12px;font-weight:600;color:var(--sub);margin-left:auto;
   border:1px solid var(--line);border-radius:999px;padding:4px 12px}
-#ruleCard details[open] summary::after{content:"閉じる ▴"}
+.ruleFold details[open] summary::after{content:"閉じる ▴"}
+.secHead{font-size:13px;font-weight:700;color:var(--sub);letter-spacing:.06em;margin:26px 0 10px}
 #connectCard input{width:340px;max-width:100%}
 .errbox{background:var(--danger-soft);color:var(--danger);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:14px;display:none}
 </style>
@@ -68,19 +69,32 @@
   </div>
 
   <!-- 規定本文（折りたたみ） -->
-  <div class="card" id="ruleCard" style="display:none">
+  <div class="card ruleFold" id="ruleCard" style="display:none">
     <details>
       <summary>発動規定（本文）</summary>
       <div class="md" id="ruleMd" style="margin-top:12px"></div>
     </details>
   </div>
 
-  <p class="note">正本＝Macの <code>_MOMO/エクストラチャージ発動規定.md</code>。毎営業日18:30の自動監視が状態を更新するたびに、このページのデータも自動で差し替わる。ここは閲覧専用（編集はできない）。</p>
+  <!-- SPCX再INルール -->
+  <div class="secHead" id="spcxHead" style="display:none">SPCX 再INルール</div>
+  <div class="card" id="spcxStatusCard" style="display:none">
+    <h2>SPCX：現在の状態</h2>
+    <div class="md" id="spcxStatusMd"></div>
+  </div>
+  <div class="card ruleFold" id="spcxRuleCard" style="display:none">
+    <details>
+      <summary>再INルール（本文）</summary>
+      <div class="md" id="spcxRuleMd" style="margin-top:12px"></div>
+    </details>
+  </div>
+
+  <p class="note">正本＝Macの <code>_MOMO/エクストラチャージ発動規定.md</code> と <code>_MOMO/SPCX再INルール.md</code>。毎営業日18:30の自動監視が状態を更新するたびに、このページのデータも自動で差し替わる。ここは閲覧専用（編集はできない）。</p>
 </main>
 
 <script>
 'use strict';
-const CONFIG={owner:'neongreeen',repo:'fdoa-app-data',branch:'main',path:'extra-charge.md',
+const CONFIG={owner:'neongreeen',repo:'fdoa-app-data',branch:'main',path:'extra-charge.md',spcxPath:'spcx-rule.md',
   tokenKey:'fdoa_gh_token',legacyTokenKeys:['fdoa_bukken_gh_token']}; // 他アプリと同じ：旧キーも読む
 const $=id=>document.getElementById(id);
 
@@ -130,40 +144,58 @@ function mdToHtml(md){
 
 function showErr(msg){$('errBox').textContent=msg;$('errBox').style.display='block';}
 
+async function fetchDoc(path,token){
+  const url='https://api.github.com/repos/'+CONFIG.owner+'/'+CONFIG.repo+'/contents/'+path+'?ref='+CONFIG.branch+'&_='+Date.now();
+  const res=await fetch(url,{cache:'no-store',headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'}});
+  if(res.status===401){const e=new Error('401');e.auth=true;throw e;}
+  if(res.status===404)return null; // ファイル未作成なら黙ってスキップ
+  if(!res.ok)throw new Error('GitHub応答 '+res.status);
+  const j=await res.json();
+  return b64dec(j.content);
+}
+
+// 「## 現在の状態」で前後に分割（状態を上・本文を折りたたみ下に）
+function splitDoc(md){
+  const idx=md.search(/^## 現在の状態.*$/m);
+  let rule=md,status='';
+  if(idx>=0){
+    rule=md.slice(0,idx).replace(/---+\s*$/,'');
+    status=md.slice(idx).replace(/^## 現在の状態.*$/m,'').trim(); // 見出しはカードのh2で出すので除去
+  }
+  rule=rule.replace(/^# .*$/m,'').trim(); // 先頭タイトルは見出しと重複するので除去
+  return{rule,status};
+}
+
 async function load(){
   $('errBox').style.display='none';
   const token=getToken();
-  if(!token){$('connectCard').style.display='block';$('statusCard').style.display='none';$('ruleCard').style.display='none';return;}
+  if(!token){$('connectCard').style.display='block';$('statusCard').style.display='none';$('ruleCard').style.display='none';
+    ['spcxHead','spcxStatusCard','spcxRuleCard'].forEach(id=>$(id).style.display='none');return;}
   $('connectCard').style.display='none';
   $('fetchInfo').textContent='読込中…';
   try{
-    const url='https://api.github.com/repos/'+CONFIG.owner+'/'+CONFIG.repo+'/contents/'+CONFIG.path+'?ref='+CONFIG.branch+'&_='+Date.now();
-    const res=await fetch(url,{cache:'no-store',headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'}});
-    if(res.status===401){ // トークン無効。共通キーは消さない（物件・時給の接続を巻き添えにしない）
-      $('fetchInfo').textContent='';
-      showErr('トークンが無効（401）。下の欄に貼り直すと直る（物件・時給とも共通のトークン）。');
-      $('connectCard').style.display='block';return;}
-    if(!res.ok)throw new Error('GitHub応答 '+res.status);
-    const j=await res.json();
-    const md=b64dec(j.content);
+    const [ec,sp]=await Promise.all([fetchDoc(CONFIG.path,token),fetchDoc(CONFIG.spcxPath,token)]);
 
-    // 「## 現在の状態」で前後に分割（状態を上・規定本文を折りたたみ下に）
-    const idx=md.search(/^## 現在の状態.*$/m);
-    let rule=md,status='';
-    if(idx>=0){
-      rule=md.slice(0,idx).replace(/---+\s*$/,'');
-      status=md.slice(idx).replace(/^## 現在の状態.*$/m,'').trim(); // 見出しはカードのh2で出すので除去
+    if(ec){
+      const a=splitDoc(ec);
+      $('statusMd').innerHTML=mdToHtml(a.status||'（状態セクションが見つからない）');
+      $('ruleMd').innerHTML=mdToHtml(a.rule);
+      $('statusCard').style.display='block';
+      $('ruleCard').style.display='block';
     }
-    // 規定側の先頭タイトル（# エクストラチャージ発動規定）はヘッダーと重複するので除去
-    rule=rule.replace(/^# .*$/m,'').trim();
-
-    $('statusMd').innerHTML=mdToHtml(status||'（状態セクションが見つからない）');
-    $('ruleMd').innerHTML=mdToHtml(rule);
-    $('statusCard').style.display='block';
-    $('ruleCard').style.display='block';
+    if(sp){
+      const b=splitDoc(sp);
+      $('spcxStatusMd').innerHTML=mdToHtml(b.status||'（状態セクションが見つからない）');
+      $('spcxRuleMd').innerHTML=mdToHtml(b.rule);
+      ['spcxHead','spcxStatusCard','spcxRuleCard'].forEach(id=>$(id).style.display='block');
+    }
     $('fetchInfo').textContent='取得 '+new Date().toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
   }catch(e){
     $('fetchInfo').textContent='';
+    if(e&&e.auth){ // トークン無効。共通キーは消さない（物件・時給の接続を巻き添えにしない）
+      showErr('トークンが無効（401）。下の欄に貼り直すと直る（物件・時給とも共通のトークン）。');
+      $('connectCard').style.display='block';return;
+    }
     showErr(navigator.onLine?('読み込み失敗：'+e.message):'オフライン。電波のある所で再読込して。');
   }
 }
