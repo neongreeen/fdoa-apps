@@ -77,24 +77,24 @@
   </div>
 
   <!-- SPCX再INルール -->
-  <div class="secHead" id="spcxHead" style="display:none">SPCX 再INルール</div>
+  <div class="secHead" id="spcxHead" style="display:none">銘柄別ルール（SPCX・サンリオ・任天堂）</div>
   <div class="card" id="spcxStatusCard" style="display:none">
-    <h2>SPCX：現在の状態</h2>
+    <h2>個別株：現在の状態</h2>
     <div class="md" id="spcxStatusMd"></div>
   </div>
   <div class="card ruleFold" id="spcxRuleCard" style="display:none">
     <details>
-      <summary>再INルール（本文）</summary>
+      <summary>銘柄別ルール（本文）</summary>
       <div class="md" id="spcxRuleMd" style="margin-top:12px"></div>
     </details>
   </div>
 
-  <p class="note">正本＝Macの <code>_MOMO/エクストラチャージ発動規定.md</code> と <code>_MOMO/SPCX再INルール.md</code>。毎営業日18:30の自動監視が状態を更新するたびに、このページのデータも自動で差し替わる。ここは閲覧専用（編集はできない）。</p>
+  <p class="note">正本＝Macの <code>_MOMO/エクストラチャージ発動規定.md</code> と <code>_MOMO/銘柄別ルール.md</code>。毎営業日18:30の自動監視が状態を更新するたびに、このページのデータも自動で差し替わる。ここは閲覧専用（編集はできない）。</p>
 </main>
 
 <script>
 'use strict';
-const CONFIG={owner:'neongreeen',repo:'fdoa-app-data',branch:'main',path:'extra-charge.md',spcxPath:'spcx-rule.md',
+const CONFIG={owner:'neongreeen',repo:'fdoa-app-data',branch:'main',path:'extra-charge.md',spcxPath:'stock-rules.md',
   tokenKey:'fdoa_gh_token',legacyTokenKeys:['fdoa_bukken_gh_token']}; // 他アプリと同じ：旧キーも読む
 const $=id=>document.getElementById(id);
 
