@@ -6,7 +6,7 @@
 <title>エクストラチャージ｜FDOA</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="../shared/base.css?v=20260720b">
+<link rel="stylesheet" href="../shared/base.css?v=20260720c">
 <style>
 /* ---- 投資系（PP）の色をこのページに持ち込む ---- */
 :root{--progress-blue:#3f6172;--progress-blue-soft:#e9f0f3}
@@ -182,7 +182,7 @@
   <p class="note">正本＝Macの <code>_MOMO/エクストラチャージ発動規定.md</code> と <code>_MOMO/銘柄別ルール.md</code>。毎営業日18:30の自動監視が状態を更新するたびに、このページのデータも自動で差し替わる。ここは閲覧専用（編集はできない）。タイルをタップすると全文が開く。</p>
 </main>
 
-<script src="../shared/store.js?v=20260720b"></script>
+<script src="../shared/store.js?v=20260720c"></script>
 <script>
 'use strict';
 const CONFIG={owner:'neongreeen',repo:'fdoa-app-data',branch:'main',path:'extra-charge.md',spcxPath:'stock-rules.md',
@@ -335,6 +335,12 @@ function parseRoles(rule){
   if(!idx&&!stk)return null;
   return{idx,stk,body};
 }
+// 表示順＝下落率の深い順（EXCの性格：深く下げているものほど上・毎日の更新で自動並び替え）。
+// 下落率の物差しを持たないタイル（SPCX＝底カウント型）は先頭固定
+function sortTiles(ts){
+  return ts.slice().sort((a,b)=>
+    (typeof a.dd==='number'?a.dd:-Infinity)-(typeof b.dd==='number'?b.dd:-Infinity));
+}
 /*__PARSER_END__*/
 
 function showErr(msg){$('errBox').textContent=msg;$('errBox').style.display='block';}
@@ -447,12 +453,12 @@ async function load(){
 
     // 2段表示：1段目＝指数（EXCが機械で撃つ）／2段目＝個別株（通知だけ型）
     if(idxTiles.length){
-      renderTiles('idxTiles',idxTiles);
+      renderTiles('idxTiles',sortTiles(idxTiles));
       renderTierHead('idx',roles&&roles.idx,roles?roles.body:'','指数','tag-idx');
       $('idxTier').style.display='block';
     }else $('idxTier').style.display='none';
     if(stkTiles.length){
-      renderTiles('stkTiles',stkTiles);
+      renderTiles('stkTiles',sortTiles(stkTiles));
       renderTierHead('stk',roles&&roles.stk,roles?roles.body:'','個別株','tag-stk');
       $('stkTier').style.display='block';
     }else $('stkTier').style.display='none';
