@@ -4,13 +4,51 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>エクストラチャージ｜FDOA</title>
-<link rel="icon" href="favicon.ico" sizes="48x48">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="../shared/base.css?v=1">
+<link rel="stylesheet" href="../shared/base.css?v=20260720">
 <style>
-/* ---- このページ固有：Markdown表示まわりだけ ---- */
+/* ---- 投資系（PP）の色をこのページに持ち込む ---- */
+:root{--progress-blue:#3f6172;--progress-blue-soft:#e9f0f3}
+.nav-external{display:inline-flex;align-items:center;color:var(--progress-blue);background:var(--progress-blue-soft);
+  padding:8px 14px;border-radius:999px;font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap}
+.nav-external:hover{filter:brightness(.97)}
+
+/* ---- 状態タイル（PPのサマリーカード相当・密度高め） ---- */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:8px;margin-bottom:8px;align-items:start}
+.tile{border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tile summary{cursor:pointer;list-style:none;padding:9px 11px 10px;display:flex;flex-direction:column;gap:3px}
+.tile summary::-webkit-details-marker{display:none}
+.tile-top{display:flex;justify-content:space-between;align-items:center;gap:6px;min-width:0}
+.tile-name{font-size:11.5px;font-weight:750;white-space:nowrap}
+.pill{font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;background:#efefec;color:var(--sub);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%}
+.phase-danger .pill{background:var(--danger-soft);color:var(--danger)}
+.phase-warn .pill{background:var(--warn-soft);color:#73542d}
+.phase-ok .pill{background:var(--accent-soft);color:var(--accent)}
+.tile-big{font-size:22px;font-weight:750;line-height:1.15;font-variant-numeric:tabular-nums}
+.phase-danger .tile-big{color:var(--danger)}
+.phase-warn .tile-big{color:var(--warn)}
+.phase-ok .tile-big{color:var(--accent)}
+.tile-sub{font-size:9px;color:var(--sub);margin-top:-2px}
+.tile-rows{display:flex;flex-direction:column;gap:2px;margin-top:3px;min-width:0}
+.tile-row{font-size:9.5px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile-row .lbl{color:var(--sub);font-weight:650;margin-right:2px}
+.env-fired{text-decoration:line-through;color:var(--sub)}
+.tile-full{border-top:1px solid var(--line);padding:9px 11px;background:#fafaf8}
+.tile-full .md{font-size:11px;line-height:1.55}
+.tile-full .md ul{padding-left:16px}
+
+/* ---- 弾薬庫ストリップ・鮮度スタンプ ---- */
+.strip{border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--shadow);margin-bottom:8px;overflow:hidden}
+.strip summary{cursor:pointer;list-style:none;padding:8px 12px;font-size:11px;font-weight:650;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.strip summary::-webkit-details-marker{display:none}
+.strip summary::after{content:"▾";color:var(--sub);font-size:10px;margin-left:auto}
+.strip[open] summary::after{content:"▴"}
+.strip .md{border-top:1px solid var(--line);padding:9px 12px;background:#fafaf8;font-size:11px}
+.stamp{font-size:10px;color:var(--sub);margin:0 2px 18px}
+
+/* ---- Markdown表示（折りたたみ・フォールバック用） ---- */
 .md h2{font-size:17px;margin:20px 0 8px;padding-top:4px}
 .md h2:first-child{margin-top:0}
 .md h3{font-size:15px;margin:16px 0 6px;padding:6px 10px;background:#f5f5f3;border-radius:8px}
@@ -22,14 +60,24 @@
 .md hr{border:none;border-top:1px solid var(--line);margin:16px 0}
 .md code{background:#f0f0ee;border-radius:5px;padding:1px 6px;font-size:12px;font-family:ui-monospace,Menlo,monospace;word-break:break-all}
 .md strong{font-weight:700}
-.stamp{font-size:12px;color:var(--sub)}
-.ruleFold summary{cursor:pointer;font-size:18px;font-weight:700;list-style:none;display:flex;align-items:center;gap:8px}
-.ruleFold summary::after{content:"開く ▾";font-size:12px;font-weight:600;color:var(--sub);margin-left:auto;
-  border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+.ruleFold{padding:14px 18px}
+.ruleFold summary{cursor:pointer;font-size:14px;font-weight:700;list-style:none;display:flex;align-items:center;gap:8px}
+.ruleFold summary::-webkit-details-marker{display:none}
+.ruleFold summary::after{content:"開く ▾";font-size:11px;font-weight:600;color:var(--sub);margin-left:auto;
+  border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
 .ruleFold details[open] summary::after{content:"閉じる ▴"}
-.secHead{font-size:13px;font-weight:700;color:var(--sub);letter-spacing:.06em;margin:26px 0 10px}
+.secHead{font-size:12px;font-weight:700;color:var(--sub);letter-spacing:.06em;margin:22px 0 10px}
 #connectCard input{width:340px;max-width:100%}
 .errbox{background:var(--danger-soft);color:var(--danger);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:14px;display:none}
+
+@media(max-width:720px){
+  main{padding-top:10px}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:6px}
+  .tile summary{padding:8px 9px 9px}
+  .tile-big{font-size:20px}
+  .strip{margin-bottom:6px}
+  .stamp{margin-bottom:12px}
+}
 </style>
 </head>
 <body>
@@ -39,7 +87,7 @@
     <h1>エクストラチャージ <small id="fetchInfo"></small></h1>
     <nav>
       <button id="reloadBtn">再読込</button>
-      <a class="applink" href="../progress/" title="Progress Portfolioを開く">PP ↗</a>
+      <a class="nav-external" href="../progress/" title="Progress Portfolioを開く">PP ↗</a>
     </nav>
   </div>
 </header>
@@ -62,25 +110,39 @@
     </div>
   </div>
 
-  <!-- 現在の状態（正本mdの状態セクション） -->
-  <div class="card" id="statusCard" style="display:none">
-    <h2>現在の状態</h2>
-    <div class="md" id="statusMd"></div>
+  <!-- ダッシュボード：状態タイル＋弾薬庫＋鮮度 -->
+  <div id="dashWrap" style="display:none">
+    <div class="tiles" id="tiles"></div>
+    <details class="strip" id="ammoStrip" style="display:none">
+      <summary id="ammoSum"></summary>
+      <div class="md" id="ammoMd"></div>
+    </details>
+    <div class="stamp" id="stampLine"></div>
   </div>
 
-  <!-- 規定本文（折りたたみ） -->
+  <!-- フォールバック：タイル化に失敗した文書はここに生Markdownで出す（真っ白事故防止） -->
+  <div class="card" id="statusCard" style="display:none">
+    <h2>現在の状態（指数）</h2>
+    <div class="md" id="statusMd"></div>
+  </div>
+  <div class="card" id="spcxStatusCard" style="display:none">
+    <h2>現在の状態（個別株）</h2>
+    <div class="md" id="spcxStatusMd"></div>
+  </div>
+
+  <!-- 規定本文・履歴（折りたたみ） -->
+  <div class="secHead" id="foldHead" style="display:none">規定・履歴</div>
   <div class="card ruleFold" id="ruleCard" style="display:none">
     <details>
       <summary>発動規定（本文）</summary>
       <div class="md" id="ruleMd" style="margin-top:12px"></div>
     </details>
   </div>
-
-  <!-- SPCX再INルール -->
-  <div class="secHead" id="spcxHead" style="display:none">銘柄別ルール（SPCX・サンリオ・任天堂）</div>
-  <div class="card" id="spcxStatusCard" style="display:none">
-    <h2>個別株：現在の状態</h2>
-    <div class="md" id="spcxStatusMd"></div>
+  <div class="card ruleFold" id="histCard" style="display:none">
+    <details>
+      <summary>発砲履歴</summary>
+      <div class="md" id="histMd" style="margin-top:12px"></div>
+    </details>
   </div>
   <div class="card ruleFold" id="spcxRuleCard" style="display:none">
     <details>
@@ -88,8 +150,14 @@
       <div class="md" id="spcxRuleMd" style="margin-top:12px"></div>
     </details>
   </div>
+  <div class="card ruleFold" id="spcxHistCard" style="display:none">
+    <details>
+      <summary>売買履歴</summary>
+      <div class="md" id="spcxHistMd" style="margin-top:12px"></div>
+    </details>
+  </div>
 
-  <p class="note">正本＝Macの <code>_MOMO/エクストラチャージ発動規定.md</code> と <code>_MOMO/銘柄別ルール.md</code>。毎営業日18:30の自動監視が状態を更新するたびに、このページのデータも自動で差し替わる。ここは閲覧専用（編集はできない）。</p>
+  <p class="note">正本＝Macの <code>_MOMO/エクストラチャージ発動規定.md</code> と <code>_MOMO/銘柄別ルール.md</code>。毎営業日18:30の自動監視が状態を更新するたびに、このページのデータも自動で差し替わる。ここは閲覧専用（編集はできない）。タイルをタップすると全文が開く。</p>
 </main>
 
 <script>
@@ -107,6 +175,8 @@ function getToken(){
 }
 
 function b64dec(s){const bin=atob(s.replace(/\s/g,''));const b=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)b[i]=bin.charCodeAt(i);return new TextDecoder().decode(b);}
+
+/*__PARSER_START__*/
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function inline(s){return s
   .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
@@ -142,6 +212,96 @@ function mdToHtml(md){
   return html;
 }
 
+// 文書を3分割：規定本文／現在の状態／履歴（発砲履歴・売買履歴）
+function splitDoc(md){
+  const si=md.search(/^## 現在の状態.*$/m);
+  if(si<0)return{rule:md.replace(/^# .*$/m,'').trim(),status:'',history:''};
+  const rule=md.slice(0,si).replace(/---+\s*$/,'').replace(/^# .*$/m,'').trim();
+  const rest=md.slice(si).replace(/^## 現在の状態.*$/m,'');
+  const hi=rest.search(/^## .*$/m);
+  let status=rest,history='';
+  if(hi>=0){status=rest.slice(0,hi);history=rest.slice(hi).trim();}
+  status=status.replace(/---+\s*\n*$/,'').trim();
+  return{rule,status,history};
+}
+
+// 状態セクションを「### 見出し」ごとに分ける
+function sections(status){
+  const marks=[];const re=/^###\s+(.+)$/gm;let m;
+  while((m=re.exec(status)))marks.push({head:m[1].trim(),idx:m.index,end:re.lastIndex});
+  return marks.map((mk,i)=>({head:mk.head,body:status.slice(mk.end,i+1<marks.length?marks[i+1].idx:undefined).trim()}));
+}
+
+const PHASE_EMOJI={'🔴':'danger','🟡':'warn','🟢':'ok'};
+
+// 1サブセクション→タイルのデータ。書式が育っても拾える範囲だけ拾う（欠けは無視）
+function parseTile(sec){
+  const ci=sec.head.indexOf('：');
+  const name=(ci>=0?sec.head.slice(0,ci):sec.head).replace(/\*/g,'').trim();
+  let phaseRaw=ci>=0?sec.head.slice(ci+1).trim():'';
+  const emoji=Object.keys(PHASE_EMOJI).find(e=>phaseRaw.includes(e))||'';
+  const phase=phaseRaw.replace(emoji,'').replace(/（[^）]*）/g,'').trim();
+  const b=sec.body;
+  const t={name,emoji,phase,phaseClass:emoji?PHASE_EMOJI[emoji]:'',body:b,big:'',bigLabel:'',rows:[]};
+  let m;
+  // 物差し1：高値からの下落率（指数＝半年高値／個別株＝90日高値）
+  if((m=b.match(/(半年高値|90日高値)[^%\n]*?比[：:]?\s*\*{0,2}(-?\d+(?:\.\d+)?)\s*\*{0,2}\s*%/))){
+    t.big=m[2]+'%';t.bigLabel=m[1]+'比';t.dd=parseFloat(m[2]);
+  }
+  // 物差し2：SPCXの底カウント
+  if(!t.big&&(m=b.match(/カウント[：:]\s*\*{0,2}(\d+)\s*営業日\*{0,2}\s*／\s*(\d+)\s*営業日/))){
+    t.big=m[1]+'/'+m[2];t.bigLabel='底カウント（営業日）';
+  }
+  // 封筒（発射済みの弾は🎯付き・取り消し線）
+  if((m=b.match(/①\s*([\d,]+)[^②]*②\s*([\d,]+)[^③]*③\s*([\d,]+)[^④]*④\s*([\d,]+)/))){
+    const fired={};let f;const fre=/第([1-4])弾[：:][^\n]*発射済み/g;
+    while((f=fre.exec(b)))fired[f[1]]=true;
+    t.env=[m[1],m[2],m[3],m[4]].map((amt,i)=>({amt,fired:!!fired[i+1]}));
+  }else if(/封筒未作成/.test(b))t.envNote='封筒未作成';
+  // 次のライン（DDが取れていれば残り距離ptを添える）
+  if((m=b.match(/次のライン[：:]\s*(.+)/))){
+    let line=m[1].replace(/\*/g,'').trim();
+    const lm=line.match(/(-\d+(?:\.\d+)?)\s*%/);
+    if(lm&&typeof t.dd==='number'){
+      const dist=t.dd-parseFloat(lm[1]);
+      if(dist>0)line='あと'+dist.toFixed(1)+'pt｜'+line; // 距離が主役なので行頭に
+    }
+    t.next=line;
+  }
+  // SPCX固有：安値・シグナルライン・ロックアップ
+  if((m=b.match(/直近安値[^$\n]*\$\s*([\d.,]+)/)))t.low='$'+m[1];
+  if((m=b.match(/シグナルライン[：:][^$\n]*\$\s*([\d.,]+)/)))t.signal='$'+m[1];
+  if((m=b.match(/ロックアップ[^：:\n]*[：:]\s*\*{0,2}([^\n*]+)/)))t.lockup=m[1].replace(/（上のカレンダー参照）.*/,'').trim();
+  // サンリオ/任天堂固有：通知ライン・現在値・局面解除条件
+  if((m=b.match(/通知ライン\s*\*{0,2}([\d,]+)\s*円\*{0,2}\s*(（-?\d+%）)?/))){
+    let line=m[1]+'円'+(m[2]||'');
+    const lm=(m[2]||'').match(/(-\d+(?:\.\d+)?)%/);
+    if(lm&&typeof t.dd==='number'){
+      const dist=t.dd-parseFloat(lm[1]);
+      if(dist>0)line='あと'+dist.toFixed(1)+'pt｜'+line; // 距離が主役なので行頭に
+    }
+    t.notify=line;
+  }
+  if((m=b.match(/現在\s*([\d,.]+)\s*円/)))t.price=m[1]+'円';
+  if((m=b.match(/DDが\s*(-?\d+(?:\.\d+)?%)\s*以内へ回復/)))t.recover=m[1]+'回復で局面解除';
+  return t;
+}
+
+function parseAmmo(sec){
+  const t={body:sec.body};let m;
+  if((m=sec.body.match(/円弾[：:][^\n]*＝\s*\*{0,2}([\d,]+)\s*円/)))t.yen=m[1]+'円';
+  if((m=sec.body.match(/ドル弾[^：:\n]*[：:][^\n]*?(US\$[^（\n]+)/)))t.usd=m[1].trim();
+  return t;
+}
+
+// 状態セクション冒頭（最初の###の手前）の「最終チェック」行
+function parseStamp(status){
+  const head=status.split(/^###/m)[0];
+  const m=head.match(/最終チェック[：:]\s*([^\n]+)/);
+  return m?m[1].trim():'';
+}
+/*__PARSER_END__*/
+
 function showErr(msg){$('errBox').textContent=msg;$('errBox').style.display='block';}
 
 async function fetchDoc(path,token){
@@ -154,41 +314,102 @@ async function fetchDoc(path,token){
   return b64dec(j.content);
 }
 
-// 「## 現在の状態」で前後に分割（状態を上・本文を折りたたみ下に）
-function splitDoc(md){
-  const idx=md.search(/^## 現在の状態.*$/m);
-  let rule=md,status='';
-  if(idx>=0){
-    rule=md.slice(0,idx).replace(/---+\s*$/,'');
-    status=md.slice(idx).replace(/^## 現在の状態.*$/m,'').trim(); // 見出しはカードのh2で出すので除去
-  }
-  rule=rule.replace(/^# .*$/m,'').trim(); // 先頭タイトルは見出しと重複するので除去
-  return{rule,status};
+const CIRC=['①','②','③','④'];
+function tileRowsHtml(t){
+  const rows=[];
+  if(t.env)rows.push('<span class="lbl">封筒</span>'+t.env.map((e,i)=>
+    '<span class="'+(e.fired?'env-fired':'')+'">'+CIRC[i]+esc(e.amt)+(e.fired?'🎯':'')+'</span>').join(' '));
+  if(t.envNote)rows.push('<span class="lbl">封筒</span>'+esc(t.envNote));
+  if(t.low&&t.signal)rows.push('<span class="lbl">安値</span>'+esc(t.low)+' → <span class="lbl">点灯</span>'+esc(t.signal));
+  if(t.notify)rows.push('<span class="lbl">通知ライン</span>'+esc(t.notify));
+  if(t.price)rows.push('<span class="lbl">現在</span>'+esc(t.price));
+  if(t.recover)rows.push('<span class="lbl">解除</span>'+esc(t.recover));
+  if(t.next)rows.push('<span class="lbl">次</span>'+esc(t.next));
+  if(t.lockup)rows.push('<span class="lbl">解除</span>'+esc(t.lockup));
+  return rows.slice(0,3).map(r=>'<div class="tile-row">'+r+'</div>').join('');
 }
+function renderTiles(models){
+  $('tiles').innerHTML=models.map(t=>
+    '<details class="tile'+(t.phaseClass?' phase-'+t.phaseClass:'')+'">'
+    +'<summary>'
+    +'<div class="tile-top"><span class="tile-name">'+esc(t.name)+'</span>'
+    +(t.emoji||t.phase?'<span class="pill">'+esc((t.emoji?t.emoji+' ':'')+t.phase)+'</span>':'')+'</div>'
+    +(t.big?'<div class="tile-big">'+esc(t.big)+'</div><div class="tile-sub">'+esc(t.bigLabel)+'</div>':'')
+    +'<div class="tile-rows">'+tileRowsHtml(t)+'</div>'
+    +'</summary>'
+    +'<div class="tile-full"><div class="md">'+mdToHtml(t.body)+'</div></div>'
+    +'</details>').join('');
+}
+function renderAmmo(a){
+  const bits=[];
+  if(a.yen)bits.push('円弾 <strong>'+esc(a.yen)+'</strong>');
+  if(a.usd)bits.push('ドル弾 <strong>'+esc(a.usd)+'</strong>');
+  $('ammoSum').innerHTML='🧨 弾薬庫：'+(bits.length?bits.join('・'):'詳細を開く');
+  $('ammoMd').innerHTML=mdToHtml(a.body);
+  $('ammoStrip').style.display='block';
+}
+// 履歴mdの先頭##見出しは折りたたみのタイトルと重複するので落とす
+function stripLeadH2(md){return md.replace(/^##\s+[^\n]*\n?/,'').trim();}
 
 async function load(){
   $('errBox').style.display='none';
-  const token=getToken();
-  if(!token){$('connectCard').style.display='block';$('statusCard').style.display='none';$('ruleCard').style.display='none';
-    ['spcxHead','spcxStatusCard','spcxRuleCard'].forEach(id=>$(id).style.display='none');return;}
+  const TEST=window.__TEST_DOCS__||null; // 検証ハーネス用：本番では未定義
+  const token=TEST?'':getToken();
+  if(!TEST&&!token){
+    $('connectCard').style.display='block';
+    ['dashWrap','statusCard','spcxStatusCard','foldHead','ruleCard','histCard','spcxRuleCard','spcxHistCard']
+      .forEach(id=>$(id).style.display='none');
+    return;
+  }
   $('connectCard').style.display='none';
   $('fetchInfo').textContent='読込中…';
   try{
-    const [ec,sp]=await Promise.all([fetchDoc(CONFIG.path,token),fetchDoc(CONFIG.spcxPath,token)]);
+    const [ec,sp]=TEST
+      ?[TEST[CONFIG.path]||null,TEST[CONFIG.spcxPath]||null]
+      :await Promise.all([fetchDoc(CONFIG.path,token),fetchDoc(CONFIG.spcxPath,token)]);
+
+    const tiles=[];const stamps=[];
+    $('statusCard').style.display='none';
+    $('spcxStatusCard').style.display='none';
 
     if(ec){
       const a=splitDoc(ec);
-      $('statusMd').innerHTML=mdToHtml(a.status||'（状態セクションが見つからない）');
       $('ruleMd').innerHTML=mdToHtml(a.rule);
-      $('statusCard').style.display='block';
       $('ruleCard').style.display='block';
+      if(a.history){$('histMd').innerHTML=mdToHtml(stripLeadH2(a.history));$('histCard').style.display='block';}
+      try{ // タイル化に失敗したら生Markdownへフォールバック（真っ白にしない）
+        const secs=sections(a.status);
+        const ammoSec=secs.find(s=>/弾薬庫/.test(s.head));
+        const ts=secs.filter(s=>s!==ammoSec).map(parseTile);
+        if(!ts.length)throw new Error('no tiles');
+        tiles.push(...ts);
+        if(ammoSec)renderAmmo(parseAmmo(ammoSec));
+        const st=parseStamp(a.status);if(st)stamps.push('指数：'+st);
+      }catch(_){
+        $('statusMd').innerHTML=mdToHtml(a.status||'（状態セクションが見つからない）');
+        $('statusCard').style.display='block';
+      }
     }
     if(sp){
       const b=splitDoc(sp);
-      $('spcxStatusMd').innerHTML=mdToHtml(b.status||'（状態セクションが見つからない）');
       $('spcxRuleMd').innerHTML=mdToHtml(b.rule);
-      ['spcxHead','spcxStatusCard','spcxRuleCard'].forEach(id=>$(id).style.display='block');
+      $('spcxRuleCard').style.display='block';
+      if(b.history){$('spcxHistMd').innerHTML=mdToHtml(stripLeadH2(b.history));$('spcxHistCard').style.display='block';}
+      try{
+        const ts=sections(b.status).map(parseTile);
+        if(!ts.length)throw new Error('no tiles');
+        tiles.push(...ts);
+        const st=parseStamp(b.status);if(st)stamps.push('個別株：'+st);
+      }catch(_){
+        $('spcxStatusMd').innerHTML=mdToHtml(b.status||'（状態セクションが見つからない）');
+        $('spcxStatusCard').style.display='block';
+      }
     }
+
+    if(tiles.length){renderTiles(tiles);$('dashWrap').style.display='block';}
+    else $('dashWrap').style.display='none';
+    $('stampLine').textContent=stamps.length?'最終チェック — '+stamps.join('／'):'';
+    if(ec||sp)$('foldHead').style.display='block';
     $('fetchInfo').textContent='取得 '+new Date().toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
   }catch(e){
     $('fetchInfo').textContent='';
