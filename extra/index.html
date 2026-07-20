@@ -6,7 +6,7 @@
 <title>エクストラチャージ｜FDOA</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="../shared/base.css?v=20260720e">
+<link rel="stylesheet" href="../shared/base.css?v=20260720f">
 <style>
 /* ---- 投資系（PP）の色をこのページに持ち込む ---- */
 :root{--progress-blue:#3f6172;--progress-blue-soft:#e9f0f3}
@@ -187,7 +187,7 @@
   <p class="note">正本＝Macの <code>_MOMO/エクストラチャージ発動規定.md</code> と <code>_MOMO/銘柄別ルール.md</code>。毎営業日18:30の自動監視が状態を更新するたびに、このページのデータも自動で差し替わる。ここは閲覧専用（編集はできない）。タイルをタップすると全文が開く。</p>
 </main>
 
-<script src="../shared/store.js?v=20260720e"></script>
+<script src="../shared/store.js?v=20260720f"></script>
 <script>
 'use strict';
 const CONFIG={owner:'neongreeen',repo:'fdoa-app-data',branch:'main',path:'extra-charge.md',spcxPath:'stock-rules.md',
@@ -301,7 +301,8 @@ function parseTile(sec){
     }
     t.notify=line;
   }
-  if((m=b.match(/現在\s*([\d,.]+)\s*円/)))t.price=m[1]+'円';
+  if((m=b.match(/現在[：:]?\s*\*{0,2}([\d,.]+)\s*円/)))t.price=m[1]+'円';
+  else if((m=b.match(/現在[：:]?\s*\*{0,2}\$\s*([\d,.]+)/)))t.price='$'+m[1]; // ドル建て（Apple・SPCX）
   if((m=b.match(/DDが\s*(-?\d+(?:\.\d+)?%)\s*以内へ回復/)))t.recover=m[1]+'回復で局面解除';
   // 下落理由メモ（正本の「- 理由：」行。4色＝重さ分類）
   if((m=b.match(/理由[：:]\s*(🔴|🟡|🟢|🔵)\s*(.+)/)))
