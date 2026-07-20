@@ -18,6 +18,9 @@
      store.queueSync();  // 保存のたびに呼ぶ（少し待ってまとめてpush）
    ===================================================================== */
 'use strict';
+function fdoaB64enc(s){const b=new TextEncoder().encode(s);let bin='';for(let i=0;i<b.length;i+=0x8000)bin+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(bin);}
+function fdoaB64dec(s){const bin=atob(s.replace(/\s/g,''));const b=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)b[i]=bin.charCodeAt(i);return new TextDecoder().decode(b);}
+
 function createCloudStore(cfg){
   const LT=cfg.legacyTokenKeys||[];
   let token=localStorage.getItem(cfg.tokenKey)||LT.map(k=>localStorage.getItem(k)).find(Boolean)||'';
@@ -27,8 +30,7 @@ function createCloudStore(cfg){
   const state=(s,m)=>cfg.onState&&cfg.onState(s,m);
   const savedAtOf=d=>(d&&d.meta&&d.meta.savedAt)||null;
 
-  function b64enc(s){const b=new TextEncoder().encode(s);let bin='';for(let i=0;i<b.length;i+=0x8000)bin+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(bin);}
-  function b64dec(s){const bin=atob(s.replace(/\s/g,''));const b=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)b[i]=bin.charCodeAt(i);return new TextDecoder().decode(b);}
+  const b64enc=fdoaB64enc,b64dec=fdoaB64dec;
   function api(method,path,body){
     const url='https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+path+(method==='GET'?'?ref='+cfg.branch+'&_='+Date.now():'');
     return fetch(url,{method,cache:'no-store',
@@ -105,5 +107,34 @@ function createCloudStore(cfg){
     hasToken:()=>!!token,
     connect(t){token=t;localStorage.setItem(cfg.tokenKey,t);sha=null;stamp=null;return init();},
     disconnect(){token='';localStorage.removeItem(cfg.tokenKey);LT.forEach(k=>localStorage.removeItem(k));sha=null;stamp=null;state('off');},
+  };
+}
+
+/* =====================================================================
+   読み取り専用の軽量版（extra等「クラウドのファイルを読むだけ」のページ用）。
+   「保存先の引っ越しはこのファイル1個の差し替えで完了」という約束を、
+   読むだけのページにも守らせるための共通入口。書き込みはcreateCloudStore。
+   ===================================================================== */
+function createCloudReader(cfg){
+  const LT=cfg.legacyTokenKeys||[];
+  function token(){
+    let t=localStorage.getItem(cfg.tokenKey);
+    if(t)return t;
+    t=LT.map(k=>localStorage.getItem(k)).find(Boolean)||'';
+    if(t)localStorage.setItem(cfg.tokenKey,t); // 旧キーで見つけたら新キーへ写す
+    return t;
+  }
+  async function fetchText(path){ // 404はnull（ファイル未作成なら黙ってスキップ）
+    const url='https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+path+'?ref='+cfg.branch+'&_='+Date.now();
+    const res=await fetch(url,{cache:'no-store',headers:{'Authorization':'Bearer '+token(),'Accept':'application/vnd.github+json'}});
+    if(res.status===401){const e=new Error('401');e.auth=true;throw e;}
+    if(res.status===404)return null;
+    if(!res.ok)throw new Error('GitHub応答 '+res.status);
+    return fdoaB64dec((await res.json()).content);
+  }
+  return{
+    fetchText,
+    hasToken:()=>!!token(),
+    connect(t){localStorage.setItem(cfg.tokenKey,t);},
   };
 }

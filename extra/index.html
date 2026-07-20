@@ -160,21 +160,13 @@
   <p class="note">正本＝Macの <code>_MOMO/エクストラチャージ発動規定.md</code> と <code>_MOMO/銘柄別ルール.md</code>。毎営業日18:30の自動監視が状態を更新するたびに、このページのデータも自動で差し替わる。ここは閲覧専用（編集はできない）。タイルをタップすると全文が開く。</p>
 </main>
 
+<script src="../shared/store.js?v=20260720"></script>
 <script>
 'use strict';
 const CONFIG={owner:'neongreeen',repo:'fdoa-app-data',branch:'main',path:'extra-charge.md',spcxPath:'stock-rules.md',
   tokenKey:'fdoa_gh_token',legacyTokenKeys:['fdoa_bukken_gh_token']}; // 他アプリと同じ：旧キーも読む
+const reader=createCloudReader(CONFIG); // クラウド読み取りは全アプリ共通のstore.js経由（引っ越しはstore.js差し替えだけ）
 const $=id=>document.getElementById(id);
-
-function getToken(){
-  let t=localStorage.getItem(CONFIG.tokenKey);
-  if(t)return t;
-  t=CONFIG.legacyTokenKeys.map(k=>localStorage.getItem(k)).find(Boolean)||'';
-  if(t)localStorage.setItem(CONFIG.tokenKey,t); // 旧キーで見つけたら新キーへ写す（次回から迷わない）
-  return t;
-}
-
-function b64dec(s){const bin=atob(s.replace(/\s/g,''));const b=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)b[i]=bin.charCodeAt(i);return new TextDecoder().decode(b);}
 
 /*__PARSER_START__*/
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -304,16 +296,6 @@ function parseStamp(status){
 
 function showErr(msg){$('errBox').textContent=msg;$('errBox').style.display='block';}
 
-async function fetchDoc(path,token){
-  const url='https://api.github.com/repos/'+CONFIG.owner+'/'+CONFIG.repo+'/contents/'+path+'?ref='+CONFIG.branch+'&_='+Date.now();
-  const res=await fetch(url,{cache:'no-store',headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'}});
-  if(res.status===401){const e=new Error('401');e.auth=true;throw e;}
-  if(res.status===404)return null; // ファイル未作成なら黙ってスキップ
-  if(!res.ok)throw new Error('GitHub応答 '+res.status);
-  const j=await res.json();
-  return b64dec(j.content);
-}
-
 const CIRC=['①','②','③','④'];
 function tileRowsHtml(t){
   const rows=[];
@@ -354,8 +336,7 @@ function stripLeadH2(md){return md.replace(/^##\s+[^\n]*\n?/,'').trim();}
 async function load(){
   $('errBox').style.display='none';
   const TEST=window.__TEST_DOCS__||null; // 検証ハーネス用：本番では未定義
-  const token=TEST?'':getToken();
-  if(!TEST&&!token){
+  if(!TEST&&!reader.hasToken()){
     $('connectCard').style.display='block';
     ['dashWrap','statusCard','spcxStatusCard','foldHead','ruleCard','histCard','spcxRuleCard','spcxHistCard']
       .forEach(id=>$(id).style.display='none');
@@ -366,7 +347,7 @@ async function load(){
   try{
     const [ec,sp]=TEST
       ?[TEST[CONFIG.path]||null,TEST[CONFIG.spcxPath]||null]
-      :await Promise.all([fetchDoc(CONFIG.path,token),fetchDoc(CONFIG.spcxPath,token)]);
+      :await Promise.all([reader.fetchText(CONFIG.path),reader.fetchText(CONFIG.spcxPath)]);
 
     const tiles=[];const stamps=[];
     $('statusCard').style.display='none';
@@ -425,7 +406,7 @@ $('reloadBtn').addEventListener('click',load);
 $('connectBtn').addEventListener('click',()=>{
   const t=$('tokenInput').value.trim();
   if(!t)return;
-  localStorage.setItem(CONFIG.tokenKey,t);
+  reader.connect(t);
   $('tokenInput').value='';
   load();
 });
