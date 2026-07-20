@@ -132,3 +132,22 @@ tr:hover td{background:#fafaf8}
   #printSheet .chip{font-size:8.5px}
   #printSheet .muted{font-size:9px}
 }
+
+/* ---------- 状態4段階（全アプリ共通セマンティックカラー・2026-07-20制定） ----------
+   SS 危険（優先1位）＝赤 / S 要注意（2位）＝黄 / B 通常（3位）＝緑 / C 安定（4位）＝青
+   色の当て方（締切・業績・損益率など）は shared/status-colors.md が正本。
+   使い方：文字色は .st-ss/.st-s/.st-b/.st-c、バッジは .stb-ss/.stb-s/.stb-b/.stb-c */
+:root{
+  --st-ss:#b4533b; --st-ss-soft:#fbe9e4;  /* 赤＝危険 */
+  --st-s:#8a6a1d;  --st-s-soft:#faf3e4;   /* 黄＝要注意（文字は読める濃さに調整済み） */
+  --st-b:#2f6f5e;  --st-b-soft:#e7f1ed;   /* 緑＝通常 */
+  --st-c:#3f6172;  --st-c-soft:#e9f0f3;   /* 青＝安定 */
+}
+.st-ss{color:var(--st-ss);font-weight:700}
+.st-s{color:var(--st-s);font-weight:650}
+.st-b{color:var(--st-b);font-weight:650}
+.st-c{color:var(--st-c);font-weight:650}
+.stb-ss{background:var(--st-ss-soft);color:var(--st-ss)}
+.stb-s{background:var(--st-s-soft);color:var(--st-s)}
+.stb-b{background:var(--st-b-soft);color:var(--st-b)}
+.stb-c{background:var(--st-c-soft);color:var(--st-c)}

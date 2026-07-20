@@ -6,7 +6,7 @@
 <title>エクストラチャージ｜FDOA</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="../shared/base.css?v=20260720d">
+<link rel="stylesheet" href="../shared/base.css?v=20260720e">
 <style>
 /* ---- 投資系（PP）の色をこのページに持ち込む ---- */
 :root{--progress-blue:#3f6172;--progress-blue-soft:#e9f0f3}
@@ -35,11 +35,11 @@
 .tile-row{font-size:9.5px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tile-row .lbl{color:var(--sub);font-weight:650;margin-right:2px}
 .env-fired{text-decoration:line-through;color:var(--sub)}
-/* 下落理由の4色（重い順：構造→業績→外部→需給） */
-.rs-red{color:var(--danger);font-weight:700}
-.rs-yellow{color:#8a6a1d;font-weight:650}
-.rs-green{color:var(--accent);font-weight:650}
-.rs-blue{color:var(--progress-blue);font-weight:650}
+/* 下落理由の4色＝状態4段階規格（shared/status-colors.md が正本。フォールバックは旧base.cssキャッシュ対策） */
+.rs-red{color:var(--st-ss,#b4533b);font-weight:700}
+.rs-yellow{color:var(--st-s,#8a6a1d);font-weight:650}
+.rs-green{color:var(--st-b,#2f6f5e);font-weight:650}
+.rs-blue{color:var(--st-c,#3f6172);font-weight:650}
 .tile-full{border-top:1px solid var(--line);padding:9px 11px;background:#fafaf8}
 .tile-full .md{font-size:11px;line-height:1.55}
 .tile-full .md ul{padding-left:16px}
@@ -187,7 +187,7 @@
   <p class="note">正本＝Macの <code>_MOMO/エクストラチャージ発動規定.md</code> と <code>_MOMO/銘柄別ルール.md</code>。毎営業日18:30の自動監視が状態を更新するたびに、このページのデータも自動で差し替わる。ここは閲覧専用（編集はできない）。タイルをタップすると全文が開く。</p>
 </main>
 
-<script src="../shared/store.js?v=20260720d"></script>
+<script src="../shared/store.js?v=20260720e"></script>
 <script>
 'use strict';
 const CONFIG={owner:'neongreeen',repo:'fdoa-app-data',branch:'main',path:'extra-charge.md',spcxPath:'stock-rules.md',
