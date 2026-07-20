@@ -6,7 +6,7 @@
 <title>エクストラチャージ｜FDOA</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="../shared/base.css?v=20260720">
+<link rel="stylesheet" href="../shared/base.css?v=20260720b">
 <style>
 /* ---- 投資系（PP）の色をこのページに持ち込む ---- */
 :root{--progress-blue:#3f6172;--progress-blue-soft:#e9f0f3}
@@ -38,6 +38,14 @@
 .tile-full{border-top:1px solid var(--line);padding:9px 11px;background:#fafaf8}
 .tile-full .md{font-size:11px;line-height:1.55}
 .tile-full .md ul{padding-left:16px}
+
+/* ---- 2段表示（1段目=指数／2段目=個別株）：段ヘッダー＝根拠ストリップ ---- */
+.tier{margin-bottom:14px}
+.roleStrip summary{flex-wrap:nowrap;min-width:0}
+.roleStrip .tag{font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;white-space:nowrap;flex:none}
+.roleStrip .tag-idx{background:var(--progress-blue-soft);color:var(--progress-blue)}
+.roleStrip .tag-stk{background:#efe9df;color:#73542d}
+.roleStrip .roleNote{color:var(--sub);font-weight:500;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---- 弾薬庫ストリップ・鮮度スタンプ ---- */
 .strip{border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--shadow);margin-bottom:8px;overflow:hidden}
@@ -76,6 +84,7 @@
   .tile summary{padding:8px 9px 9px}
   .tile-big{font-size:20px}
   .strip{margin-bottom:6px}
+  .tier{margin-bottom:10px}
   .stamp{margin-bottom:12px}
 }
 </style>
@@ -110,13 +119,26 @@
     </div>
   </div>
 
-  <!-- ダッシュボード：状態タイル＋弾薬庫＋鮮度 -->
+  <!-- ダッシュボード：2段表示（1段目=指数=EXCが機械で撃つ／2段目=個別株=通知だけ）＋鮮度 -->
   <div id="dashWrap" style="display:none">
-    <div class="tiles" id="tiles"></div>
-    <details class="strip" id="ammoStrip" style="display:none">
-      <summary id="ammoSum"></summary>
-      <div class="md" id="ammoMd"></div>
-    </details>
+    <div class="tier" id="idxTier" style="display:none">
+      <details class="strip roleStrip" id="idxStrip" style="display:none">
+        <summary id="idxSum"></summary>
+        <div class="md" id="idxMd"></div>
+      </details>
+      <div class="tiles" id="idxTiles"></div>
+      <details class="strip" id="ammoStrip" style="display:none">
+        <summary id="ammoSum"></summary>
+        <div class="md" id="ammoMd"></div>
+      </details>
+    </div>
+    <div class="tier" id="stkTier" style="display:none">
+      <details class="strip roleStrip" id="stkStrip" style="display:none">
+        <summary id="stkSum"></summary>
+        <div class="md" id="stkMd"></div>
+      </details>
+      <div class="tiles" id="stkTiles"></div>
+    </div>
     <div class="stamp" id="stampLine"></div>
   </div>
 
@@ -160,7 +182,7 @@
   <p class="note">正本＝Macの <code>_MOMO/エクストラチャージ発動規定.md</code> と <code>_MOMO/銘柄別ルール.md</code>。毎営業日18:30の自動監視が状態を更新するたびに、このページのデータも自動で差し替わる。ここは閲覧専用（編集はできない）。タイルをタップすると全文が開く。</p>
 </main>
 
-<script src="../shared/store.js?v=20260720"></script>
+<script src="../shared/store.js?v=20260720b"></script>
 <script>
 'use strict';
 const CONFIG={owner:'neongreeen',repo:'fdoa-app-data',branch:'main',path:'extra-charge.md',spcxPath:'stock-rules.md',
@@ -292,6 +314,27 @@ function parseStamp(status){
   const m=head.match(/最終チェック[：:]\s*([^\n]+)/);
   return m?m[1].trim():'';
 }
+
+// EXC規定本文の「暴落時の役割分担」節から、各段の根拠ストリップを作る（根拠テキストの正本は規定md1箇所）
+function roleParts(bullet){
+  const m=bullet.match(/\*\*([^*]+)\*\*(.*)$/);
+  if(!m)return null;
+  const arrow=m[1].split('→');
+  if(arrow.length<2)return null;
+  return{name:arrow[0].replace(/（[^）]*）/g,'').trim(),act:arrow[1].trim(),
+    note:m[2].replace(/^[。\s]+/,'').replace(/\*\*/g,'').trim()};
+}
+function parseRoles(rule){
+  const start=rule.search(/^##\s*暴落時の役割分担/m);
+  if(start<0)return null;
+  const after=rule.slice(start).replace(/^[^\n]*\n?/,'');
+  const end=after.search(/^##\s/m);
+  const body=(end>=0?after.slice(0,end):after).trim();
+  const pick=key=>{const mm=body.match(new RegExp('^-\\s*\\*\\*'+key+'[^\\n]*','m'));return mm?mm[0].replace(/^-\s*/,''):'';};
+  const idx=roleParts(pick('指数')),stk=roleParts(pick('個別株'));
+  if(!idx&&!stk)return null;
+  return{idx,stk,body};
+}
 /*__PARSER_END__*/
 
 function showErr(msg){$('errBox').textContent=msg;$('errBox').style.display='block';}
@@ -310,8 +353,8 @@ function tileRowsHtml(t){
   if(t.lockup)rows.push('<span class="lbl">解除</span>'+esc(t.lockup));
   return rows.slice(0,3).map(r=>'<div class="tile-row">'+r+'</div>').join('');
 }
-function renderTiles(models){
-  $('tiles').innerHTML=models.map(t=>
+function renderTiles(elId,models){
+  $(elId).innerHTML=models.map(t=>
     '<details class="tile'+(t.phaseClass?' phase-'+t.phaseClass:'')+'">'
     +'<summary>'
     +'<div class="tile-top"><span class="tile-name">'+esc(t.name)+'</span>'
@@ -329,6 +372,20 @@ function renderAmmo(a){
   $('ammoSum').innerHTML='🧨 弾薬庫：'+(bits.length?bits.join('・'):'詳細を開く');
   $('ammoMd').innerHTML=mdToHtml(a.body);
   $('ammoStrip').style.display='block';
+}
+// 段ヘッダー（根拠ストリップ）。役割分担節が読めなかった時は素の見出しへフォールバック
+function renderTierHead(p,role,rolesBody,fallbackName,tagClass){
+  if(role){
+    $(p+'Sum').innerHTML='<span class="tag '+tagClass+'">'+esc(role.name)+'</span>'
+      +'<strong>'+esc(role.act)+'</strong>'
+      +(role.note?'<span class="roleNote">'+esc(role.note)+'</span>':'');
+    $(p+'Md').innerHTML=mdToHtml(rolesBody);
+    $(p+'Strip').style.display='block';
+  }else{
+    $(p+'Sum').innerHTML='<span class="tag '+tagClass+'">'+esc(fallbackName)+'</span>';
+    $(p+'Md').innerHTML='';
+    $(p+'Strip').style.display='block';
+  }
 }
 // 履歴mdの先頭##見出しは折りたたみのタイトルと重複するので落とす
 function stripLeadH2(md){return md.replace(/^##\s+[^\n]*\n?/,'').trim();}
@@ -349,7 +406,7 @@ async function load(){
       ?[TEST[CONFIG.path]||null,TEST[CONFIG.spcxPath]||null]
       :await Promise.all([reader.fetchText(CONFIG.path),reader.fetchText(CONFIG.spcxPath)]);
 
-    const tiles=[];const stamps=[];
+    const idxTiles=[],stkTiles=[];const stamps=[];let roles=null;
     $('statusCard').style.display='none';
     $('spcxStatusCard').style.display='none';
 
@@ -358,12 +415,13 @@ async function load(){
       $('ruleMd').innerHTML=mdToHtml(a.rule);
       $('ruleCard').style.display='block';
       if(a.history){$('histMd').innerHTML=mdToHtml(stripLeadH2(a.history));$('histCard').style.display='block';}
+      roles=parseRoles(a.rule); // 根拠ストリップの元＝規定の「暴落時の役割分担」節
       try{ // タイル化に失敗したら生Markdownへフォールバック（真っ白にしない）
         const secs=sections(a.status);
         const ammoSec=secs.find(s=>/弾薬庫/.test(s.head));
         const ts=secs.filter(s=>s!==ammoSec).map(parseTile);
         if(!ts.length)throw new Error('no tiles');
-        tiles.push(...ts);
+        idxTiles.push(...ts);
         if(ammoSec)renderAmmo(parseAmmo(ammoSec));
         const st=parseStamp(a.status);if(st)stamps.push('指数：'+st);
       }catch(_){
@@ -379,7 +437,7 @@ async function load(){
       try{
         const ts=sections(b.status).map(parseTile);
         if(!ts.length)throw new Error('no tiles');
-        tiles.push(...ts);
+        stkTiles.push(...ts);
         const st=parseStamp(b.status);if(st)stamps.push('個別株：'+st);
       }catch(_){
         $('spcxStatusMd').innerHTML=mdToHtml(b.status||'（状態セクションが見つからない）');
@@ -387,8 +445,18 @@ async function load(){
       }
     }
 
-    if(tiles.length){renderTiles(tiles);$('dashWrap').style.display='block';}
-    else $('dashWrap').style.display='none';
+    // 2段表示：1段目＝指数（EXCが機械で撃つ）／2段目＝個別株（通知だけ型）
+    if(idxTiles.length){
+      renderTiles('idxTiles',idxTiles);
+      renderTierHead('idx',roles&&roles.idx,roles?roles.body:'','指数','tag-idx');
+      $('idxTier').style.display='block';
+    }else $('idxTier').style.display='none';
+    if(stkTiles.length){
+      renderTiles('stkTiles',stkTiles);
+      renderTierHead('stk',roles&&roles.stk,roles?roles.body:'','個別株','tag-stk');
+      $('stkTier').style.display='block';
+    }else $('stkTier').style.display='none';
+    $('dashWrap').style.display=(idxTiles.length||stkTiles.length)?'block':'none';
     $('stampLine').textContent=stamps.length?'最終チェック — '+stamps.join('／'):'';
     if(ec||sp)$('foldHead').style.display='block';
     $('fetchInfo').textContent='取得 '+new Date().toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
