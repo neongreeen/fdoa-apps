@@ -1649,9 +1649,9 @@ window.name="progress-portfolio";
 window.addEventListener("message",receiveSbiQuotes);
 window.addEventListener("message",receiveSbiTables);
 bindEvents();
-renderAll();
-// 前回開いていたタブを復元（初回・不明値は既定の観察・判断のまま）
+// 前回開いていたタブは、renderAll（既定タブを描画→記憶を上書きする）より先に読んでおく
 const lastView=(()=>{try{return localStorage.getItem("pp_last_view");}catch(error){return null;}})();
+renderAll();
 if(lastView&&$(`nav button[data-view="${lastView}"]`)) showView(lastView);
 store.init().then(loadPriceData);
 loadInstrumentData().catch(error=>{
