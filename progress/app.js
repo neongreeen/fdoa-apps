@@ -217,6 +217,7 @@ let priceLoadedAt=0;
 let priceLoading=false;
 let lastSbiImportId="";
 let lastSbiFailId="";
+let lastSbiDebugText="";
 
 function save(){
   DB.meta.schemaVersion=CONFIG.schemaVersion;
@@ -761,17 +762,20 @@ function parseSbiTables(tables){
 }
 
 function sbiDebugText(message,parsed){
+  const stockRows=parsed.filter(quote=>!quote.isFund);
+  const fundRows=parsed.filter(quote=>quote.isFund);
   const lines=[
     `取込み時刻: ${new Date().toLocaleString("ja-JP")}`,
     `ページ: ${String(message.pageUrl||"不明")}`,
     `受信した表: ${message.tables.length}個`,
-    `銘柄として読めた行: ${parsed.length}件${parsed.length?`（${parsed.map(q=>q.ticker).join(", ")}）`:""}`,
+    `株式として読めた行: ${stockRows.length}件${stockRows.length?`（${stockRows.map(q=>q.ticker).join(", ")}）`:""}`,
+    `投信として読めた行: ${fundRows.length}件${fundRows.length?`（${fundRows.map(q=>q.name).join(" / ")}）`:""}`,
   ];
   message.tables.forEach((rows,i)=>{
     rows.forEach((cells,j)=>{
       if(lines.length>=80) return;
       const text=cells.join(" | ").replace(/\s+/g," ").trim();
-      if(text&&(j===0||/銘柄|現在値|前日比|評価額|取得単価/.test(text))) lines.push(`表${i+1}行${j+1}: ${text.slice(0,160)}`);
+      if(text&&(j===0||/銘柄|現在値|前日比|評価額|取得単価|ファンド|基準価額|基準価格|口数/.test(text))) lines.push(`表${i+1}行${j+1}: ${text.slice(0,160)}`);
     });
   });
   return lines.join("\n");
@@ -909,6 +913,8 @@ function receiveSbiTables(event){
   if(message.id&&(message.id===lastSbiImportId||message.id===lastSbiFailId)) return;
   const tables=message.tables.filter(rows=>Array.isArray(rows)&&rows.every(cells=>Array.isArray(cells))).slice(0,150);
   const parsed=parseSbiTables(tables);
+  // 成功・失敗にかかわらず直近の受信内容を保持（同期・バックアップ画面の「直近の取込みを診断表示」用）
+  lastSbiDebugText=sbiDebugText({...message,tables},parsed);
   if(commitSbiImport(applySbiQuotes(parsed,message),message)){
     // 読めたのに銘柄マスター未登録で捨てた投信は、黙って落とさず一覧を出す（登録への導線）
     const unmatchedFunds=parsed.filter(raw=>raw.isFund&&!matchFundByName(raw.name));
@@ -924,7 +930,7 @@ function receiveSbiTables(event){
     return;
   }
   lastSbiFailId=String(message.id||"");
-  renderSbiDebug(sbiDebugText({...message,tables},parsed));
+  renderSbiDebug(lastSbiDebugText);
   showToast(parsed.length
     ?"SBIの表は読み取れましたが登録銘柄と一致しませんでした。同期・バックアップ画面に診断を出しました"
     :"SBIの表を読み取れませんでした。同期・バックアップ画面に診断を出しました","error");
@@ -1588,6 +1594,9 @@ function bindEvents(){
     }catch(error){
       showToast("コピーに失敗しました。ページを再読み込みして試してください","error");
     }
+  });
+  $("#btnShowSbiDebug")?.addEventListener("click",()=>{
+    renderSbiDebug(lastSbiDebugText||"このページを開いてからの取込みはまだありません。SBIの画面で取込みブックマークを実行してから、もう一度押してください");
   });
   $("#btnCopySbiDebug")?.addEventListener("click",async()=>{
     try{
