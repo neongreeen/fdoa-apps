@@ -184,13 +184,13 @@
     </details>
   </div>
 
-  <p class="note">正本＝Macの <code>_MOMO/エクストラチャージ発動規定.md</code> と <code>_MOMO/銘柄別ルール.md</code>。毎営業日18:30の自動監視が状態を更新するたびに、このページのデータも自動で差し替わる。ここは閲覧専用（編集はできない）。タイルをタップすると全文が開く。</p>
+  <p class="note">正本＝Macの <code>_MOMO/エクストラチャージ発動規定.md</code> と <code>_MOMO/銘柄別ルール.md</code>。毎営業日18:30の自動監視が状態を更新するたびに、このページのデータも自動で差し替わる。タイルの「今」は参考現在値（市場中30分毎更新・日本株は約20分遅延）で、DD・局面などの物差しはあくまで18:30終値。ここは閲覧専用（編集はできない）。タイルをタップすると全文が開く。</p>
 </main>
 
 <script src="../shared/store.js?v=20260720f"></script>
 <script>
 'use strict';
-const CONFIG={owner:'neongreeen',repo:'fdoa-app-data',branch:'main',path:'extra-charge.md',spcxPath:'stock-rules.md',
+const CONFIG={owner:'neongreeen',repo:'fdoa-app-data',branch:'main',path:'extra-charge.md',spcxPath:'stock-rules.md',pricesPath:'prices.json',
   tokenKey:'fdoa_gh_token',legacyTokenKeys:['fdoa_bukken_gh_token']}; // 他アプリと同じ：旧キーも読む
 const reader=createCloudReader(CONFIG); // クラウド読み取りは全アプリ共通のstore.js経由（引っ越しはstore.js差し替えだけ）
 const $=id=>document.getElementById(id);
@@ -357,6 +357,29 @@ function sortTiles(ts){
 }
 /*__PARSER_END__*/
 
+// 参考現在値（fdoa-app-data/prices.json＝GitHub Actionsが市場時間帯に30分毎更新）をタイルへ合流。
+// 物差し（DD・局面・あと◯pt）はあくまで18:30終値＝mdが正。ここは「今いくらか」の表示だけ
+const LIVE_KEY={'TOPIX':'TOPIX','S&P500':'GSPC','SPCX':'SPCX','サンリオ':'8136','任天堂':'7974',
+  'Apple':'AAPL','三菱重工':'7011','小松製作所':'6301','ダイキン工業':'6367','九州電力':'9508'};
+function liveStamp(when){
+  return when?new Date(when).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+}
+function attachLive(tiles,prices){
+  if(!prices||!prices.quotes)return;
+  tiles.forEach(t=>{
+    const q=prices.quotes[LIVE_KEY[t.name]];
+    if(!q||!Number.isFinite(Number(q.price)))return;
+    const hm=liveStamp(q.marketTime||q.fetchedAt);
+    const pct=Number.isFinite(Number(q.changePct))?(q.changePct>0?'+':'')+q.changePct+'%':'';
+    if(t.name==='TOPIX'||t.name==='S&P500'){ // 指数は当日騰落%だけ（1306はETF代理で絶対値の物差しが違うため）
+      t.live={lbl:'今日',val:(pct||'—')+(hm?'（'+hm+'）':'')};
+    }else{
+      const price=q.currency==='JPY'?Math.round(Number(q.price)).toLocaleString('ja-JP')+'円':'$'+q.price;
+      t.live={lbl:'今',val:price+((pct||hm)?'（'+[pct,hm].filter(Boolean).join('・')+'）':'')};
+    }
+  });
+}
+
 function showErr(msg){$('errBox').textContent=msg;$('errBox').style.display='block';}
 
 const CIRC=['①','②','③','④'];
@@ -368,7 +391,9 @@ function tileRowsHtml(t){
   if(t.envNote)rows.push('<span class="lbl">封筒</span>'+esc(t.envNote));
   if(t.low&&t.signal)rows.push('<span class="lbl">安値</span>'+esc(t.low)+' → <span class="lbl">点灯</span>'+esc(t.signal));
   if(t.notify)rows.push('<span class="lbl">通知ライン</span>'+esc(t.notify));
-  if(t.price)rows.push('<span class="lbl">現在</span>'+esc(t.price));
+  // 現在値：参考現在値（30分毎）があればそれを優先、無ければmdの18:30値へフォールバック
+  if(t.live)rows.push('<span class="lbl">'+esc(t.live.lbl)+'</span>'+esc(t.live.val));
+  else if(t.price)rows.push('<span class="lbl">現在</span>'+esc(t.price));
   if(t.recover)rows.push('<span class="lbl">解除</span>'+esc(t.recover));
   if(t.next)rows.push('<span class="lbl">次</span>'+esc(t.next));
   if(t.lockup)rows.push('<span class="lbl">解除</span>'+esc(t.lockup));
@@ -423,9 +448,11 @@ async function load(){
   $('connectCard').style.display='none';
   $('fetchInfo').textContent='読込中…';
   try{
-    const [ec,sp]=TEST
-      ?[TEST[CONFIG.path]||null,TEST[CONFIG.spcxPath]||null]
-      :await Promise.all([reader.fetchText(CONFIG.path),reader.fetchText(CONFIG.spcxPath)]);
+    const [ec,sp,pricesRaw]=TEST
+      ?[TEST[CONFIG.path]||null,TEST[CONFIG.spcxPath]||null,TEST[CONFIG.pricesPath]||null]
+      :await Promise.all([reader.fetchText(CONFIG.path),reader.fetchText(CONFIG.spcxPath),
+        reader.fetchText(CONFIG.pricesPath).catch(()=>null)]); // 参考現在値は取れなくても本体表示は守る
+    let prices=null;try{prices=pricesRaw?JSON.parse(pricesRaw):null;}catch(_){}
 
     const idxTiles=[],stkTiles=[];const stamps=[];let roles=null;
     $('statusCard').style.display='none';
@@ -465,6 +492,11 @@ async function load(){
         $('spcxStatusCard').style.display='block';
       }
     }
+
+    // 参考現在値をタイルへ合流（md本体のパース成否とは独立・失敗しても静かに素通り）
+    try{attachLive(idxTiles,prices);attachLive(stkTiles,prices);
+      if(prices&&prices.updatedAt)stamps.push('参考現在値：'+liveStamp(prices.updatedAt)+'更新（市場中30分毎・日本株約20分遅延）');
+    }catch(_){}
 
     // 2段表示：1段目＝指数（EXCが機械で撃つ）／2段目＝個別株（通知だけ型）
     if(idxTiles.length){
