@@ -1094,7 +1094,9 @@ function showToast(message,type="ok"){
   node.textContent=message;
   node.className=`toast show${type==="error"?" error":""}`;
   clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>{node.className="toast";},2200);
+  // 表示時間は文章の長さに比例（短文2.2秒〜長文8秒）。読み切る前に消えない
+  const duration=Math.min(8000,Math.max(2200,String(message).length*130));
+  toastTimer=setTimeout(()=>{node.className="toast";},duration);
 }
 
 function statusPill(id){
