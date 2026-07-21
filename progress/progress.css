@@ -206,6 +206,22 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .asset-group-title{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:18px 0 6px;font-size:13px;font-weight:700}
 .asset-group-title small{font-size:12px;font-weight:650;color:var(--sub);font-variant-numeric:tabular-nums}
 .asset-group-title:first-of-type{margin-top:4px}
+/* 資産タブはスクロールなしで全体像が見えるよう縦を詰める（2026-07-21ヨシアキ依頼） */
+#view-assets .portfolio-summary{gap:8px;margin-bottom:8px}
+#view-assets .summary-card{padding:8px 12px}
+#view-assets .summary-card .summary-value{font-size:19px;line-height:1.2}
+#view-assets .summary-card .summary-label{font-size:11px;margin-bottom:0}
+#view-assets .summary-card .summary-sub{font-size:10.5px;margin-top:1px}
+#view-assets .asset-group-title{margin:9px 0 2px;font-size:12px}
+#view-assets .asset-group-title small{font-size:11px}
+#view-assets .pf-row{padding:2px 4px;font-size:12px;gap:8px}
+#view-assets .pf-head{padding:2px 4px;font-size:10px}
+#view-assets .pf-name{line-height:1.15}
+#view-assets .pf-name .stock-symbol{font-size:9px;line-height:1.1}
+#view-assets .pf-pl{line-height:1.15}
+#view-assets .pf-pl small{font-size:9.5px}
+#view-assets .pf-note{margin-top:4px;font-size:10px}
+#view-assets .panel{padding-bottom:10px}
 .bookmarklet-steps{margin:10px 0 0 18px;display:flex;flex-direction:column;gap:6px}
 .board-check{display:flex;align-items:center;gap:10px;flex:none}
 .last-check{font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}
