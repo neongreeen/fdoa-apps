@@ -723,7 +723,8 @@ function parseSbiTables(tables){
     const find=predicate=>headers.findIndex(predicate);
     const instrumentIndex=find(text=>text.includes("銘柄")||text.includes("ファンド"));
     const priceIndex=find(text=>text.includes("現在値")||text.includes("基準価額")||text.includes("基準価格"));
-    const isFundTable=priceIndex>=0&&(headers[priceIndex].includes("基準価額")||headers[priceIndex].includes("基準価格"));
+    // SBIパソコン版は投信も「現在値」表記＝価格の見出しでは判別できない。「ファンド名」列の有無で判別する（2026-07-21実機診断）
+    const isFundTable=headers.some(text=>text.includes("ファンド名"))||(priceIndex>=0&&(headers[priceIndex].includes("基準価額")||headers[priceIndex].includes("基準価格")));
     if(instrumentIndex<0||priceIndex<0||instrumentIndex===priceIndex) return;
     const acquisitionDateIndex=find(text=>text.includes("買付日"));
     const quantityIndex=find(text=>text==="数量"||text==="保有数量"||text==="株数"||text==="保有株数"||text==="口数"||text==="保有口数");
@@ -736,12 +737,13 @@ function parseSbiTables(tables){
     rows.slice(headerIndex+1).forEach(cells=>{
       if(cells.length<=Math.max(instrumentIndex,priceIndex)) return;
       const rawName=clean(cells[instrumentIndex]);
-      // 投信行にはティッカーが無い＝ファンド名で照合する（applySbiQuotes側でマスターと突き合わせ）
+      // 投信行にはティッカーが無い＝ファンド名で照合する（applySbiQuotes側でマスターと突き合わせ）。
+      // 株式の表はティッカー必須（合計行などのゴミ行を拾わない）
       const ticker=isFundTable?null:tickerOf(rawName);
       const price=toNumber(cells[priceIndex]);
-      if((!ticker&&!rawName)||price==null||price<=0) return;
+      if((isFundTable?!rawName:!ticker)||price==null||price<=0) return;
       const pick=index=>index>=0&&cells[index]!=null?toNumber(cells[index]):null;
-      quotes[ticker||`fund:${rawName}`]={
+      const entry={
         ticker,
         name:rawName,
         isFund:isFundTable,
@@ -756,6 +758,30 @@ function parseSbiTables(tables){
         profitLossPct:pick(profitLossPctIndex),
         marketValue:pick(marketValueIndex),
       };
+      const mapKey=ticker||`fund:${rawName}`;
+      const existing=quotes[mapKey];
+      // 同じ銘柄が預り区分ごとに複数行出る（例：成長投資枠＋つみたて投資枠）→ 数量を合算・取得単価は数量加重平均
+      if(existing&&Number.isFinite(existing.quantity)&&existing.quantity>0&&Number.isFinite(entry.quantity)&&entry.quantity>0){
+        const totalQuantity=existing.quantity+entry.quantity;
+        const sumOrNull=(a,b)=>Number.isFinite(a)&&Number.isFinite(b)?+(a+b).toFixed(2):null;
+        const mergedCost=Number.isFinite(existing.costPrice)&&Number.isFinite(entry.costPrice)
+          ?+((existing.costPrice*existing.quantity+entry.costPrice*entry.quantity)/totalQuantity).toFixed(2)
+          :(Number.isFinite(entry.costPrice)?entry.costPrice:existing.costPrice);
+        const mergedProfitLoss=sumOrNull(existing.profitLoss,entry.profitLoss);
+        const mergedMarketValue=sumOrNull(existing.marketValue,entry.marketValue);
+        const costBase=Number.isFinite(mergedCost)&&mergedCost>0?mergedCost*totalQuantity:null;
+        quotes[mapKey]={
+          ...entry,
+          quantity:totalQuantity,
+          costPrice:mergedCost,
+          profitLoss:mergedProfitLoss,
+          profitLossPct:mergedProfitLoss!=null&&costBase?+(mergedProfitLoss/(costBase/(entry.isFund?10000:1))*100).toFixed(2):null,
+          marketValue:mergedMarketValue,
+          acquisitionDate:existing.acquisitionDate||entry.acquisitionDate,
+        };
+      }else{
+        quotes[mapKey]=entry;
+      }
     });
   });
   return Object.values(quotes);
