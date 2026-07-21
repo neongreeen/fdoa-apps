@@ -909,7 +909,20 @@ function receiveSbiTables(event){
   if(message.id&&(message.id===lastSbiImportId||message.id===lastSbiFailId)) return;
   const tables=message.tables.filter(rows=>Array.isArray(rows)&&rows.every(cells=>Array.isArray(cells))).slice(0,150);
   const parsed=parseSbiTables(tables);
-  if(commitSbiImport(applySbiQuotes(parsed,message),message)) return;
+  if(commitSbiImport(applySbiQuotes(parsed,message),message)){
+    // 読めたのに銘柄マスター未登録で捨てた投信は、黙って落とさず一覧を出す（登録への導線）
+    const unmatchedFunds=parsed.filter(raw=>raw.isFund&&!matchFundByName(raw.name));
+    if(unmatchedFunds.length){
+      renderSbiDebug([
+        "未登録の投資信託（銘柄マスターに登録すると資産タブに入ります）：",
+        ...unmatchedFunds.map(quote=>`・${quote.name}`),
+        "",
+        "この一覧を百に渡すと、登録に必要な協会コードとISINコードを調べて返します",
+      ].join("\n"));
+      showToast(`投信${unmatchedFunds.length}本が未登録のため取込みから外しました。同期・バックアップ画面に一覧があります`);
+    }
+    return;
+  }
   lastSbiFailId=String(message.id||"");
   renderSbiDebug(sbiDebugText({...message,tables},parsed));
   showToast(parsed.length
