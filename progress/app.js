@@ -3,7 +3,9 @@
 /* Progress Portfolio v0.3「ボード・ファースト」
    現在状態は stocks に保存せず、各銘柄の最新 decision から算出する。
    記録＝カードをタップ→行き先の状態を選ぶ→一言（判断フォームは廃止）。
-   「買った/売った」は状態遷移そのものが表す。記録は上書きせず追加する。 */
+   「買った/売った」は状態遷移そのものが表す。記録は上書きせず追加する。
+   保存の原則：保有事実（数量・取得単価＝約定した過去の事実）は保存する。
+   変動する時価・評価額・損益は保存せず、表示のたびに保有×最新quoteで計算する。 */
 
 const CONFIG={
   github:{owner:"neongreeen",repo:"fdoa-app-data",branch:"main"},
@@ -86,6 +88,21 @@ function seed(){
   };
 }
 
+/* 保有事実の保存形。数量が正の実数でなければ「保有なし」として捨てる */
+function sanitizeHolding(value){
+  if(!value||typeof value!=="object") return null;
+  const quantity=Number(value.quantity);
+  if(!Number.isFinite(quantity)||quantity<=0) return null;
+  const costPrice=Number(value.costPrice);
+  return{
+    quantity,
+    costPrice:Number.isFinite(costPrice)&&costPrice>0?costPrice:null,
+    costLabel:value.costLabel==="参考単価"?"参考単価":"取得単価",
+    acquisitionDate:String(value.acquisitionDate||"").slice(0,20),
+    updatedAt:value.updatedAt||null,
+  };
+}
+
 function normalize(data){
   if(!data||typeof data!=="object") return seed();
   const base=seed();
@@ -102,6 +119,7 @@ function normalize(data){
       irUrl:safeExternalUrl(stock.irUrl),
       note:String(stock.note||""),
       noteUpdatedAt:stock.noteUpdatedAt||null,
+      holding:sanitizeHolding(stock.holding),
       active:stock.active!==false,
       createdAt:stock.createdAt||new Date().toISOString(),
       updatedAt:stock.updatedAt||stock.createdAt||new Date().toISOString(),
@@ -343,30 +361,42 @@ function jpyAmount(value,currency,usdJpy){
   return null;
 }
 
-/* SBI取込みデータがある間だけ出す「ポートフォリオ全景」。
-   表示のみ・何も保存しない（SBI_PRICE_DATAと同じ寿命）。 */
+/* ポートフォリオ全景（常設）。
+   保存した保有事実 × 最新quote（SBI一時反映があれば優先→無ければ参考株価）で表示のたびに計算する。
+   評価額・損益は計算結果であり保存しない（保存するのは保有事実だけ）。 */
 function renderPortfolio(){
   const panel=$("#portfolioPanel");
   if(!panel) return;
   const usdJpy=Number(PRICE_DATA?.usdJpy);
   const statuses=ordered("statuses",true);
   const statusOrder=new Map(statuses.map((status,index)=>[status.id,index]));
+  const quoteSources=new Set();
   const positions=activeStocks().map(stock=>{
-    const position=SBI_PRICE_DATA?.quotes?.[String(stock.ticker||"").toUpperCase()];
-    const marketValue=position==null?NaN:Number(position.marketValue);
-    if(!position||!Number.isFinite(marketValue)||marketValue<=0) return null;
-    const currency=position.currency||stock.currency||"USD";
+    const holding=stock.holding;
+    if(!holding) return null;
+    const quote=quoteFor(stock);
+    const price=Number(quote?.price);
+    const hasQuote=Number.isFinite(price)&&price>0;
+    // quoteが無い銘柄は取得単価で仮表示（損益・前日比は出さない）。それも無ければ表示不能
+    const effectivePrice=hasQuote?price:holding.costPrice;
+    if(!Number.isFinite(effectivePrice)||effectivePrice<=0) return null;
+    if(hasQuote) quoteSources.add(SBI_PRICE_DATA?.quotes?.[String(stock.ticker||"").toUpperCase()]?"SBI一時反映":"参考株価");
+    const currency=stock.currency||quote?.currency||"USD";
+    const marketValue=effectivePrice*holding.quantity;
     const decision=latestDecision(stock.id);
     const status=master("statuses",decision?.statusId);
-    const quantity=position.quantity==null?NaN:Number(position.quantity);
-    const change=position.change==null?NaN:Number(position.change);
+    const cost=Number(holding.costPrice);
+    const hasCost=Number.isFinite(cost)&&cost>0;
+    const profitLoss=hasQuote&&hasCost?(price-cost)*holding.quantity:null;
+    const change=Number(quote?.change);
     return{
-      stock,status,currency,marketValue,
+      stock,status,currency,marketValue,hasQuote,
       valueJpy:jpyAmount(marketValue,currency,usdJpy),
-      profitLossJpy:jpyAmount(position.profitLoss,currency,usdJpy),
-      profitLossPct:position.profitLossPct==null?null:Number(position.profitLossPct),
-      dayChangeJpy:Number.isFinite(change)&&Number.isFinite(quantity)?jpyAmount(change*quantity,currency,usdJpy):null,
-      dayChangePct:position.changePct==null?null:Number(position.changePct),
+      profitLossJpy:profitLoss==null?null:jpyAmount(profitLoss,currency,usdJpy),
+      profitLossPct:profitLoss==null?null:(price-cost)/cost*100,
+      dayChangeJpy:hasQuote&&Number.isFinite(change)?jpyAmount(change*holding.quantity,currency,usdJpy):null,
+      dayChangePct:hasQuote&&quote.changePct!=null&&Number.isFinite(Number(quote.changePct))?Number(quote.changePct):null,
+      holdingUpdatedAt:holding.updatedAt,
     };
   }).filter(Boolean);
   if(!positions.length){panel.hidden=true;$("#portfolioBody").innerHTML="";return;}
@@ -428,14 +458,23 @@ function renderPortfolio(){
     </button>`;
   }).join("")}</div>`;
 
-  const note=unconverted.length?`<p class="pf-note">※ ${esc(unconverted.map(item=>item.stock.name).join("・"))} は円換算レート未取得のため合計・構成比に含めていません</p>`:"";
+  const noQuote=positions.filter(item=>!item.hasQuote);
+  const note=[
+    unconverted.length?`<p class="pf-note">※ ${esc(unconverted.map(item=>item.stock.name).join("・"))} は円換算レート未取得のため合計・構成比に含めていません</p>`:"",
+    noQuote.length?`<p class="pf-note">※ ${esc(noQuote.map(item=>item.stock.name).join("・"))} は現在値未取得のため取得単価で表示しています（損益・前日は非表示）</p>`:"",
+  ].join("");
   const rate=Number.isFinite(usdJpy)&&usTotalUsd>0?`・換算 ${usdJpy.toFixed(2)}円/$`:"";
-  $("#portfolioMeta").textContent=`SBI一時反映（${formatMarketTime(SBI_PRICE_DATA.updatedAt)}時点・再読み込みで消えます）${rate}`;
+  const holdingTimes=positions.map(item=>new Date(item.holdingUpdatedAt||NaN).getTime()).filter(time=>!Number.isNaN(time));
+  const holdingLabel=holdingTimes.length?`保有 ${formatMarketTime(new Date(Math.max(...holdingTimes)).toISOString())}のSBI取込み時点`:"保有 SBI取込みで更新";
+  const sourceLabel=quoteSources.size?`現在値 ${[...quoteSources].join("＋")}`:"現在値未取得";
+  $("#portfolioMeta").textContent=`${holdingLabel}・${sourceLabel}${rate}`;
   $("#portfolioBody").innerHTML=tiles+bar+rows+note;
   panel.hidden=false;
   // 帯に収まらない銘柄名は頭文字に縮め、それも無理なら消す（ツールチップで見る）。
-  // ビューが非表示だと幅が0に測れて全ラベルが消えるため、表示中のみ実行（再表示時はshowViewが再描画）
-  if(panel.offsetParent!==null){
+  // 非表示・バックグラウンドタブだと幅が0に測れて全ラベルが消えるため、実測できる時だけ実行
+  //（再表示時はshowViewとvisibilitychangeが描き直す。未実測の間はCSSの…省略で切れるだけ）
+  const barNode=$(".portfolio-bar",panel);
+  if(panel.offsetParent!==null&&barNode&&barNode.clientWidth>0){
     $$(".pf-seg",panel).forEach(seg=>{
       const label=$(".pf-seg-label",seg);
       if(!label||label.scrollWidth<=seg.clientWidth-4) return;
@@ -657,14 +696,37 @@ function applySbiQuotes(list,message){
   return {quotes,capturedAt};
 }
 
+/* SBI取込み＝保有事実の更新手段。数量・取得単価・買付日だけを保存する（時価・損益は保存しない）。
+   取込みに含まれない銘柄の保有は触らない（画面が国内株だけ等の部分取込みで消さないため） */
+function saveHoldingsFromSbi(applied){
+  let count=0;
+  Object.entries(applied.quotes).forEach(([ticker,quote])=>{
+    const holding=sanitizeHolding({
+      quantity:quote.quantity,costPrice:quote.costPrice,costLabel:quote.costLabel,
+      acquisitionDate:quote.acquisitionDate,updatedAt:applied.capturedAt,
+    });
+    if(!holding) return;
+    const stock=DB.stocks.find(item=>item.active!==false&&String(item.ticker||"").toUpperCase()===ticker);
+    if(!stock) return;
+    stock.holding=holding;
+    stock.updatedAt=applied.capturedAt;
+    count+=1;
+  });
+  if(count) save();
+  return count;
+}
+
 function commitSbiImport(applied,message){
   const count=applied?Object.keys(applied.quotes).length:0;
   if(!count) return false;
   lastSbiImportId=String(message.id||applied.capturedAt);
   SBI_PRICE_DATA={updatedAt:applied.capturedAt,source:"SBI証券（画面から一時反映）",quotes:applied.quotes};
+  const savedHoldings=saveHoldingsFromSbi(applied);
   renderBoard();
   renderStockTable();
-  showToast(`SBIから${count}銘柄を一時反映しました`);
+  showToast(savedHoldings
+    ?`SBIから${count}銘柄を反映し、保有情報${savedHoldings}件を保存しました`
+    :`SBIから${count}銘柄を一時反映しました`);
   return true;
 }
 
@@ -837,7 +899,8 @@ function currentView(){return $("nav button.active")?.dataset.view||"today";}
 function showView(name){
   $$("nav button[data-view]").forEach(button=>button.classList.toggle("active",button.dataset.view===name));
   $$("main .view").forEach(view=>view.classList.toggle("active",view.id===`view-${name}`));
-  if(name==="observe"&&SBI_PRICE_DATA) renderPortfolio();
+  // 全景は常設。非表示中に描くと帯ラベルの幅が測れないため、表示のたびに描き直す
+  if(name==="observe") renderPortfolio();
   window.scrollTo({top:0,behavior:"smooth"});
 }
 
@@ -1363,5 +1426,9 @@ loadInstrumentData().catch(error=>{
 });
 window.addEventListener("focus",()=>{
   if(Date.now()-priceLoadedAt>5*60*1000) loadPriceData();
+});
+// バックグラウンドで開かれた場合、全景の帯ラベル調整は幅が測れず未実施のまま→見えた時に描き直す
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible") renderPortfolio();
 });
 setInterval(loadPriceData,15*60*1000);
