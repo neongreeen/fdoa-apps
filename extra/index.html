@@ -302,7 +302,12 @@ function parseTile(sec){
     t.notify=line;
   }
   if((m=b.match(/現在[：:]?\s*\*{0,2}([\d,.]+)\s*円/)))t.price=m[1]+'円';
-  else if((m=b.match(/現在[：:]?\s*\*{0,2}\$\s*([\d,.]+)/)))t.price='$'+m[1]; // ドル建て（Apple・SPCX）
+  else if((m=b.match(/現在[：:]?\s*\*{0,2}\$\s*([\d,.]+)([^\n]*)/))){ // ドル建て（Apple・SPCX）
+    t.price='$'+m[1];
+    // NY終値は時差でひと晩古い＝日付が添えてあればタイルにも出す
+    const dm=m[2].match(/(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2})[^）\n]*終値/);
+    if(dm){let d=dm[1];const iso=d.match(/^\d{4}-(\d{2})-(\d{2})$/);if(iso)d=(+iso[1])+'/'+(+iso[2]);t.price+='（'+d+' NY終値）';}
+  }
   if((m=b.match(/DDが\s*(-?\d+(?:\.\d+)?%)\s*以内へ回復/)))t.recover=m[1]+'回復で局面解除';
   // 下落理由メモ（正本の「- 理由：」行。4色＝重さ分類）
   if((m=b.match(/理由[：:]\s*(🔴|🟡|🟢|🔵)\s*(.+)/)))
