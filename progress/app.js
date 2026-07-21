@@ -82,6 +82,7 @@ function seed(){
     stocks:[],
     decisions:[],
     executions:[],
+    holdingsLog:[],
     reviews:[],
     masters:clone(DEFAULT_MASTERS),
     settings:{},
@@ -112,6 +113,11 @@ function normalize(data){
       id:stock.id||uid("stock"),
       name:String(stock.name||"名称未設定"),
       ticker:String(stock.ticker||"").toUpperCase(),
+      // 資産クラス：銘柄マスターが株も投信も持つ（将来のクラス追加も同じ型で受ける）
+      assetClass:stock.assetClass==="fund"?"fund":"stock",
+      isin:String(stock.isin||"").toUpperCase(),
+      // quoteの価格が何単位あたりか（株=1・投信=1万口あたり円）。評価額＝数量×price÷quoteUnit
+      quoteUnit:Number.isFinite(Number(stock.quoteUnit))&&Number(stock.quoteUnit)>0?Number(stock.quoteUnit):(stock.assetClass==="fund"?10000:1),
       market:String(stock.market||""),
       currency:String(stock.currency||""),
       country:String(stock.country||""),
@@ -133,6 +139,18 @@ function normalize(data){
       createdAt:execution.createdAt||execution.executedAt,
       revokedAt:execution.revokedAt||null,
     })),
+    // 保有履歴（append-only）：SBI取込みで保有事実が変わった時だけ追記。
+    // 将来の資産推移・積立実績の分析は、このログ×history.json（日次価格）から再構成する
+    holdingsLog:(Array.isArray(data.holdingsLog)?data.holdingsLog:[]).map(entry=>({
+      id:entry.id||uid("hlog"),
+      stockId:entry.stockId,
+      quantity:Number(entry.quantity),
+      costPrice:entry.costPrice==null?null:Number(entry.costPrice),
+      costLabel:entry.costLabel==="参考単価"?"参考単価":"取得単価",
+      acquisitionDate:String(entry.acquisitionDate||"").slice(0,20),
+      capturedAt:entry.capturedAt,
+      source:String(entry.source||"sbi"),
+    })).filter(entry=>entry.stockId&&Number.isFinite(entry.quantity)&&entry.quantity>0&&entry.capturedAt),
     reviews:(Array.isArray(data.reviews)?data.reviews:[])
       .map(review=>({id:review.id||uid("review"),checkedAt:review.checkedAt}))
       .filter(review=>review.checkedAt),
@@ -164,6 +182,18 @@ function normalize(data){
     const column=Number(status.boardColumn);
     status.boardColumn=Number.isInteger(column)&&column>=1&&column<=4?column:Math.min(index+1,4);
   });
+  // 保有履歴が空でstocksに保有があれば初回だけ現在値から起こす（履歴の起点を作る）
+  if(!result.holdingsLog.length){
+    result.stocks.forEach(stock=>{
+      if(!stock.holding) return;
+      result.holdingsLog.push({
+        id:uid("hlog"),stockId:stock.id,
+        quantity:stock.holding.quantity,costPrice:stock.holding.costPrice,
+        costLabel:stock.holding.costLabel,acquisitionDate:stock.holding.acquisitionDate,
+        capturedAt:stock.holding.updatedAt||new Date().toISOString(),source:"sbi",
+      });
+    });
+  }
   return result;
 }
 
@@ -361,44 +391,66 @@ function jpyAmount(value,currency,usdJpy){
   return null;
 }
 
-/* ポートフォリオ全景（常設）。
-   保存した保有事実 × 最新quote（SBI一時反映があれば優先→無ければ参考株価）で表示のたびに計算する。
-   評価額・損益は計算結果であり保存しない（保存するのは保有事実だけ）。 */
-function renderPortfolio(){
-  const panel=$("#portfolioPanel");
-  if(!panel) return;
+/* 保有×最新quoteの評価計算（全景・資産タブ共用）。
+   quoteUnit＝quote価格が何単位あたりか（株=1・投信=1万口）。評価額＝数量×price÷quoteUnit */
+function computeHoldingPositions(){
   const usdJpy=Number(PRICE_DATA?.usdJpy);
-  const statuses=ordered("statuses",true);
-  const statusOrder=new Map(statuses.map((status,index)=>[status.id,index]));
   const quoteSources=new Set();
   const positions=activeStocks().map(stock=>{
     const holding=stock.holding;
     if(!holding) return null;
+    const unit=Number(stock.quoteUnit)>0?Number(stock.quoteUnit):1;
     const quote=quoteFor(stock);
     const price=Number(quote?.price);
     const hasQuote=Number.isFinite(price)&&price>0;
     // quoteが無い銘柄は取得単価で仮表示（損益・前日比は出さない）。それも無ければ表示不能
     const effectivePrice=hasQuote?price:holding.costPrice;
     if(!Number.isFinite(effectivePrice)||effectivePrice<=0) return null;
-    if(hasQuote) quoteSources.add(SBI_PRICE_DATA?.quotes?.[String(stock.ticker||"").toUpperCase()]?"SBI一時反映":"参考株価");
+    if(hasQuote) quoteSources.add(SBI_PRICE_DATA?.quotes?.[String(stock.ticker||"").toUpperCase()]?"SBI一時反映":(quote.source==="投信協会"?"投信協会":"参考株価"));
     const currency=stock.currency||quote?.currency||"USD";
-    const marketValue=effectivePrice*holding.quantity;
+    const marketValue=effectivePrice*holding.quantity/unit;
     const decision=latestDecision(stock.id);
     const status=master("statuses",decision?.statusId);
     const cost=Number(holding.costPrice);
     const hasCost=Number.isFinite(cost)&&cost>0;
-    const profitLoss=hasQuote&&hasCost?(price-cost)*holding.quantity:null;
+    const profitLoss=hasQuote&&hasCost?(price-cost)*holding.quantity/unit:null;
     const change=Number(quote?.change);
+    // 円換算値は計算段階で整数に丸める（投信の口数計算＝数量×価格÷1万口で端数が出るため）
+    const roundJpy=value=>value==null?null:Math.round(value);
     return{
       stock,status,currency,marketValue,hasQuote,
-      valueJpy:jpyAmount(marketValue,currency,usdJpy),
-      profitLossJpy:profitLoss==null?null:jpyAmount(profitLoss,currency,usdJpy),
+      valueJpy:roundJpy(jpyAmount(marketValue,currency,usdJpy)),
+      profitLossJpy:profitLoss==null?null:roundJpy(jpyAmount(profitLoss,currency,usdJpy)),
       profitLossPct:profitLoss==null?null:(price-cost)/cost*100,
-      dayChangeJpy:hasQuote&&Number.isFinite(change)?jpyAmount(change*holding.quantity,currency,usdJpy):null,
+      dayChangeJpy:hasQuote&&Number.isFinite(change)?roundJpy(jpyAmount(change*holding.quantity/unit,currency,usdJpy)):null,
       dayChangePct:hasQuote&&quote.changePct!=null&&Number.isFinite(Number(quote.changePct))?Number(quote.changePct):null,
       holdingUpdatedAt:holding.updatedAt,
     };
   }).filter(Boolean);
+  return {positions,usdJpy,quoteSources};
+}
+
+/* 「保有はいつ時点か・現在値はどこ由来か」のメタ表示（全景・資産タブ共用） */
+function holdingsMetaText(positions,quoteSources,usdJpy,usTotalUsd){
+  const holdingTimes=positions.map(item=>new Date(item.holdingUpdatedAt||NaN).getTime()).filter(time=>!Number.isNaN(time));
+  const holdingLabel=holdingTimes.length?`保有 ${formatMarketTime(new Date(Math.max(...holdingTimes)).toISOString())}のSBI取込み時点`:"保有 SBI取込みで更新";
+  const sourceLabel=quoteSources.size?`現在値 ${[...quoteSources].join("＋")}`:"現在値未取得";
+  const rate=Number.isFinite(usdJpy)&&usTotalUsd>0?`・換算 ${usdJpy.toFixed(2)}円/$`:"";
+  return `${holdingLabel}・${sourceLabel}${rate}`;
+}
+
+/* ポートフォリオ全景（常設・個別株のみ）。投信を含む全体は「資産」タブ。
+   保存した保有事実 × 最新quote（SBI一時反映があれば優先→無ければ参考株価）で表示のたびに計算する。
+   評価額・損益は計算結果であり保存しない（保存するのは保有事実だけ）。 */
+function renderPortfolio(){
+  const panel=$("#portfolioPanel");
+  if(!panel) return;
+  const statuses=ordered("statuses",true);
+  const statusOrder=new Map(statuses.map((status,index)=>[status.id,index]));
+  const computed=computeHoldingPositions();
+  const usdJpy=computed.usdJpy;
+  const quoteSources=computed.quoteSources;
+  const positions=computed.positions.filter(item=>item.stock.assetClass!=="fund");
   if(!positions.length){panel.hidden=true;$("#portfolioBody").innerHTML="";return;}
 
   positions.sort((a,b)=>{
@@ -463,11 +515,7 @@ function renderPortfolio(){
     unconverted.length?`<p class="pf-note">※ ${esc(unconverted.map(item=>item.stock.name).join("・"))} は円換算レート未取得のため合計・構成比に含めていません</p>`:"",
     noQuote.length?`<p class="pf-note">※ ${esc(noQuote.map(item=>item.stock.name).join("・"))} は現在値未取得のため取得単価で表示しています（損益・前日は非表示）</p>`:"",
   ].join("");
-  const rate=Number.isFinite(usdJpy)&&usTotalUsd>0?`・換算 ${usdJpy.toFixed(2)}円/$`:"";
-  const holdingTimes=positions.map(item=>new Date(item.holdingUpdatedAt||NaN).getTime()).filter(time=>!Number.isNaN(time));
-  const holdingLabel=holdingTimes.length?`保有 ${formatMarketTime(new Date(Math.max(...holdingTimes)).toISOString())}のSBI取込み時点`:"保有 SBI取込みで更新";
-  const sourceLabel=quoteSources.size?`現在値 ${[...quoteSources].join("＋")}`:"現在値未取得";
-  $("#portfolioMeta").textContent=`${holdingLabel}・${sourceLabel}${rate}`;
+  $("#portfolioMeta").textContent=holdingsMetaText(positions,quoteSources,usdJpy,usTotalUsd);
   $("#portfolioBody").innerHTML=tiles+bar+rows+note;
   panel.hidden=false;
   // 帯に収まらない銘柄名は頭文字に縮め、それも無理なら消す（ツールチップで見る）。
@@ -484,6 +532,81 @@ function renderPortfolio(){
     });
   }
   $$(".pf-row",panel).forEach(button=>button.addEventListener("click",()=>openRecordModal(button.dataset.stock)));
+}
+
+/* 資産タブ＝投信（構造への賭け）＋個別株（反応ルール）の全保有を1画面で。
+   計算は全景と同じ「保存保有×最新quote」。ここでも時価は何も保存しない */
+function renderAssets(){
+  const body=$("#assetsBody");
+  if(!body) return;
+  const {positions,usdJpy,quoteSources}=computeHoldingPositions();
+  if(!positions.length){
+    $("#assetsMeta").textContent="";
+    body.innerHTML='<div class="empty-compact">SBIのポートフォリオ画面から取込みをすると、保有資産の全景がここに出ます（投信は銘柄マスターへの登録が必要）</div>';
+    return;
+  }
+  const funds=positions.filter(item=>item.stock.assetClass==="fund");
+  const equities=positions.filter(item=>item.stock.assetClass!=="fund");
+  const converted=positions.filter(item=>item.valueJpy!=null);
+  const unconverted=positions.filter(item=>item.valueJpy==null);
+  const sumJpy=list=>list.filter(item=>item.valueJpy!=null).reduce((sum,item)=>sum+item.valueJpy,0);
+  const totalJpy=sumJpy(positions);
+  const fundJpy=sumJpy(funds);
+  const equityJpy=sumJpy(equities);
+  const totalPlJpy=converted.length&&converted.every(item=>item.profitLossJpy!=null)?converted.reduce((sum,item)=>sum+item.profitLossJpy,0):null;
+  const totalCostJpy=totalPlJpy==null?null:totalJpy-totalPlJpy;
+  const totalPlPct=totalCostJpy>0?totalPlJpy/totalCostJpy*100:null;
+  const dayItems=converted.filter(item=>item.dayChangeJpy!=null);
+  const totalDayJpy=dayItems.length?dayItems.reduce((sum,item)=>sum+item.dayChangeJpy,0):null;
+  const dayBaseJpy=dayItems.reduce((sum,item)=>sum+item.valueJpy,0)-(totalDayJpy||0);
+  const totalDayPct=totalDayJpy!=null&&dayBaseJpy>0?totalDayJpy/dayBaseJpy*100:null;
+  const usTotalUsd=positions.filter(item=>item.currency==="USD").reduce((sum,item)=>sum+item.marketValue,0);
+  const plDirection=totalPlJpy>0?"up":totalPlJpy<0?"down":"flat";
+  const dayDirection=totalDayJpy>0?"up":totalDayJpy<0?"down":"flat";
+  const breakdown=[fundJpy>0?`投信 ${formatMoney(fundJpy,"JPY")}`:"",equityJpy>0?`個別株 ${formatMoney(equityJpy,"JPY")}`:""].filter(Boolean).join("　");
+
+  const tiles=`<div class="portfolio-summary">
+    <div class="summary-card"><span class="summary-label">総資産（円換算・SBI証券分）</span><span class="summary-value">${esc(formatMoney(Math.round(totalJpy),"JPY"))}</span><span class="summary-sub">${esc(breakdown)}</span></div>
+    <div class="summary-card"><span class="summary-label">評価損益</span><span class="summary-value pf-num ${plDirection}">${esc(formatMoney(totalPlJpy==null?null:Math.round(totalPlJpy),"JPY",true))}</span><span class="summary-sub">${totalPlPct!=null?`取得額比 ${esc(formatSignedPercent(totalPlPct))}`:"—"}</span></div>
+    <div class="summary-card"><span class="summary-label">今日の動き</span><span class="summary-value pf-num ${dayDirection}">${esc(formatMoney(totalDayJpy==null?null:Math.round(totalDayJpy),"JPY",true))}</span><span class="summary-sub">${totalDayPct!=null?`前営業日比 ${esc(formatSignedPercent(totalDayPct))}`:"—"}</span></div>
+  </div>`;
+
+  const head=`<div class="pf-row pf-head" aria-hidden="true">
+    <span></span><span>銘柄</span><span class="pf-status">区分</span><span class="pf-share">構成比</span><span class="pf-day">前日</span><span class="pf-pl">損益</span><span class="pf-value">評価額</span>
+  </div>`;
+  const row=item=>{
+    const isFund=item.stock.assetClass==="fund";
+    const share=item.valueJpy!=null&&totalJpy>0?`${(item.valueJpy/totalJpy*100).toFixed(1)}%`:"—";
+    const dayDir=item.dayChangePct>0?"up":item.dayChangePct<0?"down":"flat";
+    const plDir=item.profitLossPct>0?"up":item.profitLossPct<0?"down":"flat";
+    const plAmount=item.profitLossJpy!=null?formatMoney(item.profitLossJpy,"JPY",true):"—";
+    const value=item.valueJpy!=null?formatMoney(item.valueJpy,"JPY"):formatMoney(item.marketValue,item.currency);
+    const inner=`<span class="pf-dot" style="background:${isFund?STATUS_NONE_COLOR:statusColor(item.status)}"></span>
+      <span class="pf-name"><span class="stock-name">${esc(item.stock.name)}</span><span class="stock-symbol">${esc(isFund?"投信":item.stock.ticker)}</span></span>
+      <span class="pf-status">${esc(isFund?"積立":(item.status?.label||"状態未定"))}</span>
+      <span class="pf-share">${esc(share)}</span>
+      <span class="pf-num pf-day ${dayDir}">${esc(formatSignedPercent(item.dayChangePct))}</span>
+      <span class="pf-num pf-pl ${plDir}">${esc(plAmount)}<small>${esc(formatSignedPercent(item.profitLossPct))}</small></span>
+      <span class="pf-value">${esc(value)}</span>`;
+    // 投信は判断対象ではない＝記録モーダルへ繋がない（個別株だけタップ可）
+    return isFund?`<div class="pf-row asset-row-static">${inner}</div>`
+      :`<button type="button" class="pf-row" data-stock="${esc(item.stock.id)}">${inner}</button>`;
+  };
+  const bySize=list=>list.slice().sort((a,b)=>(b.valueJpy??0)-(a.valueJpy??0));
+  const section=(title,list)=>list.length
+    ?`<h3 class="asset-group-title">${esc(title)}<small>${esc(formatMoney(sumJpy(list),"JPY"))}</small></h3><div class="portfolio-rows">${head}${bySize(list).map(row).join("")}</div>`
+    :"";
+
+  const noQuote=positions.filter(item=>!item.hasQuote);
+  const note=[
+    unconverted.length?`<p class="pf-note">※ ${esc(unconverted.map(item=>item.stock.name).join("・"))} は円換算レート未取得のため合計・構成比に含めていません</p>`:"",
+    noQuote.length?`<p class="pf-note">※ ${esc(noQuote.map(item=>item.stock.name).join("・"))} は現在値未取得のため取得単価で表示しています（損益・前日は非表示）</p>`:"",
+    funds.length?'<p class="pf-note">※ 投信の基準価額は投信協会公表値（前営業日分・夕方更新）です</p>':"",
+  ].join("");
+
+  $("#assetsMeta").textContent=holdingsMetaText(positions,quoteSources,usdJpy,usTotalUsd);
+  body.innerHTML=tiles+section("投資信託（積み立て）",funds)+section("個別株",equities)+note;
+  $$(".pf-row[data-stock]",body).forEach(button=>button.addEventListener("click",()=>openRecordModal(button.dataset.stock)));
 }
 
 function quoteHtml(stock,className="stock-quote"){
@@ -588,20 +711,22 @@ function parseSbiTables(tables){
   };
   const quotes={};
   tables.forEach(rows=>{
+    // 株式の表＝銘柄×現在値。投信の表＝ファンド名（または銘柄）×基準価額。どちらも受ける
     const headerIndex=rows.findIndex(cells=>{
       if(cells.length<4) return false;
       const joined=key(cells.join("|"));
-      return joined.includes("銘柄")&&joined.includes("現在値");
+      return (joined.includes("銘柄")||joined.includes("ファンド"))&&(joined.includes("現在値")||joined.includes("基準価額")||joined.includes("基準価格"));
     });
     if(headerIndex<0) return;
     const headers=rows[headerIndex].map(cell=>key(cell));
     const find=predicate=>headers.findIndex(predicate);
-    const instrumentIndex=find(text=>text.includes("銘柄"));
-    const priceIndex=find(text=>text.includes("現在値"));
+    const instrumentIndex=find(text=>text.includes("銘柄")||text.includes("ファンド"));
+    const priceIndex=find(text=>text.includes("現在値")||text.includes("基準価額")||text.includes("基準価格"));
+    const isFundTable=priceIndex>=0&&(headers[priceIndex].includes("基準価額")||headers[priceIndex].includes("基準価格"));
     if(instrumentIndex<0||priceIndex<0||instrumentIndex===priceIndex) return;
     const acquisitionDateIndex=find(text=>text.includes("買付日"));
-    const quantityIndex=find(text=>text==="数量"||text==="保有数量"||text==="株数"||text==="保有株数");
-    const costIndex=find(text=>text==="取得単価"||text==="参考単価"||text==="平均取得単価");
+    const quantityIndex=find(text=>text==="数量"||text==="保有数量"||text==="株数"||text==="保有株数"||text==="口数"||text==="保有口数");
+    const costIndex=find(text=>text==="取得単価"||text==="参考単価"||text==="平均取得単価"||text==="個別元本");
     const changePctIndex=find(text=>text.includes("前日比")&&text.includes("%"));
     const changeIndex=find(text=>text.includes("前日比")&&!text.includes("%"));
     const profitLossPctIndex=find(text=>text.includes("損益")&&text.includes("%"));
@@ -609,12 +734,16 @@ function parseSbiTables(tables){
     const marketValueIndex=find(text=>text==="評価額"||text==="時価評価額");
     rows.slice(headerIndex+1).forEach(cells=>{
       if(cells.length<=Math.max(instrumentIndex,priceIndex)) return;
-      const ticker=tickerOf(cells[instrumentIndex]);
+      const rawName=clean(cells[instrumentIndex]);
+      // 投信行にはティッカーが無い＝ファンド名で照合する（applySbiQuotes側でマスターと突き合わせ）
+      const ticker=isFundTable?null:tickerOf(rawName);
       const price=toNumber(cells[priceIndex]);
-      if(!ticker||price==null||price<=0) return;
+      if((!ticker&&!rawName)||price==null||price<=0) return;
       const pick=index=>index>=0&&cells[index]!=null?toNumber(cells[index]):null;
-      quotes[ticker]={
+      quotes[ticker||`fund:${rawName}`]={
         ticker,
+        name:rawName,
+        isFund:isFundTable,
         price,
         change:pick(changeIndex),
         changePct:pick(changePctIndex),
@@ -655,16 +784,35 @@ function renderSbiDebug(text){
   box.hidden=false;
 }
 
+/* 投信の照合：SBI画面のファンド名とマスターの名前を正規化して部分一致。
+   表記ゆれ（全角半角・空白・括弧）はNFKC＋記号除去で吸収する */
+function normalizeFundName(value){
+  return String(value||"").normalize("NFKC").toLowerCase().replace(/[\s()（）\[\]【】・･･'’&＆-]/g,"");
+}
+
+function matchFundByName(name){
+  const target=normalizeFundName(name);
+  if(!target) return null;
+  return DB.stocks.find(stock=>{
+    if(stock.active===false||stock.assetClass!=="fund") return false;
+    const registered=normalizeFundName(stock.name);
+    return registered&&(target.includes(registered)||registered.includes(target));
+  })||null;
+}
+
 function applySbiQuotes(list,message){
   const captured=new Date(message.capturedAt||Date.now());
   if(Number.isNaN(captured.getTime())) return null;
   const capturedAt=captured.toISOString();
   const quotes={};
   list.forEach(raw=>{
-    const ticker=String(raw?.ticker||"").trim().toUpperCase();
-    const stock=DB.stocks.find(item=>item.active!==false&&item.ticker.toUpperCase()===ticker);
+    const rawTicker=String(raw?.ticker||"").trim().toUpperCase();
+    const stock=rawTicker
+      ?DB.stocks.find(item=>item.active!==false&&item.ticker.toUpperCase()===rawTicker)
+      :matchFundByName(raw?.name);
     const price=Number(raw?.price);
     if(!stock||!Number.isFinite(price)||price<=0) return;
+    const ticker=stock.ticker.toUpperCase();
     const base=PRICE_DATA?.quotes?.[ticker]||{};
     const change=raw?.change==null?NaN:Number(raw.change);
     const changePct=raw?.changePct==null?NaN:Number(raw.changePct);
@@ -678,6 +826,7 @@ function applySbiQuotes(list,message){
       symbol:base.symbol||ticker,
       name:base.name||stock.name,
       currency:stock.currency||base.currency,
+      quoteUnit:stock.quoteUnit||base.quoteUnit||1,
       price,
       change:Number.isFinite(change)?change:null,
       changePct:Number.isFinite(changePct)?changePct:null,
@@ -697,7 +846,8 @@ function applySbiQuotes(list,message){
 }
 
 /* SBI取込み＝保有事実の更新手段。数量・取得単価・買付日だけを保存する（時価・損益は保存しない）。
-   取込みに含まれない銘柄の保有は触らない（画面が国内株だけ等の部分取込みで消さないため） */
+   取込みに含まれない銘柄の保有は触らない（画面が国内株だけ等の部分取込みで消さないため）。
+   数量か単価が変わった時はholdingsLog（append-only）にも追記＝将来の資産推移の材料 */
 function saveHoldingsFromSbi(applied){
   let count=0;
   Object.entries(applied.quotes).forEach(([ticker,quote])=>{
@@ -708,8 +858,19 @@ function saveHoldingsFromSbi(applied){
     if(!holding) return;
     const stock=DB.stocks.find(item=>item.active!==false&&String(item.ticker||"").toUpperCase()===ticker);
     if(!stock) return;
+    const changed=!stock.holding
+      ||stock.holding.quantity!==holding.quantity
+      ||stock.holding.costPrice!==holding.costPrice;
     stock.holding=holding;
     stock.updatedAt=applied.capturedAt;
+    if(changed){
+      DB.holdingsLog.push({
+        id:uid("hlog"),stockId:stock.id,
+        quantity:holding.quantity,costPrice:holding.costPrice,
+        costLabel:holding.costLabel,acquisitionDate:holding.acquisitionDate,
+        capturedAt:applied.capturedAt,source:"sbi",
+      });
+    }
     count+=1;
   });
   if(count) save();
@@ -723,6 +884,7 @@ function commitSbiImport(applied,message){
   SBI_PRICE_DATA={updatedAt:applied.capturedAt,source:"SBI証券（画面から一時反映）",quotes:applied.quotes};
   const savedHoldings=saveHoldingsFromSbi(applied);
   renderBoard();
+  renderAssets();
   renderStockTable();
   showToast(savedHoldings
     ?`SBIから${count}銘柄を反映し、保有情報${savedHoldings}件を保存しました`
@@ -768,6 +930,7 @@ async function loadPriceData(){
   priceLoadedAt=Date.now();
   priceLoading=false;
   renderBoard();
+  renderAssets();
   renderStockTable();
 }
 
@@ -1253,6 +1416,7 @@ function addMasterItem(section){
 function renderAll(){
   const view=currentView();
   renderBoard();
+  renderAssets();
   renderStockTable();
   renderFilters();
   renderLog();
@@ -1274,7 +1438,11 @@ function submitStock(event){
   event.preventDefault();
   const name=$("#sName").value.trim();
   const ticker=$("#sTicker").value.trim().toUpperCase();
+  const assetClass=$("#sAssetClass").value==="fund"?"fund":"stock";
+  const isin=$("#sIsin").value.trim().toUpperCase();
   if(!name||!ticker){showToast("銘柄名とティッカーは必須です","error");return;}
+  // 投信は基準価額の自動取得（投信協会CSV）に協会コード＋ISINの両方が必要
+  if(assetClass==="fund"&&!/^JP[0-9A-Z]{10}$/.test(isin)){showToast("投資信託はISINコード（JPで始まる12桁）が必要です","error");return;}
   if(DB.stocks.some(stock=>stock.ticker.toUpperCase()===ticker&&stock.active!==false)&&!confirm(`${ticker} はすでに登録されています。追加しますか？`)) return;
   const now=new Date().toISOString();
   const companyUrl=safeExternalUrl($("#sCompanyUrl").value.trim());
@@ -1282,12 +1450,22 @@ function submitStock(event){
   if($("#sCompanyUrl").value.trim()&&!companyUrl){showToast("企業サイトのURLを確認してください","error");return;}
   if($("#sIrUrl").value.trim()&&!irUrl){showToast("IRページのURLを確認してください","error");return;}
   DB.stocks.push({
-    id:uid("stock"),name,ticker,market:$("#sMarket").value.trim(),currency:$("#sCurrency").value,
+    id:uid("stock"),name,ticker,
+    assetClass,isin:assetClass==="fund"?isin:"",quoteUnit:assetClass==="fund"?10000:1,
+    market:$("#sMarket").value.trim(),currency:$("#sCurrency").value,
     country:$("#sCountry").value,companyUrl,irUrl,active:true,createdAt:now,updatedAt:now,
   });
   save();
-  event.target.reset();$("#sCurrency").value="USD";$("#sCountry").value="";
+  event.target.reset();$("#sCurrency").value="USD";$("#sCountry").value="";toggleFundFields();
   renderAll();showView("stocks");showToast("銘柄を追加しました");
+}
+
+/* 投信を選んだ時だけISIN欄を出す（通貨・国も日本の投信の既定に寄せる） */
+function toggleFundFields(){
+  const isFund=$("#sAssetClass").value==="fund";
+  $$(".fund-only-field").forEach(field=>{field.hidden=!isFund;});
+  $("#sTicker").placeholder=isFund?"協会コード8桁（例：03311187）":"例：AAPL";
+  if(isFund){$("#sCurrency").value="JPY";$("#sCountry").value="JP";}
 }
 
 function exportJson(){
@@ -1322,6 +1500,7 @@ function updateSyncState(state,message=""){
 function bindEvents(){
   $$("nav button[data-view]").forEach(button=>button.addEventListener("click",()=>showView(button.dataset.view)));
   $("#stockForm").addEventListener("submit",submitStock);
+  $("#sAssetClass").addEventListener("change",toggleFundFields);
   $("#instrumentQuery").addEventListener("input",renderInstrumentResults);
   [$("#fStock"),$("#fStatus"),$("#fTag")].forEach(select=>select.addEventListener("change",renderLog));
   $("#clearFilters").addEventListener("click",()=>{$("#fStock").value="";$("#fStatus").value="";$("#fTag").value="";renderLog();});

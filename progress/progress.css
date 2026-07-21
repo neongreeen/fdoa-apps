@@ -200,6 +200,12 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .pf-pl small{font-size:10.5px;font-weight:600}
 .pf-value{text-align:right;font-variant-numeric:tabular-nums;font-weight:650}
 .pf-note{font-size:11px;color:var(--sub);margin-top:8px}
+/* 資産タブ：投信行はタップ対象外（判断は個別株だけ） */
+.asset-row-static{cursor:default}
+.asset-row-static:hover{background:transparent}
+.asset-group-title{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:18px 0 6px;font-size:13px;font-weight:700}
+.asset-group-title small{font-size:12px;font-weight:650;color:var(--sub);font-variant-numeric:tabular-nums}
+.asset-group-title:first-of-type{margin-top:4px}
 .bookmarklet-steps{margin:10px 0 0 18px;display:flex;flex-direction:column;gap:6px}
 .board-check{display:flex;align-items:center;gap:10px;flex:none}
 .last-check{font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}

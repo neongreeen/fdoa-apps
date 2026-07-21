@@ -7,7 +7,7 @@
   <title>Progress Portfolio</title>
   <link rel="icon" href="../jikyu/favicon.ico" sizes="any">
   <link rel="stylesheet" href="../shared/base.css?v=20260719-1042">
-  <link rel="stylesheet" href="progress.css?v=20260719-1042">
+  <link rel="stylesheet" href="progress.css?v=20260721-1241">
 </head>
 <body>
 <header>
@@ -15,6 +15,7 @@
     <div class="logo">Progress Portfolio <small id="syncBadge">ローカル保存</small></div>
     <nav id="nav" aria-label="メインメニュー">
       <button type="button" data-view="observe" class="active">観察・判断</button>
+      <button type="button" data-view="assets">資産</button>
       <button type="button" data-view="stocks">銘柄マスター</button>
       <button type="button" data-view="master">項目マスター</button>
       <button type="button" data-view="sync">同期・バックアップ</button>
@@ -69,6 +70,18 @@
     </div>
   </section>
 
+  <section id="view-assets" class="view">
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>資産全景</h2>
+          <p id="assetsMeta"></p>
+        </div>
+      </div>
+      <div id="assetsBody"></div>
+    </div>
+  </section>
+
   <section id="view-stocks" class="view compact-admin-view">
     <div class="panel">
       <div class="panel-heading">
@@ -91,8 +104,19 @@
           <input id="sName" type="text" maxlength="80" required placeholder="例：Apple">
         </label>
         <label class="field">
+          <span>資産クラス</span>
+          <select id="sAssetClass">
+            <option value="stock">株式</option>
+            <option value="fund">投資信託</option>
+          </select>
+        </label>
+        <label class="field">
           <span>ティッカー</span>
           <input id="sTicker" type="text" maxlength="20" required placeholder="例：AAPL" autocapitalize="characters">
+        </label>
+        <label class="field fund-only-field" hidden>
+          <span>ISINコード</span>
+          <input id="sIsin" type="text" maxlength="12" placeholder="例：JP90C000GKC6" autocapitalize="characters">
         </label>
         <label class="field">
           <span>市場</span>
@@ -268,6 +292,6 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../shared/store.js?v=20260720"></script>
-<script src="app.js?v=20260721-1206"></script>
+<script src="app.js?v=20260721-1241"></script>
 </body>
 </html>
