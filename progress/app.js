@@ -1109,6 +1109,8 @@ function currentView(){return $("nav button.active")?.dataset.view||"today";}
 function showView(name){
   $$("nav button[data-view]").forEach(button=>button.classList.toggle("active",button.dataset.view===name));
   $$("main .view").forEach(view=>view.classList.toggle("active",view.id===`view-${name}`));
+  // 最後に見ていたタブを記憶（再読み込みで観察・判断に戻らないように。端末ごとのUI設定＝同期しない）
+  try{localStorage.setItem("pp_last_view",name);}catch(error){}
   // 全景は常設。非表示中に描くと帯ラベルの幅が測れないため、表示のたびに描き直す
   if(name==="observe") renderPortfolio();
   window.scrollTo({top:0,behavior:"smooth"});
@@ -1648,6 +1650,9 @@ window.addEventListener("message",receiveSbiQuotes);
 window.addEventListener("message",receiveSbiTables);
 bindEvents();
 renderAll();
+// 前回開いていたタブを復元（初回・不明値は既定の観察・判断のまま）
+const lastView=(()=>{try{return localStorage.getItem("pp_last_view");}catch(error){return null;}})();
+if(lastView&&$(`nav button[data-view="${lastView}"]`)) showView(lastView);
 store.init().then(loadPriceData);
 loadInstrumentData().catch(error=>{
   console.warn(error);
