@@ -478,14 +478,29 @@ function renderAssets(){
     <div class="summary-card"><span class="summary-label">今日の動き</span><span class="summary-value pf-num ${dayDirection}">${esc(formatMoney(totalDay==null?null:Math.round(totalDay),"JPY",true))}</span><span class="summary-sub">${totalDayPct!=null?`前営業日比 ${esc(formatSignedPercent(totalDayPct))}`:"—"}</span></div>
   </div>`;
 
-  // 構成比バー：ブロック順（現物→投信→iDeCo）。現物は判断状態色・投信/iDeCoは区分色
-  const barItems=BLOCK_META.flatMap(meta=>byBlock(meta.key)
-    .slice().sort((a,b)=>b.valueJpy-a.valueJpy)
-    .map(item=>({item,color:meta.color||statusColor(item.status)})));
-  const bar=barItems.length?`<div class="portfolio-bar" role="img" aria-label="評価額の構成比">${barItems.map(({item,color})=>{
-    const share=totalJpy>0?item.valueJpy/totalJpy*100:0;
-    return `<span class="pf-seg" style="flex-grow:${Math.max(item.valueJpy,1)};background:${color}" title="${esc(item.stock.name)} ${share.toFixed(1)}%・${esc(formatMoney(item.valueJpy,"JPY"))}"><span class="pf-seg-label" style="color:${readableTextColor(color)}">${esc(item.stock.name)}</span></span>`;
-  }).join("")}</div>`:"";
+  // 構成比バー3本：個別株のみ／投信のみ／全体（iDeCo込み・2026-07-23ヨシアキ指示）。
+  // 色＝個別株は判断状態色・投信はファンドごとの固定色・iDeCoは紫灰。%は各バーの中での構成比
+  const FUND_COLORS=["#5b7ea6","#6f8f7a","#a08558","#8a7a9c","#a37070","#7d8a94"];
+  const fundColor=new Map(byBlock("fund").slice().sort((a,b)=>b.valueJpy-a.valueJpy)
+    .map((item,index)=>[item.stock.id,FUND_COLORS[index%FUND_COLORS.length]]));
+  const colorOf=item=>item.block==="equity"?statusColor(item.status)
+    :item.block==="ideco"?"#7a6a8a"
+    :fundColor.get(item.stock.id)||"#6e6e73";
+  const barRow=(label,items,keepOrder=false)=>{
+    if(!items.length) return "";
+    const barTotal=items.reduce((sum,item)=>sum+item.valueJpy,0);
+    if(barTotal<=0) return "";
+    const ordered=keepOrder?items:items.slice().sort((a,b)=>b.valueJpy-a.valueJpy);
+    const segments=ordered.map(item=>{
+      const share=(item.valueJpy/barTotal*100).toFixed(1);
+      const color=colorOf(item);
+      return `<span class="pf-seg" style="flex-grow:${Math.max(item.valueJpy,1)};background:${color}" title="${esc(item.stock.name)} ${share}%・${esc(formatMoney(item.valueJpy,"JPY"))}"><span class="pf-seg-label" style="color:${readableTextColor(color)}">${esc(item.stock.name)}</span></span>`;
+    }).join("");
+    return `<div class="pf-bar-row"><span class="pf-bar-label">${esc(label)}</span><div class="portfolio-bar" role="img" aria-label="${esc(label)}の構成比">${segments}</div></div>`;
+  };
+  // 全体バーはブロック順（現物→投信→iDeCo・各ブロック内は大きい順）＝保有ボードと同じ並び
+  const allItems=BLOCK_META.flatMap(meta=>byBlock(meta.key).slice().sort((a,b)=>b.valueJpy-a.valueJpy));
+  const bar=`<div class="pf-bars">${barRow("個別株",byBlock("equity"))+barRow("投信",byBlock("fund"))+barRow("全体",allItems,true)}</div>`;
 
   // 保有ボード（10列＝銘柄/保有数/取得単価/現在単価/前日比/前日比%/損益/損益%/評価額/構成比%）
   const head=`<div class="hb-row hb-head" aria-hidden="true">

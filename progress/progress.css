@@ -618,3 +618,9 @@ button.hb-row:hover{background:#f8f8f6}
   .exc-tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
   .exc-big{font-size:19px}
 }
+
+/* 構成比バー3本（個別株のみ／投信のみ／全体）2026-07-23 */
+.pf-bars{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.pf-bar-row{display:flex;align-items:center;gap:8px;min-width:0}
+.pf-bar-label{flex:0 0 44px;font-size:10px;color:var(--sub);font-weight:700;text-align:right;white-space:nowrap}
+.pf-bar-row .portfolio-bar{flex:1;margin-bottom:0;min-width:0}
