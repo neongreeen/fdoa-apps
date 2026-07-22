@@ -7,40 +7,52 @@
   <title>Progress Portfolio</title>
   <link rel="icon" href="../jikyu/favicon.ico" sizes="any">
   <link rel="stylesheet" href="../shared/base.css?v=20260719-1042">
-  <link rel="stylesheet" href="progress.css?v=20260721-1411">
+  <link rel="stylesheet" href="progress.css?v=20260723-0001">
 </head>
 <body>
 <header>
   <div class="head-in">
     <div class="logo">Progress Portfolio <small id="syncBadge">ローカル保存</small></div>
     <nav id="nav" aria-label="メインメニュー">
-      <button type="button" data-view="observe" class="active">観察・判断</button>
-      <button type="button" data-view="assets">資産</button>
+      <button type="button" data-view="assets" class="active">資産</button>
+      <button type="button" data-view="observe">観察・判断</button>
+      <button type="button" data-view="log">ログ</button>
       <button type="button" data-view="stocks">銘柄マスター</button>
       <button type="button" data-view="master">項目マスター</button>
       <button type="button" data-view="sync">同期・バックアップ</button>
       <a id="sbiQuickLink" class="nav-external" href="#" target="_blank" rel="noopener noreferrer">SBIを設定</a>
-      <a class="applink" href="../extra/" title="エクストラチャージ発動規定を開く">エクストラ ↗</a>
     </nav>
   </div>
 </header>
 
 <main>
-  <section id="view-observe" class="view active">
-    <div class="panel" id="portfolioPanel" hidden>
+  <section id="view-assets" class="view active">
+    <div class="panel">
       <div class="panel-heading">
         <div>
-          <h2>ポートフォリオ全景</h2>
-          <p id="portfolioMeta"></p>
+          <h2>資産全景</h2>
+          <p id="assetsMeta"></p>
         </div>
       </div>
-      <div id="portfolioBody"></div>
+      <div id="assetsBody"></div>
+    </div>
+  </section>
+
+  <section id="view-observe" class="view">
+    <div class="panel" id="excPanel" hidden>
+      <div class="panel-heading">
+        <div>
+          <h2>指数（EXCが機械で撃つ）</h2>
+          <p id="excMeta"></p>
+        </div>
+      </div>
+      <div id="excBody"></div>
     </div>
 
     <div class="panel">
       <div class="panel-heading">
         <div>
-          <h2>観察ボード</h2>
+          <h2>個別株（通知だけ・判断はここで記録）</h2>
           <p>カードをタップ→行き先の列を選んで記録</p>
         </div>
         <div class="board-check">
@@ -51,34 +63,30 @@
       </div>
       <div id="statusBoard" class="status-board"></div>
     </div>
+  </section>
 
+  <section id="view-log" class="view">
     <div class="panel">
       <div class="panel-heading">
         <div>
-          <h2>判断ログ</h2>
-          <p>状態の遷移がすべてを語る。記録は上書きせず時系列で残ります</p>
+          <h2>ログ</h2>
+          <p>判断・売買・EXC発砲を1本の時系列で。記録は上書きせず残ります</p>
         </div>
         <span class="count-label" id="logCount"></span>
       </div>
       <div class="log-filters">
+        <select id="fKind">
+          <option value="">全種類</option>
+          <option value="decision">判断</option>
+          <option value="trade">売買</option>
+          <option value="exc">EXC</option>
+        </select>
         <select id="fStock"><option value="">全銘柄</option></select>
         <select id="fStatus"><option value="">全状態</option></select>
         <select id="fTag"><option value="">全タグ</option></select>
         <button type="button" class="btn sec sm" id="clearFilters">条件クリア</button>
       </div>
       <div id="logList" class="log-list"></div>
-    </div>
-  </section>
-
-  <section id="view-assets" class="view">
-    <div class="panel">
-      <div class="panel-heading">
-        <div>
-          <h2>資産全景</h2>
-          <p id="assetsMeta"></p>
-        </div>
-      </div>
-      <div id="assetsBody"></div>
     </div>
   </section>
 
@@ -293,6 +301,6 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../shared/store.js?v=20260720"></script>
-<script src="app.js?v=20260721-1419"></script>
+<script src="app.js?v=20260723-0001"></script>
 </body>
 </html>

@@ -115,6 +115,8 @@ function normalize(data){
       ticker:String(stock.ticker||"").toUpperCase(),
       // 資産クラス：銘柄マスターが株も投信も持つ（将来のクラス追加も同じ型で受ける）
       assetClass:stock.assetClass==="fund"?"fund":"stock",
+      // 口座区分：iDeCo（60歳拘束）は同じ投信でも別ブロック・別保有として扱う
+      account:stock.account==="ideco"?"ideco":"",
       isin:String(stock.isin||"").toUpperCase(),
       // quoteの価格が何単位あたりか（株=1・投信=1万口あたり円）。評価額＝数量×price÷quoteUnit
       quoteUnit:Number.isFinite(Number(stock.quoteUnit))&&Number(stock.quoteUnit)>0?Number(stock.quoteUnit):(stock.assetClass==="fund"?10000:1),
@@ -341,47 +343,17 @@ function formatSignedPercent(value){
   return `${percent>0?"+":""}${percent.toFixed(2)}%`;
 }
 
-function formatQuantity(value){
-  if(value==null||value==="") return "—";
+/* 保有数の表示：株は「株」・投信は「口」（明細金額の表示は保有ボードだけ＝2026-07-22情報選別） */
+function formatHoldingQuantity(value,isFund){
   const quantity=Number(value);
   if(!Number.isFinite(quantity)) return "—";
-  return `${quantity.toLocaleString("ja-JP",{maximumFractionDigits:6})}株`;
+  return `${quantity.toLocaleString("ja-JP",{maximumFractionDigits:6})}${isFund?"口":"株"}`;
 }
 
-function formatSbiAcquisitionDate(value){
-  const text=String(value||"").trim();
-  if(!text||/^[-/]+$/.test(text)) return "—";
-  return text.replace(/^0+(\d)/,"$1").replace(/\/0+(\d)/g,"/$1");
-}
-
-function sbiPositionHtml(stock){
-  const ticker=String(stock?.ticker||"").toUpperCase();
-  const position=SBI_PRICE_DATA?.quotes?.[ticker];
-  if(!position) return "";
-  const currency=position.currency||stock.currency||"USD";
-  const profitLoss=Number(position.profitLoss);
-  const profitLossPct=Number(position.profitLossPct);
-  const dailyChangePct=Number(position.changePct);
-  const costPrice=position.costPrice==null?NaN:Number(position.costPrice);
-  const quantity=position.quantity==null?NaN:Number(position.quantity);
-  const acquisitionAmount=costPrice*quantity;
-  const direction=profitLoss>0?"up":profitLoss<0?"down":"flat";
-  const dailyDirection=dailyChangePct>0?"up":dailyChangePct<0?"down":"flat";
-  const costLabel=position.costLabel==="参考単価"?"参考単価":"取得単価";
-  return `<span class="sbi-position" title="SBI証券のポートフォリオ画面から一時反映。再読み込みすると消えます">
-    <span class="sbi-position-main">
-      <span class="sbi-metric"><span class="sbi-metric-label">現在</span><strong>${esc(formatMoney(position.price,currency))}</strong></span>
-      <span class="sbi-metric sbi-profit ${direction}"><span class="sbi-metric-label">損益</span><strong>${esc(formatMoney(profitLoss,currency,true))}（${esc(formatSignedPercent(profitLossPct))}）</strong></span>
-    </span>
-    <span class="sbi-position-details">
-      <span class="sbi-metric"><span class="sbi-metric-label">前日</span><strong class="${dailyDirection}">${esc(formatSignedPercent(dailyChangePct))}</strong></span>
-      <span class="sbi-metric"><span class="sbi-metric-label">${esc(costLabel)}</span><strong>${esc(formatMoney(position.costPrice,currency))}</strong></span>
-      <span class="sbi-metric"><span class="sbi-metric-label">取得額</span><strong>${esc(formatMoney(Number.isFinite(acquisitionAmount)?acquisitionAmount:null,currency))}</strong></span>
-      <span class="sbi-metric"><span class="sbi-metric-label">保有</span><strong>${esc(formatQuantity(position.quantity))}</strong></span>
-      <span class="sbi-metric"><span class="sbi-metric-label">買付</span><strong>${esc(formatSbiAcquisitionDate(position.acquisitionDate))}</strong></span>
-      <span class="sbi-metric"><span class="sbi-metric-label">評価</span><strong>${esc(formatMoney(position.marketValue,currency))}</strong></span>
-    </span>
-  </span>`;
+/* ブロック分類：現物株／投信（NISA・特定）／iDeCo（60歳拘束） */
+function blockOf(stock){
+  if(stock.account==="ideco") return "ideco";
+  return stock.assetClass==="fund"?"fund":"equity";
 }
 
 function jpyAmount(value,currency,usdJpy){
@@ -420,6 +392,10 @@ function computeHoldingPositions(){
     const roundJpy=value=>value==null?null:Math.round(value);
     return{
       stock,status,currency,marketValue,hasQuote,
+      block:blockOf(stock),
+      quantity:holding.quantity,
+      costPrice:hasCost?cost:null,
+      price:hasQuote?price:null,
       valueJpy:roundJpy(jpyAmount(marketValue,currency,usdJpy)),
       profitLossJpy:profitLoss==null?null:roundJpy(jpyAmount(profitLoss,currency,usdJpy)),
       profitLossPct:profitLoss==null?null:(price-cost)/cost*100,
@@ -440,103 +416,34 @@ function holdingsMetaText(positions,quoteSources,usdJpy,usTotalUsd){
   return `${holdingLabel}・${sourceLabel}${rate}`;
 }
 
-/* ポートフォリオ全景（常設・個別株のみ）。投信を含む全体は「資産」タブ。
-   保存した保有事実 × 最新quote（SBI一時反映があれば優先→無ければ参考株価）で表示のたびに計算する。
-   評価額・損益は計算結果であり保存しない（保存するのは保有事実だけ）。 */
-function renderPortfolio(){
-  const panel=$("#portfolioPanel");
-  if(!panel) return;
-  const statuses=ordered("statuses",true);
-  const statusOrder=new Map(statuses.map((status,index)=>[status.id,index]));
-  const computed=computeHoldingPositions();
-  const usdJpy=computed.usdJpy;
-  const quoteSources=computed.quoteSources;
-  const positions=computed.positions.filter(item=>item.stock.assetClass!=="fund");
-  if(!positions.length){panel.hidden=true;$("#portfolioBody").innerHTML="";return;}
+/* 資産タブ＝「いくら持ってて儲かってるか」に答える1枚（2026-07-22設計）。
+   3タイル＋構成比バー＋保有ボード10列（現物株／投信／iDeCoの3ブロック＋小計行＋総合計行）。
+   明細の金額列はこのボードにしか出さない（各ボードは1つの問いにだけ答える）。
+   計算は「保存した保有事実 × 最新quote」＝時価・評価額・損益は保存しない。 */
+const BLOCK_META=[
+  {key:"equity",label:"現物株",short:"現物株",color:null},
+  {key:"fund",label:"投資信託（つみたて）",short:"投信",color:"#6e6e73"},
+  {key:"ideco",label:"iDeCo",short:"iDeCo",note:"60歳まで引き出せない年金枠（SBIベネフィット・月1回取込み）",color:"#7a6a8a"},
+];
 
-  positions.sort((a,b)=>{
-    const orderA=a.status?statusOrder.get(a.status.id)??99:99;
-    const orderB=b.status?statusOrder.get(b.status.id)??99:99;
-    if(orderA!==orderB) return orderA-orderB;
-    return (b.valueJpy??0)-(a.valueJpy??0);
-  });
-
-  const converted=positions.filter(item=>item.valueJpy!=null);
-  const unconverted=positions.filter(item=>item.valueJpy==null);
-  const totalJpy=converted.reduce((sum,item)=>sum+item.valueJpy,0);
-  const totalPlJpy=converted.every(item=>item.profitLossJpy!=null)?converted.reduce((sum,item)=>sum+item.profitLossJpy,0):null;
-  const totalCostJpy=totalPlJpy==null?null:totalJpy-totalPlJpy;
-  const totalPlPct=totalCostJpy>0?totalPlJpy/totalCostJpy*100:null;
-  const dayItems=converted.filter(item=>item.dayChangeJpy!=null);
-  const totalDayJpy=dayItems.length?dayItems.reduce((sum,item)=>sum+item.dayChangeJpy,0):null;
-  const dayBaseJpy=dayItems.reduce((sum,item)=>sum+item.valueJpy,0)-(totalDayJpy||0);
-  const totalDayPct=totalDayJpy!=null&&dayBaseJpy>0?totalDayJpy/dayBaseJpy*100:null;
-  const jpTotal=converted.filter(item=>item.currency==="JPY").reduce((sum,item)=>sum+item.valueJpy,0);
-  const usTotalUsd=positions.filter(item=>item.currency==="USD").reduce((sum,item)=>sum+item.marketValue,0);
-
-  const plDirection=totalPlJpy>0?"up":totalPlJpy<0?"down":"flat";
-  const dayDirection=totalDayJpy>0?"up":totalDayJpy<0?"down":"flat";
-  const breakdown=[jpTotal>0?`日本株 ${formatMoney(jpTotal,"JPY")}`:"",usTotalUsd>0?`米国株 ${formatMoney(usTotalUsd,"USD")}`:""].filter(Boolean).join("　");
-
-  const tiles=`<div class="portfolio-summary">
-    <div class="summary-card"><span class="summary-label">評価額合計（円換算）</span><span class="summary-value">${esc(formatMoney(Math.round(totalJpy),"JPY"))}</span><span class="summary-sub">${esc(breakdown)}</span></div>
-    <div class="summary-card"><span class="summary-label">評価損益</span><span class="summary-value pf-num ${plDirection}">${esc(formatMoney(totalPlJpy==null?null:Math.round(totalPlJpy),"JPY",true))}</span><span class="summary-sub">${totalPlPct!=null?`取得額比 ${esc(formatSignedPercent(totalPlPct))}`:"—"}</span></div>
-    <div class="summary-card"><span class="summary-label">今日の動き</span><span class="summary-value pf-num ${dayDirection}">${esc(formatMoney(totalDayJpy==null?null:Math.round(totalDayJpy),"JPY",true))}</span><span class="summary-sub">${totalDayPct!=null?`前営業日比 ${esc(formatSignedPercent(totalDayPct))}`:"—"}</span></div>
-  </div>`;
-
-  const bar=converted.length?`<div class="portfolio-bar" role="img" aria-label="評価額の構成比">${converted.map(item=>{
-    const share=totalJpy>0?item.valueJpy/totalJpy*100:0;
-    const color=statusColor(item.status);
-    const label=`<span class="pf-seg-label" style="color:${readableTextColor(color)}">${esc(item.stock.name)}</span>`;
-    return `<span class="pf-seg" style="flex-grow:${Math.max(item.valueJpy,1)};background:${color}" title="${esc(item.stock.name)} ${share.toFixed(1)}%・${esc(formatMoney(item.valueJpy,"JPY"))}・${esc(item.status?.label||"状態未定")}">${label}</span>`;
-  }).join("")}</div>`:"";
-
-  const head=`<div class="pf-row pf-head" aria-hidden="true">
-    <span></span><span>銘柄</span><span class="pf-status">状態</span><span class="pf-share">構成比</span><span class="pf-day">前日</span><span class="pf-pl">損益</span><span class="pf-value">評価額</span>
-  </div>`;
-  const rows=`<div class="portfolio-rows">${head}${positions.map(item=>{
-    const share=item.valueJpy!=null&&totalJpy>0?`${(item.valueJpy/totalJpy*100).toFixed(1)}%`:"—";
-    const dayDir=item.dayChangePct>0?"up":item.dayChangePct<0?"down":"flat";
-    const plDir=item.profitLossPct>0?"up":item.profitLossPct<0?"down":"flat";
-    const plAmount=item.profitLossJpy!=null?formatMoney(item.profitLossJpy,"JPY",true):"—";
-    const value=item.valueJpy!=null?formatMoney(item.valueJpy,"JPY"):formatMoney(item.marketValue,item.currency);
-    return `<button type="button" class="pf-row" data-stock="${esc(item.stock.id)}">
-      <span class="pf-dot" style="background:${statusColor(item.status)}"></span>
-      <span class="pf-name"><span class="stock-name">${esc(item.stock.name)}</span><span class="stock-symbol">${esc(item.stock.ticker)}</span></span>
-      <span class="pf-status">${esc(item.status?.label||"状態未定")}</span>
-      <span class="pf-share">${esc(share)}</span>
-      <span class="pf-num pf-day ${dayDir}">${esc(formatSignedPercent(item.dayChangePct))}</span>
-      <span class="pf-num pf-pl ${plDir}">${esc(plAmount)}<small>${esc(formatSignedPercent(item.profitLossPct))}</small></span>
-      <span class="pf-value">${esc(value)}</span>
-    </button>`;
-  }).join("")}</div>`;
-
-  const noQuote=positions.filter(item=>!item.hasQuote);
-  const note=[
-    unconverted.length?`<p class="pf-note">※ ${esc(unconverted.map(item=>item.stock.name).join("・"))} は円換算レート未取得のため合計・構成比に含めていません</p>`:"",
-    noQuote.length?`<p class="pf-note">※ ${esc(noQuote.map(item=>item.stock.name).join("・"))} は現在値未取得のため取得単価で表示しています（損益・前日は非表示）</p>`:"",
-  ].join("");
-  $("#portfolioMeta").textContent=holdingsMetaText(positions,quoteSources,usdJpy,usTotalUsd);
-  $("#portfolioBody").innerHTML=tiles+bar+rows+note;
-  panel.hidden=false;
-  // 帯に収まらない銘柄名は頭文字に縮め、それも無理なら消す（ツールチップで見る）。
-  // 非表示・バックグラウンドタブだと幅が0に測れて全ラベルが消えるため、実測できる時だけ実行
-  //（再表示時はshowViewとvisibilitychangeが描き直す。未実測の間はCSSの…省略で切れるだけ）
-  const barNode=$(".portfolio-bar",panel);
-  if(panel.offsetParent!==null&&barNode&&barNode.clientWidth>0){
-    $$(".pf-seg",panel).forEach(seg=>{
-      const label=$(".pf-seg-label",seg);
-      if(!label||label.scrollWidth<=seg.clientWidth-4) return;
-      label.textContent=[...label.textContent.trim()][0]||"";
-      label.classList.add("pf-seg-initial");
-      if(label.scrollWidth>seg.clientWidth-2) label.remove();
-    });
-  }
-  $$(".pf-row",panel).forEach(button=>button.addEventListener("click",()=>openRecordModal(button.dataset.stock)));
+function sumOrNull(list,pick){
+  const values=list.map(pick);
+  return values.length&&values.every(value=>value!=null)?values.reduce((sum,value)=>sum+value,0):null;
 }
 
-/* 資産タブ＝投信（構造への賭け）＋個別株（反応ルール）の全保有を1画面で。
-   計算は全景と同じ「保存保有×最新quote」。ここでも時価は何も保存しない */
+/* 構成比バーの銘柄名：帯に収まらなければ頭文字→それも無理なら消す（非表示中は幅が測れないので実測できる時だけ） */
+function fitBarLabels(container){
+  const barNode=$(".portfolio-bar",container);
+  if(!barNode||container.offsetParent===null||barNode.clientWidth<=0) return;
+  $$(".pf-seg",container).forEach(seg=>{
+    const label=$(".pf-seg-label",seg);
+    if(!label||label.scrollWidth<=seg.clientWidth-4) return;
+    label.textContent=[...label.textContent.trim()][0]||"";
+    label.classList.add("pf-seg-initial");
+    if(label.scrollWidth>seg.clientWidth-2) label.remove();
+  });
+}
+
 function renderAssets(){
   const body=$("#assetsBody");
   if(!body) return;
@@ -546,68 +453,107 @@ function renderAssets(){
     body.innerHTML='<div class="empty-compact">SBIのポートフォリオ画面から取込みをすると、保有資産の全景がここに出ます（投信は銘柄マスターへの登録が必要）</div>';
     return;
   }
-  const funds=positions.filter(item=>item.stock.assetClass==="fund");
-  const equities=positions.filter(item=>item.stock.assetClass!=="fund");
   const converted=positions.filter(item=>item.valueJpy!=null);
   const unconverted=positions.filter(item=>item.valueJpy==null);
-  const sumJpy=list=>list.filter(item=>item.valueJpy!=null).reduce((sum,item)=>sum+item.valueJpy,0);
-  const totalJpy=sumJpy(positions);
-  const fundJpy=sumJpy(funds);
-  const equityJpy=sumJpy(equities);
-  const totalPlJpy=converted.length&&converted.every(item=>item.profitLossJpy!=null)?converted.reduce((sum,item)=>sum+item.profitLossJpy,0):null;
-  const totalCostJpy=totalPlJpy==null?null:totalJpy-totalPlJpy;
-  const totalPlPct=totalCostJpy>0?totalPlJpy/totalCostJpy*100:null;
+  const totalJpy=converted.reduce((sum,item)=>sum+item.valueJpy,0);
+  const totalPl=sumOrNull(converted,item=>item.profitLossJpy);
+  const totalCost=totalPl==null?null:totalJpy-totalPl;
+  const totalPlPct=totalCost>0?totalPl/totalCost*100:null;
   const dayItems=converted.filter(item=>item.dayChangeJpy!=null);
-  const totalDayJpy=dayItems.length?dayItems.reduce((sum,item)=>sum+item.dayChangeJpy,0):null;
-  const dayBaseJpy=dayItems.reduce((sum,item)=>sum+item.valueJpy,0)-(totalDayJpy||0);
-  const totalDayPct=totalDayJpy!=null&&dayBaseJpy>0?totalDayJpy/dayBaseJpy*100:null;
+  const totalDay=dayItems.length?dayItems.reduce((sum,item)=>sum+item.dayChangeJpy,0):null;
+  const dayBase=dayItems.reduce((sum,item)=>sum+item.valueJpy,0)-(totalDay||0);
+  const totalDayPct=totalDay!=null&&dayBase>0?totalDay/dayBase*100:null;
   const usTotalUsd=positions.filter(item=>item.currency==="USD").reduce((sum,item)=>sum+item.marketValue,0);
-  const plDirection=totalPlJpy>0?"up":totalPlJpy<0?"down":"flat";
-  const dayDirection=totalDayJpy>0?"up":totalDayJpy<0?"down":"flat";
-  const breakdown=[fundJpy>0?`投信 ${formatMoney(fundJpy,"JPY")}`:"",equityJpy>0?`個別株 ${formatMoney(equityJpy,"JPY")}`:""].filter(Boolean).join("　");
+  const byBlock=key=>converted.filter(item=>item.block===key);
+  const breakdown=BLOCK_META.map(meta=>{
+    const sum=byBlock(meta.key).reduce((total,item)=>total+item.valueJpy,0);
+    return sum>0?`${meta.short} ${formatMoney(sum,"JPY")}`:"";
+  }).filter(Boolean).join("　");
+  const plDirection=totalPl>0?"up":totalPl<0?"down":"flat";
+  const dayDirection=totalDay>0?"up":totalDay<0?"down":"flat";
 
   const tiles=`<div class="portfolio-summary">
-    <div class="summary-card"><span class="summary-label">総資産（円換算・SBI証券分）</span><span class="summary-value">${esc(formatMoney(Math.round(totalJpy),"JPY"))}</span><span class="summary-sub">${esc(breakdown)}</span></div>
-    <div class="summary-card"><span class="summary-label">評価損益</span><span class="summary-value pf-num ${plDirection}">${esc(formatMoney(totalPlJpy==null?null:Math.round(totalPlJpy),"JPY",true))}</span><span class="summary-sub">${totalPlPct!=null?`取得額比 ${esc(formatSignedPercent(totalPlPct))}`:"—"}</span></div>
-    <div class="summary-card"><span class="summary-label">今日の動き</span><span class="summary-value pf-num ${dayDirection}">${esc(formatMoney(totalDayJpy==null?null:Math.round(totalDayJpy),"JPY",true))}</span><span class="summary-sub">${totalDayPct!=null?`前営業日比 ${esc(formatSignedPercent(totalDayPct))}`:"—"}</span></div>
+    <div class="summary-card"><span class="summary-label">総資産（円換算・iDeCo込み）</span><span class="summary-value">${esc(formatMoney(Math.round(totalJpy),"JPY"))}</span><span class="summary-sub">${esc(breakdown)}</span></div>
+    <div class="summary-card"><span class="summary-label">評価損益</span><span class="summary-value pf-num ${plDirection}">${esc(formatMoney(totalPl==null?null:Math.round(totalPl),"JPY",true))}</span><span class="summary-sub">${totalPlPct!=null?`取得額比 ${esc(formatSignedPercent(totalPlPct))}`:"—"}</span></div>
+    <div class="summary-card"><span class="summary-label">今日の動き</span><span class="summary-value pf-num ${dayDirection}">${esc(formatMoney(totalDay==null?null:Math.round(totalDay),"JPY",true))}</span><span class="summary-sub">${totalDayPct!=null?`前営業日比 ${esc(formatSignedPercent(totalDayPct))}`:"—"}</span></div>
   </div>`;
 
-  const head=`<div class="pf-row pf-head" aria-hidden="true">
-    <span></span><span>銘柄</span><span class="pf-status">区分</span><span class="pf-share">構成比</span><span class="pf-day">前日</span><span class="pf-pl">損益</span><span class="pf-value">評価額</span>
+  // 構成比バー：ブロック順（現物→投信→iDeCo）。現物は判断状態色・投信/iDeCoは区分色
+  const barItems=BLOCK_META.flatMap(meta=>byBlock(meta.key)
+    .slice().sort((a,b)=>b.valueJpy-a.valueJpy)
+    .map(item=>({item,color:meta.color||statusColor(item.status)})));
+  const bar=barItems.length?`<div class="portfolio-bar" role="img" aria-label="評価額の構成比">${barItems.map(({item,color})=>{
+    const share=totalJpy>0?item.valueJpy/totalJpy*100:0;
+    return `<span class="pf-seg" style="flex-grow:${Math.max(item.valueJpy,1)};background:${color}" title="${esc(item.stock.name)} ${share.toFixed(1)}%・${esc(formatMoney(item.valueJpy,"JPY"))}"><span class="pf-seg-label" style="color:${readableTextColor(color)}">${esc(item.stock.name)}</span></span>`;
+  }).join("")}</div>`:"";
+
+  // 保有ボード（10列＝銘柄/保有数/取得単価/現在単価/前日比/前日比%/損益/損益%/評価額/構成比%）
+  const head=`<div class="hb-row hb-head" aria-hidden="true">
+    <span>銘柄</span><span>保有数</span><span>取得単価</span><span>現在単価</span><span>前日比</span><span>前日比%</span><span>損益</span><span>損益%</span><span>評価額</span><span>構成比</span>
   </div>`;
-  const row=item=>{
+  const dir=value=>value>0?"up":value<0?"down":"flat";
+  const rowHtml=(item,blockJpy)=>{
     const isFund=item.stock.assetClass==="fund";
-    const share=item.valueJpy!=null&&totalJpy>0?`${(item.valueJpy/totalJpy*100).toFixed(1)}%`:"—";
-    const dayDir=item.dayChangePct>0?"up":item.dayChangePct<0?"down":"flat";
-    const plDir=item.profitLossPct>0?"up":item.profitLossPct<0?"down":"flat";
-    const plAmount=item.profitLossJpy!=null?formatMoney(item.profitLossJpy,"JPY",true):"—";
-    const value=item.valueJpy!=null?formatMoney(item.valueJpy,"JPY"):formatMoney(item.marketValue,item.currency);
-    const inner=`<span class="pf-dot" style="background:${isFund?STATUS_NONE_COLOR:statusColor(item.status)}"></span>
-      <span class="pf-name"><span class="stock-name">${esc(item.stock.name)}</span><span class="stock-symbol">${esc(isFund?"投信":item.stock.ticker)}</span></span>
-      <span class="pf-status">${esc(isFund?"積立":(item.status?.label||"状態未定"))}</span>
-      <span class="pf-share">${esc(share)}</span>
-      <span class="pf-num pf-day ${dayDir}">${esc(formatSignedPercent(item.dayChangePct))}</span>
-      <span class="pf-num pf-pl ${plDir}">${esc(plAmount)}<small>${esc(formatSignedPercent(item.profitLossPct))}</small></span>
-      <span class="pf-value">${esc(value)}</span>`;
-    // 投信は判断対象ではない＝記録モーダルへ繋がない（個別株だけタップ可）
-    return isFund?`<div class="pf-row asset-row-static">${inner}</div>`
-      :`<button type="button" class="pf-row" data-stock="${esc(item.stock.id)}">${inner}</button>`;
+    // 構成比は2段階：各行はブロック内%（小計行に全体比%が出る）
+    const share=item.valueJpy!=null&&blockJpy>0?`${(item.valueJpy/blockJpy*100).toFixed(1)}%`:"—";
+    const cells=`<span class="hb-name"><span class="stock-name">${esc(item.stock.name)}</span><span class="stock-symbol">${esc(item.block==="ideco"?"iDeCo":(isFund?"投信":item.stock.ticker))}</span></span>
+      <span class="hb-num">${esc(formatHoldingQuantity(item.quantity,isFund))}</span>
+      <span class="hb-num">${esc(item.costPrice!=null?formatMoney(item.costPrice,item.currency):"—")}</span>
+      <span class="hb-num">${esc(item.price!=null?formatMoney(item.price,item.currency):"—")}</span>
+      <span class="hb-num ${dir(item.dayChangeJpy)}">${esc(item.dayChangeJpy!=null?formatMoney(item.dayChangeJpy,"JPY",true):"—")}</span>
+      <span class="hb-num ${dir(item.dayChangePct)}">${esc(formatSignedPercent(item.dayChangePct))}</span>
+      <span class="hb-num ${dir(item.profitLossJpy)}">${esc(item.profitLossJpy!=null?formatMoney(item.profitLossJpy,"JPY",true):"—")}</span>
+      <span class="hb-num ${dir(item.profitLossPct)}">${esc(formatSignedPercent(item.profitLossPct))}</span>
+      <span class="hb-num hb-value">${esc(item.valueJpy!=null?formatMoney(item.valueJpy,"JPY"):formatMoney(item.marketValue,item.currency))}</span>
+      <span class="hb-num hb-share">${esc(share)}</span>`;
+    // 現物株は判断対象＝タップで記録モーダル。投信・iDeCoは静的行
+    return item.block==="equity"
+      ?`<button type="button" class="hb-row" data-stock="${esc(item.stock.id)}" title="タップして判断を記録">${cells}</button>`
+      :`<div class="hb-row hb-static">${cells}</div>`;
   };
-  const bySize=list=>list.slice().sort((a,b)=>(b.valueJpy??0)-(a.valueJpy??0));
-  const section=(title,list)=>list.length
-    ?`<h3 class="asset-group-title">${esc(title)}<small>${esc(formatMoney(sumJpy(list),"JPY"))}</small></h3><div class="portfolio-rows">${head}${bySize(list).map(row).join("")}</div>`
-    :"";
+  const summaryRow=(label,list,shareText,extraClass)=>{
+    const conv=list.filter(item=>item.valueJpy!=null);
+    const value=conv.reduce((sum,item)=>sum+item.valueJpy,0);
+    const dayList=conv.filter(item=>item.dayChangeJpy!=null);
+    const day=dayList.length?dayList.reduce((sum,item)=>sum+item.dayChangeJpy,0):null;
+    const dayBaseSum=dayList.reduce((sum,item)=>sum+item.valueJpy,0)-(day||0);
+    const dayPct=day!=null&&dayBaseSum>0?day/dayBaseSum*100:null;
+    const pl=sumOrNull(conv,item=>item.profitLossJpy);
+    const cost=pl==null?null:value-pl;
+    const plPct=cost>0?pl/cost*100:null;
+    return `<div class="hb-row hb-sum ${extraClass||""}">
+      <span class="hb-name">${esc(label)}</span>
+      <span class="hb-num"></span><span class="hb-num"></span><span class="hb-num"></span>
+      <span class="hb-num ${dir(day)}">${esc(day!=null?formatMoney(day,"JPY",true):"—")}</span>
+      <span class="hb-num ${dir(dayPct)}">${esc(formatSignedPercent(dayPct))}</span>
+      <span class="hb-num ${dir(pl)}">${esc(pl!=null?formatMoney(pl,"JPY",true):"—")}</span>
+      <span class="hb-num ${dir(plPct)}">${esc(formatSignedPercent(plPct))}</span>
+      <span class="hb-num hb-value">${esc(formatMoney(Math.round(value),"JPY"))}</span>
+      <span class="hb-num hb-share">${esc(shareText)}</span>
+    </div>`;
+  };
+  const blocks=BLOCK_META.map(meta=>{
+    const list=positions.filter(item=>item.block===meta.key);
+    if(!list.length) return "";
+    const blockJpy=list.filter(item=>item.valueJpy!=null).reduce((sum,item)=>sum+item.valueJpy,0);
+    // 小計行の構成比＝ブロックの全体比%（2段階構成比の上段）
+    const blockShare=totalJpy>0?`全体の${(blockJpy/totalJpy*100).toFixed(1)}%`:"—";
+    const rows=list.slice().sort((a,b)=>(b.valueJpy??0)-(a.valueJpy??0)).map(item=>rowHtml(item,blockJpy)).join("");
+    return `<div class="hb-block-title">${esc(meta.label)}${meta.note?`<small>${esc(meta.note)}</small>`:""}</div>${rows}${summaryRow(`${meta.short}小計`,list,blockShare)}`;
+  }).join("");
+  const board=`<div class="hb-scroll"><div class="holding-board">${head}${blocks}${summaryRow("総合計",positions,"100%","hb-grand")}</div></div>`;
 
   const noQuote=positions.filter(item=>!item.hasQuote);
   const note=[
     unconverted.length?`<p class="pf-note">※ ${esc(unconverted.map(item=>item.stock.name).join("・"))} は円換算レート未取得のため合計・構成比に含めていません</p>`:"",
     noQuote.length?`<p class="pf-note">※ ${esc(noQuote.map(item=>item.stock.name).join("・"))} は現在値未取得のため取得単価で表示しています（損益・前日は非表示）</p>`:"",
-    funds.length?'<p class="pf-note">※ 投信の基準価額は投信協会公表値（前営業日分・夕方更新）です</p>':"",
+    positions.some(item=>item.stock.assetClass==="fund")?'<p class="pf-note">※ 投信の基準価額は投信協会公表値（前営業日分・夕方更新）。iDeCoの取得単価は購入金額÷口数から算出</p>':"",
   ].join("");
 
   $("#assetsMeta").textContent=holdingsMetaText(positions,quoteSources,usdJpy,usTotalUsd);
-  body.innerHTML=tiles+section("投資信託（積み立て）",funds)+section("個別株",equities)+note;
-  $$(".pf-row[data-stock]",body).forEach(button=>button.addEventListener("click",()=>openRecordModal(button.dataset.stock)));
+  body.innerHTML=tiles+bar+board+note;
+  $$(".hb-row[data-stock]",body).forEach(button=>button.addEventListener("click",()=>openRecordModal(button.dataset.stock)));
+  fitBarLabels($("#view-assets"));
 }
 
 function quoteHtml(stock,className="stock-quote"){
@@ -685,6 +631,16 @@ function isSbiOrigin(origin){
   }catch(error){return false;}
 }
 
+/* 取込みを受け付けるサイト：SBI証券＋iDeCo（SBIベネフィットシステムズ系）。
+   未許可サイトから来た時は診断に送信元が残る＝そのドメインをここへ足せば対応完了 */
+const IMPORT_HOSTS=[/(^|\.)sbisec\.co\.jp$/,/(^|\.)benefit401k\.jp$/,/(^|\.)sbibenefit\.co\.jp$/];
+function allowedImportOrigin(origin){
+  try{
+    const url=new URL(origin);
+    return url.protocol==="https:"&&IMPORT_HOSTS.some(pattern=>pattern.test(url.hostname));
+  }catch(error){return false;}
+}
+
 /* v0.4：SBI取込みの解析はアプリ側で行う。ブックマークは表データを送るだけの送信係。
    SBIの画面構成が変わったらparseSbiTablesを直す＝ブックマーク貼り替え不要で全端末に効く。 */
 function parseSbiTables(tables){
@@ -716,24 +672,27 @@ function parseSbiTables(tables){
     const headerIndex=rows.findIndex(cells=>{
       if(cells.length<4) return false;
       const joined=key(cells.join("|"));
-      return (joined.includes("銘柄")||joined.includes("ファンド"))&&(joined.includes("現在値")||joined.includes("基準価額")||joined.includes("基準価格"));
+      return (joined.includes("銘柄")||joined.includes("ファンド")||joined.includes("商品"))&&(joined.includes("現在値")||joined.includes("基準価額")||joined.includes("基準価格")||joined.includes("時価単価"));
     });
     if(headerIndex<0) return;
     const headers=rows[headerIndex].map(cell=>key(cell));
     const find=predicate=>headers.findIndex(predicate);
-    const instrumentIndex=find(text=>text.includes("銘柄")||text.includes("ファンド"));
-    const priceIndex=find(text=>text.includes("現在値")||text.includes("基準価額")||text.includes("基準価格"));
+    const instrumentIndex=find(text=>text.includes("銘柄")||text.includes("ファンド")||text.includes("商品"));
+    const priceIndex=find(text=>text.includes("現在値")||text.includes("基準価額")||text.includes("基準価格")||text.includes("時価単価"));
+    // iDeCo（SBIベネフィットの資産状況）＝「時価単価」「残高数量」「購入金額」の語彙で判別（2026-07-21スクショより・実機未検証）
+    const isIdecoTable=headers.some(text=>text.includes("時価単価"))||headers.some(text=>text==="購入金額"||text==="取得金額");
     // SBIパソコン版は投信も「現在値」表記＝価格の見出しでは判別できない。「ファンド名」列の有無で判別する（2026-07-21実機診断）
-    const isFundTable=headers.some(text=>text.includes("ファンド名"))||(priceIndex>=0&&(headers[priceIndex].includes("基準価額")||headers[priceIndex].includes("基準価格")));
+    const isFundTable=isIdecoTable||headers.some(text=>text.includes("ファンド名"))||(priceIndex>=0&&(headers[priceIndex].includes("基準価額")||headers[priceIndex].includes("基準価格")));
     if(instrumentIndex<0||priceIndex<0||instrumentIndex===priceIndex) return;
     const acquisitionDateIndex=find(text=>text.includes("買付日"));
-    const quantityIndex=find(text=>text==="数量"||text==="保有数量"||text==="株数"||text==="保有株数"||text==="口数"||text==="保有口数");
+    const quantityIndex=find(text=>text==="数量"||text==="保有数量"||text==="株数"||text==="保有株数"||text==="口数"||text==="保有口数"||text.includes("残高数量"));
     const costIndex=find(text=>text==="取得単価"||text==="参考単価"||text==="平均取得単価"||text==="個別元本");
+    const costTotalIndex=find(text=>text==="購入金額"||text==="取得金額");
     const changePctIndex=find(text=>text.includes("前日比")&&text.includes("%"));
     const changeIndex=find(text=>text.includes("前日比")&&!text.includes("%"));
-    const profitLossPctIndex=find(text=>text.includes("損益")&&text.includes("%"));
-    const profitLossIndex=find(text=>(text==="損益"||text.includes("評価損益"))&&!text.includes("%"));
-    const marketValueIndex=find(text=>text==="評価額"||text==="時価評価額");
+    const profitLossPctIndex=find(text=>text.includes("損益")&&(text.includes("%")||text.includes("率")));
+    const profitLossIndex=find(text=>(text==="損益"||text.includes("評価損益"))&&!text.includes("%")&&!text.includes("率"));
+    const marketValueIndex=find(text=>text==="評価額"||text==="時価評価額"||text==="資産残高");
     rows.slice(headerIndex+1).forEach(cells=>{
       if(cells.length<=Math.max(instrumentIndex,priceIndex)) return;
       const rawName=clean(cells[instrumentIndex]);
@@ -747,6 +706,7 @@ function parseSbiTables(tables){
         ticker,
         name:rawName,
         isFund:isFundTable,
+        isIdeco:isIdecoTable,
         price,
         change:pick(changeIndex),
         changePct:pick(changePctIndex),
@@ -758,6 +718,14 @@ function parseSbiTables(tables){
         profitLossPct:pick(profitLossPctIndex),
         marketValue:pick(marketValueIndex),
       };
+      // iDeCoは取得単価の列がない＝購入金額（累計）÷口数×1万口で1万口あたり単価に換算
+      if(isIdecoTable&&entry.costPrice==null){
+        const costTotal=pick(costTotalIndex);
+        if(costTotal!=null&&Number.isFinite(entry.quantity)&&entry.quantity>0){
+          entry.costPrice=+(costTotal/entry.quantity*10000).toFixed(2);
+          entry.costLabel="取得単価";
+        }
+      }
       const mapKey=ticker||`fund:${rawName}`;
       const existing=quotes[mapKey];
       // 同じ銘柄が預り区分ごとに複数行出る（例：成長投資枠＋つみたて投資枠）→ 数量を合算・取得単価は数量加重平均
@@ -820,11 +788,13 @@ function normalizeFundName(value){
   return String(value||"").normalize("NFKC").toLowerCase().replace(/[\s()（）\[\]【】・･･'’&＆-]/g,"");
 }
 
-function matchFundByName(name){
+function matchFundByName(name,ideco=false){
   const target=normalizeFundName(name);
   if(!target) return null;
   return DB.stocks.find(stock=>{
     if(stock.active===false||stock.assetClass!=="fund") return false;
+    // 同じファンドでもiDeCoは別保有＝口座区分が一致する登録だけに当てる
+    if((stock.account==="ideco")!==ideco) return false;
     const registered=normalizeFundName(stock.name);
     return registered&&(target.includes(registered)||registered.includes(target));
   })||null;
@@ -835,11 +805,14 @@ function applySbiQuotes(list,message){
   if(Number.isNaN(captured.getTime())) return null;
   const capturedAt=captured.toISOString();
   const quotes={};
+  const holdings=[];
   list.forEach(raw=>{
     const rawTicker=String(raw?.ticker||"").trim().toUpperCase();
-    const stock=rawTicker
-      ?DB.stocks.find(item=>item.active!==false&&item.ticker.toUpperCase()===rawTicker)
-      :matchFundByName(raw?.name);
+    const stock=raw?.isIdeco
+      ?matchFundByName(raw?.name,true)
+      :rawTicker
+        ?DB.stocks.find(item=>item.active!==false&&item.account!=="ideco"&&item.ticker.toUpperCase()===rawTicker)
+        :matchFundByName(raw?.name,false);
     const price=Number(raw?.price);
     if(!stock||!Number.isFinite(price)||price<=0) return;
     const ticker=stock.ticker.toUpperCase();
@@ -871,8 +844,15 @@ function applySbiQuotes(list,message){
       fetchedAt:capturedAt,
       source:"SBI証券",
     };
+    holdings.push({
+      stockId:stock.id,
+      quantity:optionalNumber(raw?.quantity),
+      costPrice:optionalNumber(raw?.costPrice),
+      costLabel:raw?.costLabel==="参考単価"?"参考単価":"取得単価",
+      acquisitionDate:String(raw?.acquisitionDate||"").slice(0,20),
+    });
   });
-  return {quotes,capturedAt};
+  return {quotes,holdings,capturedAt};
 }
 
 /* SBI取込み＝保有事実の更新手段。数量・取得単価・買付日だけを保存する（時価・損益は保存しない）。
@@ -880,14 +860,14 @@ function applySbiQuotes(list,message){
    数量か単価が変わった時はholdingsLog（append-only）にも追記＝将来の資産推移の材料 */
 function saveHoldingsFromSbi(applied){
   let count=0;
-  Object.entries(applied.quotes).forEach(([ticker,quote])=>{
+  (applied.holdings||[]).forEach(entry=>{
     const holding=sanitizeHolding({
-      quantity:quote.quantity,costPrice:quote.costPrice,costLabel:quote.costLabel,
-      acquisitionDate:quote.acquisitionDate,updatedAt:applied.capturedAt,
+      quantity:entry.quantity,costPrice:entry.costPrice,costLabel:entry.costLabel,
+      acquisitionDate:entry.acquisitionDate,updatedAt:applied.capturedAt,
     });
     if(!holding) return;
-    const stock=DB.stocks.find(item=>item.active!==false&&String(item.ticker||"").toUpperCase()===ticker);
-    if(!stock) return;
+    const stock=stockById(entry.stockId);
+    if(!stock||stock.active===false) return;
     const changed=!stock.holding
       ||stock.holding.quantity!==holding.quantity
       ||stock.holding.costPrice!==holding.costPrice;
@@ -925,7 +905,7 @@ function commitSbiImport(applied,message){
 /* 旧ブックマーク（解析済みquotesを送ってくる版）との互換用 */
 function receiveSbiQuotes(event){
   const message=event.data;
-  if(!isSbiOrigin(event.origin)||!message||message.type!=="progress-portfolio:sbi-quotes"||!Array.isArray(message.quotes)) return;
+  if(!allowedImportOrigin(event.origin)||!message||message.type!=="progress-portfolio:sbi-quotes"||!Array.isArray(message.quotes)) return;
   if(message.id&&message.id===lastSbiImportId) return;
   if(commitSbiImport(applySbiQuotes(message.quotes,message),message)) return;
   if(message.id&&message.id===lastSbiFailId) return;
@@ -935,7 +915,14 @@ function receiveSbiQuotes(event){
 
 function receiveSbiTables(event){
   const message=event.data;
-  if(!isSbiOrigin(event.origin)||!message||message.type!=="progress-portfolio:sbi-tables"||!Array.isArray(message.tables)) return;
+  if(!message||message.type!=="progress-portfolio:sbi-tables"||!Array.isArray(message.tables)) return;
+  if(!allowedImportOrigin(event.origin)){
+    // 新サイト（iDeCo等）対応：送信元ドメインを診断に残す。データは適用しない
+    lastSbiDebugText=`未許可のサイトからの取込みを受信しました（適用していません）\n送信元: ${event.origin}\nページ: ${String(message.pageUrl||"不明")}\nこの診断を百に渡すと、対応サイトに追加できます`;
+    renderSbiDebug(lastSbiDebugText);
+    showToast("対応外のサイトからの取込みでした。同期・バックアップ画面に診断を出しました","error");
+    return;
+  }
   if(message.id&&(message.id===lastSbiImportId||message.id===lastSbiFailId)) return;
   const tables=message.tables.filter(rows=>Array.isArray(rows)&&rows.every(cells=>Array.isArray(cells))).slice(0,150);
   const parsed=parseSbiTables(tables);
@@ -943,7 +930,7 @@ function receiveSbiTables(event){
   lastSbiDebugText=sbiDebugText({...message,tables},parsed);
   if(commitSbiImport(applySbiQuotes(parsed,message),message)){
     // 読めたのに銘柄マスター未登録で捨てた投信は、黙って落とさず一覧を出す（登録への導線）
-    const unmatchedFunds=parsed.filter(raw=>raw.isFund&&!matchFundByName(raw.name));
+    const unmatchedFunds=parsed.filter(raw=>raw.isFund&&!matchFundByName(raw.name,!!raw.isIdeco));
     if(unmatchedFunds.length){
       renderSbiDebug([
         "未登録の投資信託（銘柄マスターに登録すると資産タブに入ります）：",
@@ -1111,8 +1098,8 @@ function showView(name){
   $$("main .view").forEach(view=>view.classList.toggle("active",view.id===`view-${name}`));
   // 最後に見ていたタブを記憶（再読み込みで観察・判断に戻らないように。端末ごとのUI設定＝同期しない）
   try{localStorage.setItem("pp_last_view",name);}catch(error){}
-  // 全景は常設。非表示中に描くと帯ラベルの幅が測れないため、表示のたびに描き直す
-  if(name==="observe") renderPortfolio();
+  // 構成比バーは非表示中に描くと帯ラベルの幅が測れないため、資産タブを見るたびに描き直す
+  if(name==="assets") renderAssets();
   window.scrollTo({top:0,behavior:"smooth"});
 }
 
@@ -1227,8 +1214,260 @@ function saveRecord(){
     :`${stock.name}：${fromLabel} → ${status.label} を記録しました`);
 }
 
+/* ===== EXC統合（2026-07-22設計・observeタブ2段積みの上段＋カード補強＋ログ統合の材料） =====
+   正本＝fdoa-app-data/extra-charge.md・stock-rules.md（18:30の自動監視が更新）。
+   ここは読むだけ。パーサーは旧extraページから移植（書式が育っても拾える範囲だけ拾う）。 */
+
+function mdInline(text){
+  return esc(text)
+    .replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>")
+    .replace(/`([^`]+)`/g,"<code>$1</code>");
+}
+
+/* 最小Markdownレンダラ（見出し・表・箇条書き・区切り線・段落・太字・code）＝規定全文の折りたたみ表示用 */
+function mdToHtml(md){
+  const lines=String(md||"").split("\n");let html="",i=0;
+  while(i<lines.length){
+    const ln=lines[i];
+    if(/^\s*$/.test(ln)){i++;continue;}
+    if(/^---+\s*$/.test(ln)){html+="<hr>";i++;continue;}
+    let m;
+    if((m=ln.match(/^(#{1,4})\s+(.*)$/))){html+=`<h${m[1].length}>${mdInline(m[2])}</h${m[1].length}>`;i++;continue;}
+    if(/^\|/.test(ln)){
+      const rows=[];while(i<lines.length&&/^\|/.test(lines[i])){rows.push(lines[i]);i++;}
+      const cells=row=>row.replace(/^\||\|$/g,"").split("|").map(cell=>mdInline(cell.trim()));
+      let table='<div class="tblwrap"><table>';
+      rows.forEach((row,rowIndex)=>{
+        if(/^\|[\s:|-]+\|?$/.test(row))return;
+        const tag=rowIndex===0?"th":"td";
+        table+="<tr>"+cells(row).map(cell=>`<${tag}>${cell}</${tag}>`).join("")+"</tr>";
+      });
+      html+=table+"</table></div>";continue;
+    }
+    if(/^\s*-\s+/.test(ln)){
+      let list="<ul>";
+      while(i<lines.length&&/^\s*-\s+/.test(lines[i])){list+=`<li>${mdInline(lines[i].replace(/^\s*-\s+/,""))}</li>`;i++;}
+      html+=list+"</ul>";continue;
+    }
+    html+=`<p>${mdInline(ln)}</p>`;i++;
+  }
+  return html;
+}
+
+// 文書を3分割：規定本文／現在の状態／履歴（発砲履歴・売買履歴）
+function splitDoc(md){
+  const si=md.search(/^## 現在の状態.*$/m);
+  if(si<0)return{rule:md.replace(/^# .*$/m,"").trim(),status:"",history:""};
+  const rule=md.slice(0,si).replace(/---+\s*$/,"").replace(/^# .*$/m,"").trim();
+  const rest=md.slice(si).replace(/^## 現在の状態.*$/m,"");
+  const hi=rest.search(/^## .*$/m);
+  let status=rest,history="";
+  if(hi>=0){status=rest.slice(0,hi);history=rest.slice(hi).trim();}
+  status=status.replace(/---+\s*\n*$/,"").trim();
+  return{rule,status,history};
+}
+
+// 状態セクションを「### 見出し」ごとに分ける
+function docSections(status){
+  const marks=[];const re=/^###\s+(.+)$/gm;let m;
+  while((m=re.exec(status)))marks.push({head:m[1].trim(),idx:m.index,end:re.lastIndex});
+  return marks.map((mk,i)=>({head:mk.head,body:status.slice(mk.end,i+1<marks.length?marks[i+1].idx:undefined).trim()}));
+}
+
+const PHASE_EMOJI={"🔴":"danger","🟡":"warn","🟢":"ok"};
+
+// 1サブセクション→タイルのデータ。書式が育っても拾える範囲だけ拾う（欠けは無視）
+function parseTile(sec){
+  const ci=sec.head.indexOf("：");
+  const name=(ci>=0?sec.head.slice(0,ci):sec.head).replace(/\*/g,"").trim();
+  let phaseRaw=ci>=0?sec.head.slice(ci+1).trim():"";
+  const emoji=Object.keys(PHASE_EMOJI).find(e=>phaseRaw.includes(e))||"";
+  const phase=phaseRaw.replace(emoji,"").replace(/（[^）]*）/g,"").trim();
+  const b=sec.body;
+  const t={name,emoji,phase,phaseClass:emoji?PHASE_EMOJI[emoji]:"",body:b,big:"",bigLabel:"",rows:[]};
+  let m;
+  // 物差し1：高値からの下落率（指数＝半年高値／個別株＝90日高値）
+  if((m=b.match(/(半年高値|90日高値)[^%\n]*?比[：:]?\s*\*{0,2}(-?\d+(?:\.\d+)?)\s*\*{0,2}\s*%/))){
+    t.big=m[2]+"%";t.bigLabel=m[1]+"比";t.dd=parseFloat(m[2]);
+  }
+  // 物差し2：SPCXの底カウント
+  if(!t.big&&(m=b.match(/カウント[：:]\s*\*{0,2}(\d+)\s*営業日\*{0,2}\s*／\s*(\d+)\s*営業日/))){
+    t.big=m[1]+"/"+m[2];t.bigLabel="底カウント（営業日）";
+  }
+  // 封筒（発射済みの弾は🎯付き・取り消し線）
+  if((m=b.match(/①\s*([\d,]+)[^②]*②\s*([\d,]+)[^③]*③\s*([\d,]+)[^④]*④\s*([\d,]+)/))){
+    const fired={};let f;const fre=/第([1-4])弾[：:][^\n]*発射済み/g;
+    while((f=fre.exec(b)))fired[f[1]]=true;
+    t.env=[m[1],m[2],m[3],m[4]].map((amt,i)=>({amt,fired:!!fired[i+1]}));
+  }else if(/封筒未作成/.test(b))t.envNote="封筒未作成";
+  // 次のライン（DDが取れていれば残り距離ptを添える）
+  if((m=b.match(/次のライン[：:]\s*(.+)/))){
+    let line=m[1].replace(/\*/g,"").trim();
+    const lm=line.match(/(-\d+(?:\.\d+)?)\s*%/);
+    if(lm&&typeof t.dd==="number"){
+      const dist=t.dd-parseFloat(lm[1]);
+      if(dist>0)line="あと"+dist.toFixed(1)+"pt｜"+line;
+    }
+    t.next=line;
+  }
+  // 通知ライン（個別株・円ドル両対応）
+  if((m=b.match(/通知ライン\s*\*{0,2}(\$?[\d,.]+)\s*(円)?\*{0,2}\s*(（-?\d+%）)?/))){
+    let line=m[1]+(m[2]||"")+(m[3]||"");
+    const lm=(m[3]||"").match(/(-\d+(?:\.\d+)?)%/);
+    if(lm&&typeof t.dd==="number"){
+      const dist=t.dd-parseFloat(lm[1]);
+      if(dist>0)line="あと"+dist.toFixed(1)+"pt｜"+line;
+    }
+    t.notify=line;
+  }
+  if((m=b.match(/DDが\s*(-?\d+(?:\.\d+)?%)\s*以内へ回復/)))t.recover=m[1]+"回復で局面解除";
+  // 下落理由メモ（4色＝重さ分類）
+  if((m=b.match(/理由[：:]\s*(🔴|🟡|🟢|🔵)\s*(.+)/)))
+    t.reason={sev:{"🔴":"red","🟡":"yellow","🟢":"green","🔵":"blue"}[m[1]],text:m[2].replace(/\*/g,"").trim()};
+  // 連れ安／単独安の機械判定（18:30タスクが自動記入）
+  if((m=b.match(/判定[：:]\s*(単独安|連れ安)\s*（?([^）\n]*)）?/)))
+    t.verdict={kind:m[1],detail:m[2].trim()};
+  return t;
+}
+
+function parseAmmo(sec){
+  const t={body:sec.body};let m;
+  if((m=sec.body.match(/円弾[：:][^\n]*＝\s*\*{0,2}([\d,]+)\s*円/)))t.yen=m[1]+"円";
+  if((m=sec.body.match(/ドル弾[^：:\n]*[：:][^\n]*?(US\$[^（\n]+)/)))t.usd=m[1].trim();
+  return t;
+}
+
+// 状態セクション冒頭の「最終チェック」行
+function parseStamp(status){
+  const head=status.split(/^###/m)[0];
+  const m=head.match(/最終チェック[：:]\s*([^\n]+)/);
+  return m?m[1].trim():"";
+}
+
+// 表示順＝下落率の深い順（深く下げているものほど上）
+function sortTiles(tiles){
+  return tiles.slice().sort((a,b)=>
+    (typeof a.dd==="number"?a.dd:-Infinity)-(typeof b.dd==="number"?b.dd:-Infinity));
+}
+
+// 履歴md（発砲履歴・売買履歴）の表→行データ。1行目＝ヘッダーは捨てる
+function parseHistoryTable(md){
+  const rows=[];
+  String(md||"").split("\n").forEach(line=>{
+    if(!/^\|/.test(line)||/^\|[\s:|-]+\|?$/.test(line)) return;
+    rows.push(line.replace(/^\||\|$/g,"").split("|").map(cell=>cell.replace(/\*/g,"").trim()));
+  });
+  return rows.slice(1).filter(cells=>/^\d{4}-\d{2}-\d{2}/.test(cells[0]||""));
+}
+
+let EXTRA_STATE=null;
+let extraLoadedAt=0;
+let extraLoading=false;
+const extraReader=createCloudReader({
+  owner:CONFIG.github.owner,repo:CONFIG.github.repo,branch:CONFIG.github.branch,
+  tokenKey:CONFIG.tokenKey,legacyTokenKeys:CONFIG.legacyTokenKeys,
+});
+
+function parseExtraDocs(ec,sp){
+  const state={idxTiles:[],stkTiles:[],ammo:null,stamps:[],excLog:[],tradeLog:[],ruleHtml:"",stockRuleHtml:""};
+  if(ec){
+    const doc=splitDoc(ec);
+    state.ruleHtml=mdToHtml(doc.rule);
+    state.excLog=parseHistoryTable(doc.history).map(cells=>({
+      date:cells[0]||"",event:cells[1]||"",index:cells[2]||"",amount:cells[3]||"",
+      target:cells[4]||"",dd:cells[5]||"",note:cells[6]||"",
+    }));
+    try{
+      const secs=docSections(doc.status);
+      const ammoSec=secs.find(sec=>/弾薬庫/.test(sec.head));
+      state.idxTiles=secs.filter(sec=>sec!==ammoSec).map(parseTile);
+      if(ammoSec) state.ammo=parseAmmo(ammoSec);
+      const stamp=parseStamp(doc.status);
+      if(stamp) state.stamps.push(`指数：${stamp}`);
+    }catch(error){console.warn("EXC状態のタイル化に失敗",error);}
+  }
+  if(sp){
+    const doc=splitDoc(sp);
+    state.stockRuleHtml=mdToHtml(doc.rule);
+    state.tradeLog=parseHistoryTable(doc.history).map(cells=>({
+      date:cells[0]||"",name:cells[1]||"",event:cells[2]||"",quantity:cells[3]||"",
+      price:cells[4]||"",pl:cells[5]||"",memo:cells[6]||"",
+    }));
+    try{
+      state.stkTiles=docSections(doc.status).map(parseTile);
+      const stamp=parseStamp(doc.status);
+      if(stamp) state.stamps.push(`個別株：${stamp}`);
+    }catch(error){console.warn("銘柄別ルール状態のタイル化に失敗",error);}
+  }
+  return state;
+}
+
+async function loadExtraDocs(){
+  if(extraLoading||!extraReader.hasToken()) return;
+  extraLoading=true;
+  try{
+    const [ec,sp]=await Promise.all([
+      extraReader.fetchText("extra-charge.md"),
+      extraReader.fetchText("stock-rules.md"),
+    ]);
+    EXTRA_STATE=parseExtraDocs(ec,sp);
+  }catch(error){
+    console.warn("EXC文書の読み込みに失敗",error);
+  }
+  extraLoadedAt=Date.now();
+  extraLoading=false;
+  renderExc();
+  renderBoard();
+  renderLog();
+}
+
+// 観察ボードのカード用：この銘柄に対応する個別株タイル（DD%・理由色・判定バッジの供給元）
+function tileForStock(stock){
+  if(!EXTRA_STATE||!EXTRA_STATE.stkTiles.length) return null;
+  const name=String(stock.name||"");
+  const ticker=String(stock.ticker||"").toUpperCase();
+  return EXTRA_STATE.stkTiles.find(tile=>tile.name.toUpperCase()===ticker||name.includes(tile.name)||tile.name.includes(name))||null;
+}
+
+/* 観察タブ上段＝機械（EXC）：指数DD・封筒残弾・次ライン距離。金額の明細は出さない（保有ボードの仕事） */
+function renderExc(){
+  const panel=$("#excPanel");
+  if(!panel) return;
+  if(!EXTRA_STATE||!EXTRA_STATE.idxTiles.length){
+    panel.hidden=true;
+    $("#excBody").innerHTML="";
+    return;
+  }
+  const LIVE_KEY={"TOPIX":"TOPIX","S&P500":"GSPC"};
+  const tiles=sortTiles(EXTRA_STATE.idxTiles).map(t=>{
+    const rows=[];
+    if(t.env)rows.push('<span class="lbl">封筒</span>'+t.env.map((e,i)=>`<span class="${e.fired?"env-fired":""}">${["①","②","③","④"][i]}${esc(e.amt)}${e.fired?"🎯":""}</span>`).join(" "));
+    if(t.envNote)rows.push('<span class="lbl">封筒</span>'+esc(t.envNote));
+    if(t.next)rows.push('<span class="lbl">次</span>'+esc(t.next));
+    const live=PRICE_DATA?.quotes?.[LIVE_KEY[t.name]];
+    if(live&&Number.isFinite(Number(live.changePct))){
+      const pct=(live.changePct>0?"+":"")+live.changePct+"%";
+      rows.push('<span class="lbl">今日</span>'+esc(pct)+`<small>（${esc(formatPriceTime(live.marketTime||live.fetchedAt))}）</small>`);
+    }
+    return `<div class="exc-tile phase-${t.phaseClass||"none"}">
+      <div class="exc-tile-top"><span class="exc-tile-name">${esc(t.name)}</span>${t.emoji||t.phase?`<span class="exc-pill">${esc((t.emoji?t.emoji+" ":"")+t.phase)}</span>`:""}</div>
+      ${t.big?`<div class="exc-big">${esc(t.big)}</div><div class="exc-sub">${esc(t.bigLabel)}</div>`:""}
+      <div class="exc-rows">${rows.map(row=>`<div class="exc-row">${row}</div>`).join("")}</div>
+    </div>`;
+  }).join("");
+  const ammo=EXTRA_STATE.ammo
+    ?`<div class="exc-ammo">🧨 弾薬庫：円弾 <strong>${esc(EXTRA_STATE.ammo.yen||"—")}</strong>・ドル弾 <strong>${esc(EXTRA_STATE.ammo.usd||"—")}</strong></div>`
+    :"";
+  const folds=[
+    EXTRA_STATE.ruleHtml?`<details class="exc-fold"><summary>発動規定（全文）</summary><div class="md">${EXTRA_STATE.ruleHtml}</div></details>`:"",
+    EXTRA_STATE.stockRuleHtml?`<details class="exc-fold"><summary>銘柄別ルール（全文）</summary><div class="md">${EXTRA_STATE.stockRuleHtml}</div></details>`:"",
+  ].join("");
+  $("#excMeta").textContent=EXTRA_STATE.stamps.length?`最終チェック — ${EXTRA_STATE.stamps.join("／")}（物差しは18:30終値）`:"";
+  $("#excBody").innerHTML=`<div class="exc-tiles">${tiles}</div>`+ammo+folds;
+  panel.hidden=false;
+}
+
 function renderBoard(){
-  renderPortfolio();
   const lastReview=DB.reviews.slice().sort((a,b)=>new Date(b.checkedAt)-new Date(a.checkedAt))[0];
   $("#lastCheckLabel").textContent=lastReview?`最終確認 ${formatDate(lastReview.checkedAt,true)}`:"";
   const stocks=activeStocks();
@@ -1272,17 +1511,28 @@ function renderBoard(){
   }));
 }
 
+/* 観察カード＝判断情報だけ（金額なし・2026-07-22情報選別）。
+   状態色は列＝ボード構造が語る。DD%・理由色・連れ安/単独安バッジは18:30更新の正本mdから */
 function stockCard(stock,decision){
-  const sbiPosition=sbiPositionHtml(stock);
   const memo=decision?.memo
     ||master("reasonTags",decision?.reasonTagId)?.label
     ||master("subReasons",decision?.subReasonId)?.label
     ||"まだログがありません";
+  const tile=tileForStock(stock);
+  let excInfo="";
+  if(tile){
+    const sev={danger:"down",warn:"warn",ok:"up"}[tile.phaseClass]||"";
+    const bits=[];
+    if(tile.big) bits.push(`<span class="card-dd ${sev}">${esc(tile.big)}</span><span class="card-dd-label">${esc(tile.bigLabel)}</span>`);
+    if(tile.verdict) bits.push(`<span class="verdict-badge ${tile.verdict.kind==="単独安"?"solo":"tsure"}" title="${esc(tile.verdict.detail)}">${esc(tile.verdict.kind)}</span>`);
+    if(bits.length) excInfo+=`<span class="card-exc">${bits.join("")}</span>`;
+    if(tile.reason) excInfo+=`<span class="card-reason rs-${tile.reason.sev}" title="下落理由メモ（18:30自動更新）">${esc(tile.reason.text)}</span>`;
+  }
   return `<button type="button" class="stock-card" data-stock="${esc(stock.id)}" title="タップして記録">
     <span class="stock-card-top"><span class="stock-identity"><span class="stock-name" title="${esc(stock.name)}">${esc(stock.name)}</span><span class="stock-symbol">${esc(stock.ticker)}</span></span><span class="stock-card-when">${decision?esc(formatDate(decision.decidedAt,true)):"未記録"}</span></span>
     <span class="stock-card-memo">${esc(memo)}</span>
-    ${sbiPosition}
-    <span class="stock-card-bottom">${sbiPosition?'<span class="sbi-source-label">SBI一時反映</span>':quoteHtml(stock,"stock-card-quote")}<span class="stock-card-date">${stock.note?'<span class="note-flag" role="button" title="ノートを開く">📝</span>':""}${decision?.nextReviewDate?`次回 ${formatDate(`${decision.nextReviewDate}T12:00:00`)}`:""}</span></span>
+    ${excInfo}
+    <span class="stock-card-bottom"><span class="stock-card-date">${stock.note?'<span class="note-flag" role="button" title="ノートを開く">📝</span>':""}${decision?.nextReviewDate?`次回 ${formatDate(`${decision.nextReviewDate}T12:00:00`)}`:""}</span></span>
   </button>`;
 }
 
@@ -1340,16 +1590,71 @@ function legacyDetailText(decision){
   return bits.filter(Boolean).join("・");
 }
 
+const KIND_CHIP={
+  decision:'<span class="kind-chip kd">判断</span>',
+  trade:'<span class="kind-chip kt">売買</span>',
+  exc:'<span class="kind-chip ke">EXC</span>',
+};
+
+/* ログタブ＝判断・売買・EXC発砲/再装填を1本の時系列に統合（2026-07-22設計）。
+   判断＝アプリのdecisions（取り消し可）。売買・EXC＝正本md（stock-rules.md／extra-charge.md）の履歴表を読むだけ。 */
 function renderLog(){
-  let list=DB.decisions.slice().sort((a,b)=>decisionTime(b)-decisionTime(a));
+  const kindFilter=$("#fKind")?.value||"";
   const stockId=$("#fStock").value,statusId=$("#fStatus").value,tagId=$("#fTag").value;
-  if(stockId) list=list.filter(item=>item.stockId===stockId);
-  if(statusId) list=list.filter(item=>item.statusId===statusId);
-  if(tagId) list=list.filter(item=>(item.reasonTagId||item.subReasonId)===tagId);
-  $("#logCount").textContent=`${list.length}件`;
-  if(!list.length){$("#logList").innerHTML='<div class="empty-compact">条件に合うログはありません</div>';return;}
+  const stockName=stockId?stockById(stockId)?.name||"":"";
+  const entries=[];
+
+  // 判断（decisions）
+  let decisions=DB.decisions.slice();
+  if(stockId) decisions=decisions.filter(item=>item.stockId===stockId);
+  if(statusId) decisions=decisions.filter(item=>item.statusId===statusId);
+  if(tagId) decisions=decisions.filter(item=>(item.reasonTagId||item.subReasonId)===tagId);
+  if(!kindFilter||kindFilter==="decision"){
+    decisions.forEach(decision=>entries.push({kind:"decision",time:decisionTime(decision),decision}));
+  }
+  // 売買・EXC：状態/タグの絞り込み中は出さない（判断専用の条件のため）。銘柄絞り込みは名前で当てる
+  const mdAllowed=!statusId&&!tagId;
+  if(mdAllowed&&(!kindFilter||kindFilter==="trade")){
+    (EXTRA_STATE?.tradeLog||[]).forEach(row=>{
+      if(stockName&&!(row.name.includes(stockName)||stockName.includes(row.name))) return;
+      entries.push({kind:"trade",time:new Date(`${row.date}T12:00:00`).getTime(),row});
+    });
+  }
+  if(mdAllowed&&!stockId&&(!kindFilter||kindFilter==="exc")){
+    (EXTRA_STATE?.excLog||[]).forEach(row=>{
+      entries.push({kind:"exc",time:new Date(`${row.date}T12:00:00`).getTime(),row});
+    });
+  }
+  entries.sort((a,b)=>b.time-a.time);
+  $("#logCount").textContent=`${entries.length}件`;
+  if(!entries.length){$("#logList").innerHTML='<div class="empty-compact">条件に合うログはありません</div>';return;}
   const sources=transitionSources();
-  $("#logList").innerHTML=list.map(decision=>{
+  $("#logList").innerHTML=entries.map(entry=>{
+    if(entry.kind==="trade"){
+      const row=entry.row;
+      const detail=[row.quantity&&row.price?`${row.quantity} × ${row.price}`:row.quantity||row.price,row.pl&&row.pl!=="—"?`損益 ${row.pl}`:""].filter(Boolean).join("　");
+      return `<div class="log-row log-md-row">
+        <div class="timeline-date">${esc(formatDate(row.date))}</div>
+        <div class="stock-identity"><div class="stock-name" title="${esc(row.name)}">${esc(row.name)}</div></div>
+        <div class="log-transition">${KIND_CHIP.trade}<span class="md-event">${esc(row.event)}</span></div>
+        <div class="log-detail"><div class="log-memo">${esc(detail||"—")}</div>${row.memo?`<div class="log-reason">${esc(row.memo)}</div>`:""}</div>
+        <div class="log-execution"></div>
+        <div class="log-revoke"><span class="md-source" title="正本＝stock-rules.mdの売買履歴">正本md</span></div>
+      </div>`;
+    }
+    if(entry.kind==="exc"){
+      const row=entry.row;
+      const detail=[row.amount,row.target?`→ ${row.target}`:"",row.dd?`発動時DD ${row.dd}`:""].filter(Boolean).join("　");
+      return `<div class="log-row log-md-row">
+        <div class="timeline-date">${esc(formatDate(row.date))}</div>
+        <div class="stock-identity"><div class="stock-name" title="${esc(row.index)}">${esc(row.index||"指数")}</div></div>
+        <div class="log-transition">${KIND_CHIP.exc}<span class="md-event">${esc(row.event)}</span></div>
+        <div class="log-detail"><div class="log-memo">${esc(detail||"—")}</div>${row.note?`<div class="log-reason">${esc(row.note)}</div>`:""}</div>
+        <div class="log-execution"></div>
+        <div class="log-revoke"><span class="md-source" title="正本＝extra-charge.mdの発砲履歴">正本md</span></div>
+      </div>`;
+    }
+    const decision=entry.decision;
     const stock=stockById(decision.stockId);
     const execution=executionFor(decision.id);
     const side=master("actions",decision.actionId)?.executionSide;
@@ -1367,7 +1672,7 @@ function renderLog(){
     return `<div class="log-row${decision.revokedAt?" revoked":""}">
       <div class="timeline-date">${formatDate(decision.decidedAt,true)}</div>
       <div class="stock-identity"><div class="stock-name" title="${esc(stock?.name||"不明な銘柄")}">${esc(stock?.name||"不明な銘柄")}</div><div class="stock-symbol">${esc(stock?.ticker||"")}</div></div>
-      <div class="log-transition">${transition}</div>
+      <div class="log-transition">${KIND_CHIP.decision}${transition}</div>
       <div class="log-detail"><div class="log-memo">${esc(decision.memo||"—")}</div>${metaBits.length?`<div class="log-reason">${esc(metaBits.join(" ／ "))}</div>`:""}</div>
       <div class="log-execution">${execution?`<span class="side-pill ${side}">${side==="buy"?"買付":"売却"}</span> ${formatDate(execution.executedAt,true)}`:""}</div>
       <div class="log-revoke">${decision.revokedAt?`<span class="revoked-label">取り消し済み<br>${formatDate(decision.revokedAt,true)}</span>`:`<button type="button" class="btn sec sm revoke-decision" data-id="${esc(decision.id)}">取り消す</button>`}</div>
@@ -1464,6 +1769,7 @@ function addMasterItem(section){
 
 function renderAll(){
   const view=currentView();
+  renderExc();
   renderBoard();
   renderAssets();
   renderStockTable();
@@ -1551,8 +1857,8 @@ function bindEvents(){
   $("#stockForm").addEventListener("submit",submitStock);
   $("#sAssetClass").addEventListener("change",toggleFundFields);
   $("#instrumentQuery").addEventListener("input",renderInstrumentResults);
-  [$("#fStock"),$("#fStatus"),$("#fTag")].forEach(select=>select.addEventListener("change",renderLog));
-  $("#clearFilters").addEventListener("click",()=>{$("#fStock").value="";$("#fStatus").value="";$("#fTag").value="";renderLog();});
+  [$("#fKind"),$("#fStock"),$("#fStatus"),$("#fTag")].forEach(select=>select.addEventListener("change",renderLog));
+  $("#clearFilters").addEventListener("click",()=>{$("#fKind").value="";$("#fStock").value="";$("#fStatus").value="";$("#fTag").value="";renderLog();});
   $("#recordModalClose").addEventListener("click",closeRecordModal);
   $("#recordModal").addEventListener("click",event=>{if(event.target===$("#recordModal")) closeRecordModal();});
   document.addEventListener("keydown",event=>{
@@ -1653,16 +1959,21 @@ bindEvents();
 const lastView=(()=>{try{return localStorage.getItem("pp_last_view");}catch(error){return null;}})();
 renderAll();
 if(lastView&&$(`nav button[data-view="${lastView}"]`)) showView(lastView);
-store.init().then(loadPriceData);
+// 旧extraページからの転送など、#observe等のハッシュ指定は記憶より優先
+const hashView=location.hash.replace("#","");
+if(hashView&&$(`nav button[data-view="${hashView}"]`)) showView(hashView);
+store.init().then(loadPriceData).then(loadExtraDocs);
 loadInstrumentData().catch(error=>{
   console.warn(error);
   $("#instrumentSource").textContent="手動登録のみ";
 });
 window.addEventListener("focus",()=>{
   if(Date.now()-priceLoadedAt>5*60*1000) loadPriceData();
+  if(Date.now()-extraLoadedAt>5*60*1000) loadExtraDocs();
 });
 // バックグラウンドで開かれた場合、全景の帯ラベル調整は幅が測れず未実施のまま→見えた時に描き直す
 document.addEventListener("visibilitychange",()=>{
-  if(document.visibilityState==="visible") renderPortfolio();
+  if(document.visibilityState==="visible") renderAssets();
 });
 setInterval(loadPriceData,15*60*1000);
+setInterval(loadExtraDocs,15*60*1000);
