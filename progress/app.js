@@ -494,7 +494,9 @@ function renderAssets(){
     const segments=ordered.map(item=>{
       const share=(item.valueJpy/barTotal*100).toFixed(1);
       const color=colorOf(item);
-      return `<span class="pf-seg" style="flex-grow:${Math.max(item.valueJpy,1)};background:${color}" title="${esc(item.stock.name)} ${share}%・${esc(formatMoney(item.valueJpy,"JPY"))}"><span class="pf-seg-label" style="color:${readableTextColor(color)}">${esc(item.stock.name)}</span></span>`;
+      // iDeCoは同名ファンドがNISA側にもいる＝帯でもiDeCoだと分かる表記に（2026-07-23ヨシアキ指示）
+      const segName=item.block==="ideco"?`iDeCo｜${item.stock.name}`:item.stock.name;
+      return `<span class="pf-seg" style="flex-grow:${Math.max(item.valueJpy,1)};background:${color}" title="${esc(segName)} ${share}%・${esc(formatMoney(item.valueJpy,"JPY"))}"><span class="pf-seg-label" style="color:${readableTextColor(color)}">${esc(segName)}</span></span>`;
     }).join("");
     return `<div class="pf-bar-row"><span class="pf-bar-label">${esc(label)}</span><div class="portfolio-bar" role="img" aria-label="${esc(label)}の構成比">${segments}</div></div>`;
   };
