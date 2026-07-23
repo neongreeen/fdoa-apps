@@ -627,3 +627,13 @@ button.hb-row:hover{background:#f8f8f6}
 
 /* 評価損益タイルの「iDeCo除き」並記 2026-07-23 */
 .summary-card .summary-ex{font-weight:700;font-size:12px;margin-top:2px}
+
+/* 観察ボード＝DD深い順の1枚グリッド（状態列廃止・2026-07-23） */
+.dd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:8px;align-items:stretch}
+.dd-grid .stock-card{margin-top:0;min-height:88px}
+.card-phase{font-size:8.5px;font-weight:700;padding:2px 7px;border-radius:999px;background:#efefec;color:var(--sub);white-space:nowrap;flex:0 0 auto;align-self:flex-start}
+.card-phase.phase-danger{background:var(--danger-soft);color:var(--danger)}
+.card-phase.phase-warn{background:var(--warn-soft,#f6efdf);color:#73542d}
+.card-phase.phase-ok{background:var(--accent-soft);color:var(--accent)}
+.stock-card .stock-card-top{flex-direction:row;justify-content:space-between;align-items:flex-start;gap:4px}
+.status-board .dd-grid{grid-column:1/-1}

@@ -489,7 +489,8 @@ function renderAssets(){
   const FUND_COLORS=["#5b7ea6","#6f8f7a","#a08558","#8a7a9c","#a37070","#7d8a94"];
   const fundColor=new Map(byBlock("fund").slice().sort((a,b)=>b.valueJpy-a.valueJpy)
     .map((item,index)=>[item.stock.id,FUND_COLORS[index%FUND_COLORS.length]]));
-  const colorOf=item=>item.block==="equity"?statusColor(item.status)
+  // 個別株の色＝18:30自動更新の局面色（手動状態の廃止に伴い自動の物差しへ・2026-07-23）
+  const colorOf=item=>item.block==="equity"?phaseColorFor(item.stock)
     :item.block==="ideco"?"#7a6a8a"
     :fundColor.get(item.stock.id)||"#6e6e73";
   const barRow=(label,items,keepOrder=false)=>{
@@ -1126,15 +1127,15 @@ function showView(name){
   window.scrollTo({top:0,behavior:"smooth"});
 }
 
-/* 記録モーダル：カードをタップ→行き先の状態を選ぶ→一言→保存（2〜3タップ） */
-let RECORD={stockId:null,statusId:null,tagId:null,reviewId:null};
+/* 記録モーダル：カードをタップ→メモ＋理由タグ＋次回確認だけ（2026-07-23状態選択を廃止。
+   手動の判断状態はメンテされず形骸化＝局面の自動更新が代替。過去データ・マスターは温存） */
+let RECORD={stockId:null,tagId:null,reviewId:null};
 
 function openRecordModal(stockId){
   const stock=stockById(stockId);
   if(!stock) return;
   const decision=latestDecision(stockId);
-  const currentStatus=decision&&master("statuses",decision.statusId)?decision.statusId:null;
-  RECORD={stockId,statusId:currentStatus,tagId:null,reviewId:null};
+  RECORD={stockId,tagId:null,reviewId:null};
   $("#recordModalTitle").innerHTML=`${esc(stock.name)} <small>${esc(stock.ticker)}</small>`;
   $("#recordModalSub").textContent=decision?`前回 ${formatDate(decision.decidedAt,true)}`:"初回の記録";
   $("#recordNoteBtn").textContent=noteButtonLabel(stock);
@@ -1150,27 +1151,9 @@ function closeRecordModal(){
 }
 
 function renderRecordModal(){
-  const current=latestDecision(RECORD.stockId)?.statusId||null;
-  $("#recordStatuses").innerHTML=ordered("statuses",false).map(status=>{
-    const color=statusColor(status);
-    const selected=status.id===RECORD.statusId;
-    const style=selected?`background:${color};border-color:${color};color:${readableTextColor(color)}`:"";
-    return `<button type="button" class="record-status${selected?" selected":""}" data-id="${esc(status.id)}" style="${style}">
-      ${selected?"":`<span class="status-head-dot" style="background:${color}"></span>`}${esc(status.label)}${status.id===current?'<small class="record-current">いま</small>':""}
-    </button>`;
-  }).join("");
   $("#recordTags").innerHTML=ordered("reasonTags",false).map(tag=>`<button type="button" class="record-chip${tag.id===RECORD.tagId?" selected":""}" data-id="${esc(tag.id)}">${esc(tag.label)}</button>`).join("");
   $("#recordReviews").innerHTML=[{id:"",label:"なし"},...ordered("reviewPresets",false)].map(preset=>`<button type="button" class="record-chip${(RECORD.reviewId||"")===preset.id?" selected":""}" data-id="${esc(preset.id)}">${esc(preset.label)}</button>`).join("");
-  const from=current?master("statuses",current):null;
-  const to=RECORD.statusId?master("statuses",RECORD.statusId):null;
-  $("#recordPreview").innerHTML=!to
-    ?'<span class="record-preview-hint">行き先の状態を選んでください</span>'
-    :!from
-    ?`${statusPill(to.id)}<span class="transition-note">新規</span>`
-    :from.id===to.id
-    ?`${statusPill(to.id)}<span class="transition-note">継続</span>`
-    :`${statusPill(from.id)}<span class="transition-arrow">→</span>${statusPill(to.id)}`;
-  $("#recordSave").disabled=!to;
+  $("#recordSave").disabled=false;
 }
 
 /* 銘柄ノート：銘柄ごとの研究文書（長文OK・上書き編集・過去版はgit履歴が保持） */
@@ -1216,25 +1199,22 @@ function saveNote(){
 
 function saveRecord(){
   const stock=stockById(RECORD.stockId);
-  const status=master("statuses",RECORD.statusId);
-  if(!stock||!status){showToast("行き先の状態を選んでください","error");return;}
-  const previous=latestDecision(stock.id);
+  if(!stock) return;
+  const memo=$("#recordMemo").value.trim();
+  if(!memo&&!RECORD.tagId&&!RECORD.reviewId){showToast("メモ・理由タグ・次回確認のどれかは入れてください","error");return;}
   const review=RECORD.reviewId?master("reviewPresets",RECORD.reviewId):null;
   const now=new Date().toISOString();
   DB.decisions.push({
     id:uid("decision"),stockId:stock.id,decidedAt:now,createdAt:now,
-    statusId:status.id,
-    memo:$("#recordMemo").value.trim(),
+    statusId:null,
+    memo,
     reasonTagId:RECORD.tagId||null,
     nextReviewDate:review?addDays(review.days):null,
   });
   save();
   closeRecordModal();
   renderAll();
-  const fromLabel=previous?master("statuses",previous.statusId)?.label:null;
-  showToast(!fromLabel?`${stock.name}：${status.label} を記録しました`
-    :fromLabel===status.label?`${stock.name}：${status.label} のまま継続を記録しました`
-    :`${stock.name}：${fromLabel} → ${status.label} を記録しました`);
+  showToast(`${stock.name}：メモを記録しました`);
 }
 
 /* ===== EXC統合（2026-07-22設計・observeタブ2段積みの上段＋カード補強＋ログ統合の材料） =====
@@ -1448,6 +1428,13 @@ async function loadExtraDocs(){
   renderLog();
 }
 
+/* 局面色：18:30自動更新の🔴🟡🟢（手動の判断状態の後継・2026-07-23状態廃止に伴い資産タブの個別株色もこれに） */
+function phaseColorFor(stock){
+  const tile=tileForStock(stock);
+  if(!tile) return "#6e6e73";
+  return {danger:"#b4533b",warn:"#8a6a1d",ok:"#2f6f5e"}[tile.phaseClass]||"#6e6e73";
+}
+
 // 観察ボードのカード用：この銘柄に対応する個別株タイル（DD%・理由色・判定バッジの供給元）
 function tileForStock(stock){
   if(!EXTRA_STATE||!EXTRA_STATE.stkTiles.length) return null;
@@ -1494,6 +1481,9 @@ function renderExc(){
   panel.hidden=false;
 }
 
+/* 観察ボード＝下落率の深い順の1枚グリッド（2026-07-23ヨシアキ決定：手動の判断状態は廃止。
+   状態はメンテされず形骸化していた。生きている状態＝18:30自動更新の局面（🔴🟡🟢）と連れ安/単独安判定をカードに出す。
+   過去の判断ログ・状態マスターのデータは温存＝戻したくなれば戻せる */
 function renderBoard(){
   const lastReview=DB.reviews.slice().sort((a,b)=>new Date(b.checkedAt)-new Date(a.checkedAt))[0];
   $("#lastCheckLabel").textContent=lastReview?`最終確認 ${formatDate(lastReview.checkedAt,true)}`:"";
@@ -1504,41 +1494,16 @@ function renderBoard(){
   $("#stockCount").textContent=marketTimes.join("　")||`${stocks.length}銘柄`;
   const source=SBI_PRICE_DATA?.source||PRICE_DATA?.source||"参考株価";
   $("#stockCount").title=marketTimes.length?`${source}・実際の市場時刻`:"";
-  const statuses=ordered("statuses",true);
-  const grouped=new Map(statuses.map(status=>[status.id,[]]));
-  const unclassified=[];
-  stocks.forEach(stock=>{
-    const decision=latestDecision(stock.id);
-    if(decision&&grouped.has(decision.statusId)) grouped.get(decision.statusId).push({stock,decision});
-    else unclassified.push({stock,decision});
-  });
-  // 各列の中は下落率の深い順（2026-07-23ヨシアキ指示・EXCタイルと同じ思想＝深く下げてるものほど上）。
-  // DDが無い銘柄（観察のみ・SPCX底カウント型）は後ろに名前順
   const ddOf=stock=>{
     const tile=tileForStock(stock);
     return typeof tile?.dd==="number"?tile.dd:Infinity;
   };
-  const byDd=(a,b)=>ddOf(a.stock)-ddOf(b.stock)||a.stock.name.localeCompare(b.stock.name,"ja");
-  grouped.forEach(list=>list.sort(byDd));
-  unclassified.sort(byDd);
-  const statusBox=status=>{
-    const list=grouped.get(status.id)||[];
-    return `<div class="status-column${list.length?"":" is-empty"}">
-      <div class="status-column-head"><span class="status-column-title"><span class="status-head-dot" style="background:${statusColor(status)}"></span>${esc(status.label)}${status.active?"":"（停止）"}</span><span class="status-column-count">${list.length}</span></div>
-      ${list.length?list.map(({stock,decision})=>stockCard(stock,decision)).join(""):'<div class="empty-compact">該当なし</div>'}
-    </div>`;
-  };
-  // 表示列＝状態マスターのboardColumn（1〜4）。同じ列は表示順の小さい順に縦積み（設定＝項目マスター）
-  const columns=[[],[],[],[]];
-  statuses.forEach(status=>{
-    const column=Math.min(4,Math.max(1,Number(status.boardColumn)||4));
-    columns[column-1].push(status);
-  });
-  let html=columns.filter(col=>col.length).map(col=>`<div class="board-col">${col.map(statusBox).join("")}</div>`).join("");
-  if(unclassified.length){
-    html+=`<div class="no-status-column"><strong>まだ状態を決めていない銘柄</strong><div class="no-status-list">${unclassified.map(({stock,decision})=>stockCard(stock,decision)).join("")}</div></div>`;
-  }
-  $("#statusBoard").innerHTML=html||'<div class="empty-compact">銘柄を追加すると、ここに表示されます</div>';
+  // 観察は個別株だけ（投信・iDeCoは判断しない資産＝資産タブの仕事）
+  const list=stocks.filter(stock=>stock.assetClass!=="fund").map(stock=>({stock,decision:latestDecision(stock.id)}))
+    .sort((a,b)=>ddOf(a.stock)-ddOf(b.stock)||a.stock.name.localeCompare(b.stock.name,"ja"));
+  $("#statusBoard").innerHTML=list.length
+    ?`<div class="dd-grid">${list.map(({stock,decision})=>stockCard(stock,decision)).join("")}</div>`
+    :'<div class="empty-compact">銘柄を追加すると、ここに表示されます</div>';
   $$(".stock-card",$("#statusBoard")).forEach(button=>button.addEventListener("click",()=>openRecordModal(button.dataset.stock)));
   // 📝はノートへの直行便（カード本体のタップ＝記録モーダルはそのまま）
   $$(".note-flag",$("#statusBoard")).forEach(flag=>flag.addEventListener("click",event=>{
@@ -1556,19 +1521,21 @@ function stockCard(stock,decision){
     ||"まだログがありません";
   const tile=tileForStock(stock);
   let excInfo="";
+  let phasePill="";
   if(tile){
     const sev={danger:"down",warn:"warn",ok:"up"}[tile.phaseClass]||"";
+    if(tile.emoji||tile.phase) phasePill=`<span class="card-phase phase-${tile.phaseClass||"none"}" title="18:30自動更新の局面">${esc((tile.emoji?tile.emoji+" ":"")+tile.phase)}</span>`;
     const bits=[];
     if(tile.big) bits.push(`<span class="card-dd ${sev}">${esc(tile.big)}</span><span class="card-dd-label">${esc(tile.bigLabel)}</span>`);
     if(tile.verdict) bits.push(`<span class="verdict-badge ${tile.verdict.kind==="単独安"?"solo":"tsure"}" title="${esc(tile.verdict.detail)}">${esc(tile.verdict.kind)}</span>`);
     if(bits.length) excInfo+=`<span class="card-exc">${bits.join("")}</span>`;
     if(tile.reason) excInfo+=`<span class="card-reason rs-${tile.reason.sev}" title="下落理由メモ（18:30自動更新）">${esc(tile.reason.text)}</span>`;
   }
-  return `<button type="button" class="stock-card" data-stock="${esc(stock.id)}" title="タップして記録">
-    <span class="stock-card-top"><span class="stock-identity"><span class="stock-name" title="${esc(stock.name)}">${esc(stock.name)}</span><span class="stock-symbol">${esc(stock.ticker)}</span></span><span class="stock-card-when">${decision?esc(formatDate(decision.decidedAt,true)):"未記録"}</span></span>
+  return `<button type="button" class="stock-card" data-stock="${esc(stock.id)}" title="タップしてメモを記録">
+    <span class="stock-card-top"><span class="stock-identity"><span class="stock-name" title="${esc(stock.name)}">${esc(stock.name)}</span><span class="stock-symbol">${esc(stock.ticker)}</span></span>${phasePill}</span>
     <span class="stock-card-memo">${esc(memo)}</span>
     ${excInfo}
-    <span class="stock-card-bottom"><span class="stock-card-date">${stock.note?'<span class="note-flag" role="button" title="ノートを開く">📝</span>':""}${decision?.nextReviewDate?`次回 ${formatDate(`${decision.nextReviewDate}T12:00:00`)}`:""}</span></span>
+    <span class="stock-card-bottom"><span class="stock-card-date">${stock.note?'<span class="note-flag" role="button" title="ノートを開く">📝</span>':""}${decision?`メモ ${esc(formatDate(decision.decidedAt))}`:""}${decision?.nextReviewDate?`・次回 ${formatDate(`${decision.nextReviewDate}T12:00:00`)}`:""}</span></span>
   </button>`;
 }
 
@@ -1695,7 +1662,10 @@ function renderLog(){
     const execution=executionFor(decision.id);
     const side=master("actions",decision.actionId)?.executionSide;
     const from=sources.get(decision.id);
-    const transition=from==null
+    // 2026-07-23以降の記録は状態なし＝「メモ」表示。状態付きの過去ログは従来の遷移表示のまま
+    const transition=!decision.statusId
+      ?'<span class="md-event">メモ</span>'
+      :from==null
       ?`${statusPill(decision.statusId)}<span class="transition-note">新規</span>`
       :from===decision.statusId
       ?`${statusPill(decision.statusId)}<span class="transition-note">継続</span>`
@@ -1908,12 +1878,6 @@ function bindEvents(){
   $("#noteSave").addEventListener("click",saveNote);
   $("#recordSave").addEventListener("click",saveRecord);
   $("#recordMemo").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();if(!$("#recordSave").disabled) saveRecord();}});
-  $("#recordStatuses").addEventListener("click",event=>{
-    const button=event.target.closest("[data-id]");
-    if(!button) return;
-    RECORD.statusId=button.dataset.id;
-    renderRecordModal();
-  });
   $("#recordTags").addEventListener("click",event=>{
     const button=event.target.closest("[data-id]");
     if(!button) return;

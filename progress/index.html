@@ -7,7 +7,7 @@
   <title>Progress Portfolio</title>
   <link rel="icon" href="../jikyu/favicon.ico" sizes="any">
   <link rel="stylesheet" href="../shared/base.css?v=20260719-1042">
-  <link rel="stylesheet" href="progress.css?v=20260723-0005">
+  <link rel="stylesheet" href="progress.css?v=20260723-0009">
 </head>
 <body>
 <header>
@@ -52,8 +52,8 @@
     <div class="panel">
       <div class="panel-heading">
         <div>
-          <h2>個別株（通知だけ・判断はここで記録）</h2>
-          <p>カードをタップ→行き先の列を選んで記録</p>
+          <h2>個別株（下落率の深い順）</h2>
+          <p>局面・判定は18:30自動更新。カードをタップでメモ</p>
         </div>
         <div class="board-check">
           <span class="count-label" id="stockCount"></span>
@@ -265,9 +265,6 @@
         <button type="button" class="modal-close" id="recordModalClose" aria-label="閉じる">×</button>
       </div>
     </div>
-    <div class="record-section-label">行き先の状態</div>
-    <div class="record-statuses" id="recordStatuses"></div>
-    <div class="record-preview" id="recordPreview"></div>
     <label class="field record-memo-field">
       <span>一言メモ</span>
       <input id="recordMemo" type="text" maxlength="240" placeholder="心が動いた理由をひとこと" autocomplete="off">
@@ -301,6 +298,6 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../shared/store.js?v=20260720"></script>
-<script src="app.js?v=20260723-0006"></script>
+<script src="app.js?v=20260723-0009"></script>
 </body>
 </html>
