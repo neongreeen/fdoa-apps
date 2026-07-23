@@ -1332,6 +1332,11 @@ function parseTile(sec){
     t.notify=line;
   }
   if((m=b.match(/DDが\s*(-?\d+(?:\.\d+)?%)\s*以内へ回復/)))t.recover=m[1]+"回復で局面解除";
+  // 物差しの高値そのもの（いつの・いくらの高値か。2026-07-23ヨシアキ指示）
+  if((m=b.match(/(?:90日|126日|半年)高値\s*\*{0,2}(\$?[\d,.]+)(?:\s*円)?\*{0,2}\s*（(\d{4})-(\d{2})-(\d{2})）/)))
+    t.peak={price:m[1].startsWith("$")?m[1]:m[1]+"円",date:`${+m[3]}/${+m[4]}`};
+  else if((m=b.match(/高値は(\d{2})-(\d{2})/)))
+    t.peak={date:`${+m[1]}/${+m[2]}`};
   // 18:30監視時点の基準値（円建て／ドル建て。ドルは日付付きなら添える）
   if((m=b.match(/現在[：:]?\s*\*{0,2}([\d,.]+)\s*円/)))t.price=m[1]+"円";
   else if((m=b.match(/現在[：:]?\s*\*{0,2}\$\s*([\d,.]+)([^\n]*)/))){
@@ -1480,7 +1485,7 @@ function renderExc(){
     }
     return `<div class="exc-tile phase-${t.phaseClass||"none"}">
       <div class="exc-tile-top"><span class="exc-tile-name">${esc(t.name)}</span>${t.emoji||t.phase?`<span class="exc-pill">${esc((t.emoji?t.emoji+" ":"")+t.phase)}</span>`:""}</div>
-      ${t.big?`<div class="exc-big">${esc(t.big)}</div><div class="exc-sub">${esc(t.bigLabel)}</div>`:""}
+      ${t.big?`<div class="exc-big">${esc(t.big)}</div><div class="exc-sub">${esc(t.peak?`${t.bigLabel.replace(/比$/,"")}${t.peak.price?" "+t.peak.price+"・":"（"}${t.peak.date}${t.peak.price?" ":"）"}比`:t.bigLabel)}</div>`:""}
       <div class="exc-rows">${rows.map(row=>`<div class="exc-row">${row}</div>`).join("")}</div>
     </div>`;
   }).join("");
@@ -1539,7 +1544,10 @@ function stockCard(stock,decision){
     const sev={danger:"down",warn:"warn",ok:"up"}[tile.phaseClass]||"";
     if(tile.emoji||tile.phase) phasePill=`<span class="card-phase phase-${tile.phaseClass||"none"}" title="18:30自動更新の局面">${esc((tile.emoji?tile.emoji+" ":"")+tile.phase)}</span>`;
     const bits=[];
-    if(tile.big) bits.push(`<span class="card-dd ${sev}">${esc(tile.big)}</span><span class="card-dd-label">${esc(tile.bigLabel)}</span>`);
+    const ddLabel=tile.peak
+      ?`${tile.bigLabel.replace(/比$/,"")} ${tile.peak.price?tile.peak.price+"・":""}${tile.peak.date} 比`
+      :tile.bigLabel;
+    if(tile.big) bits.push(`<span class="card-dd ${sev}">${esc(tile.big)}</span><span class="card-dd-label">${esc(ddLabel)}</span>`);
     if(tile.verdict) bits.push(`<span class="verdict-badge ${tile.verdict.kind==="単独安"?"solo":"tsure"}" title="${esc(tile.verdict.detail)}">${esc(tile.verdict.kind)}</span>`);
     if(bits.length) excInfo+=`<span class="card-exc">${bits.join("")}</span>`;
     if(tile.reason) excInfo+=`<span class="card-reason rs-${tile.reason.sev}" title="下落理由メモ（18:30自動更新）">${esc(tile.reason.text)}</span>`;
