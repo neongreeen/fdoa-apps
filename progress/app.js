@@ -1953,7 +1953,45 @@ if(lastView&&$(`nav button[data-view="${lastView}"]`)) showView(lastView);
 // 旧extraページからの転送など、#observe等のハッシュ指定は記憶より優先
 const hashView=location.hash.replace("#","");
 if(hashView&&$(`nav button[data-view="${hashView}"]`)) showView(hashView);
-store.init().then(loadPriceData).then(loadExtraDocs);
+/* ページ更新時の株価リフレッシュ（2026-07-23ヨシアキ指示）。
+   prices.jsonはActionsが市場中30分毎更新＝リロード直後は最大30分古い。
+   ブラウザからYahooは直接取れない（CORS）ため、fdoa-app-dataへ合図ファイルを書き
+   →pushトリガーで株価取得が即走り→更新されたprices.jsonをポーリングで取り込む（所要1〜2分）。
+   合図は10分に1回まで（連続リロード・多タブで無駄にワークフローを回さない） */
+const PRICE_REQUEST_PATH="price-request.txt";
+const PRICE_REQUEST_THROTTLE_KEY="pp_price_request_at";
+async function requestFreshPrices(){
+  try{
+    const token=localStorage.getItem(CONFIG.tokenKey);
+    if(!token) return;
+    const last=Number(localStorage.getItem(PRICE_REQUEST_THROTTLE_KEY)||0);
+    if(Date.now()-last<10*60*1000) return;
+    if(PRICE_DATA?.updatedAt&&Date.now()-new Date(PRICE_DATA.updatedAt).getTime()<10*60*1000) return;
+    localStorage.setItem(PRICE_REQUEST_THROTTLE_KEY,String(Date.now()));
+    const base=`https://api.github.com/repos/${CONFIG.github.owner}/${CONFIG.github.repo}/contents/${PRICE_REQUEST_PATH}`;
+    const headers={Authorization:`Bearer ${token}`,Accept:"application/vnd.github+json"};
+    const current=await fetch(`${base}?ref=${CONFIG.github.branch}&_=${Date.now()}`,{headers,cache:"no-store"});
+    const sha=current.ok?(await current.json()).sha:undefined;
+    const body={message:"price-request: リロード時の株価更新依頼",branch:CONFIG.github.branch,content:btoa(new Date().toISOString())};
+    if(sha) body.sha=sha;
+    const put=await fetch(base,{method:"PUT",headers,body:JSON.stringify(body)});
+    if(!put.ok){console.warn("株価更新依頼のpushに失敗",put.status);return;}
+    const before=PRICE_DATA?.updatedAt||"";
+    let tries=0;
+    const poll=async()=>{
+      tries+=1;
+      await loadPriceData();
+      if((PRICE_DATA?.updatedAt||"")!==before&&PRICE_DATA?.updatedAt){
+        showToast(`株価を最新にしました（${formatPriceTime(PRICE_DATA.updatedAt)}取得）`);
+        return;
+      }
+      if(tries<8) setTimeout(poll,25000);
+    };
+    setTimeout(poll,35000);
+  }catch(error){console.warn("株価更新依頼に失敗",error);}
+}
+
+store.init().then(loadPriceData).then(loadExtraDocs).then(requestFreshPrices);
 loadInstrumentData().catch(error=>{
   console.warn(error);
   $("#instrumentSource").textContent="手動登録のみ";
