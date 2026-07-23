@@ -985,6 +985,7 @@ async function loadPriceData(){
   }
   priceLoadedAt=Date.now();
   priceLoading=false;
+  renderExc();
   renderBoard();
   renderAssets();
   renderStockTable();
