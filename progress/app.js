@@ -411,7 +411,9 @@ function computeHoldingPositions(){
 function holdingsMetaText(positions,quoteSources,usdJpy,usTotalUsd){
   const holdingTimes=positions.map(item=>new Date(item.holdingUpdatedAt||NaN).getTime()).filter(time=>!Number.isNaN(time));
   const holdingLabel=holdingTimes.length?`保有 ${formatMarketTime(new Date(Math.max(...holdingTimes)).toISOString())}のSBI取込み時点`:"保有 SBI取込みで更新";
-  const sourceLabel=quoteSources.size?`現在値 ${[...quoteSources].join("＋")}`:"現在値未取得";
+  // 現在値の取得時刻も出す（2026-07-23ヨシアキ指摘：時刻が保有取込み時点しか無く、株価更新が見えなかった）
+  const priceTime=SBI_PRICE_DATA?.updatedAt||PRICE_DATA?.updatedAt;
+  const sourceLabel=quoteSources.size?`現在値 ${[...quoteSources].join("＋")}（${priceTime?formatPriceTime(priceTime)+"取得":"取得時刻不明"}）`:"現在値未取得";
   const rate=Number.isFinite(usdJpy)&&usTotalUsd>0?`・換算 ${usdJpy.toFixed(2)}円/$`:"";
   return `${holdingLabel}・${sourceLabel}${rate}`;
 }
