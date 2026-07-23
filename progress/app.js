@@ -1512,6 +1512,15 @@ function renderBoard(){
     if(decision&&grouped.has(decision.statusId)) grouped.get(decision.statusId).push({stock,decision});
     else unclassified.push({stock,decision});
   });
+  // 各列の中は下落率の深い順（2026-07-23ヨシアキ指示・EXCタイルと同じ思想＝深く下げてるものほど上）。
+  // DDが無い銘柄（観察のみ・SPCX底カウント型）は後ろに名前順
+  const ddOf=stock=>{
+    const tile=tileForStock(stock);
+    return typeof tile?.dd==="number"?tile.dd:Infinity;
+  };
+  const byDd=(a,b)=>ddOf(a.stock)-ddOf(b.stock)||a.stock.name.localeCompare(b.stock.name,"ja");
+  grouped.forEach(list=>list.sort(byDd));
+  unclassified.sort(byDd);
   const statusBox=status=>{
     const list=grouped.get(status.id)||[];
     return `<div class="status-column${list.length?"":" is-empty"}">
