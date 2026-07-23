@@ -1485,8 +1485,6 @@ function renderExc(){
    状態はメンテされず形骸化していた。生きている状態＝18:30自動更新の局面（🔴🟡🟢）と連れ安/単独安判定をカードに出す。
    過去の判断ログ・状態マスターのデータは温存＝戻したくなれば戻せる */
 function renderBoard(){
-  const lastReview=DB.reviews.slice().sort((a,b)=>new Date(b.checkedAt)-new Date(a.checkedAt))[0];
-  $("#lastCheckLabel").textContent=lastReview?`最終確認 ${formatDate(lastReview.checkedAt,true)}`:"";
   const stocks=activeStocks();
   const jpTime=marketTimeFor(stocks,"JP");
   const usTime=marketTimeFor(stocks,"US");
@@ -1560,11 +1558,10 @@ function renderStockTable(){
 }
 
 function renderFilters(){
-  const values={stock:$("#fStock").value,status:$("#fStatus").value,tag:$("#fTag").value};
+  const values={stock:$("#fStock").value,tag:$("#fTag").value};
   $("#fStock").innerHTML='<option value="">全銘柄</option>'+DB.stocks.slice().sort((a,b)=>a.name.localeCompare(b.name,"ja")).map(stock=>`<option value="${esc(stock.id)}">${esc(stock.name)}</option>`).join("");
-  $("#fStatus").innerHTML='<option value="">全状態</option>'+ordered("statuses",true).map(item=>`<option value="${esc(item.id)}">${esc(item.label)}</option>`).join("");
   $("#fTag").innerHTML='<option value="">全タグ</option>'+ordered("reasonTags",true).map(item=>`<option value="${esc(item.id)}">${esc(item.label)}</option>`).join("");
-  $("#fStock").value=values.stock;$("#fStatus").value=values.status;$("#fTag").value=values.tag;
+  $("#fStock").value=values.stock;$("#fTag").value=values.tag;
 }
 
 /* 各記録の「遷移元」＝同じ銘柄の直前の有効（未取り消し）記録の状態。取り消すと後続の矢印も繋ぎ直る */
@@ -1603,20 +1600,19 @@ const KIND_CHIP={
    判断＝アプリのdecisions（取り消し可）。売買・EXC＝正本md（stock-rules.md／extra-charge.md）の履歴表を読むだけ。 */
 function renderLog(){
   const kindFilter=$("#fKind")?.value||"";
-  const stockId=$("#fStock").value,statusId=$("#fStatus").value,tagId=$("#fTag").value;
+  const stockId=$("#fStock").value,tagId=$("#fTag").value;
   const stockName=stockId?stockById(stockId)?.name||"":"";
   const entries=[];
 
   // 判断（decisions）
   let decisions=DB.decisions.slice();
   if(stockId) decisions=decisions.filter(item=>item.stockId===stockId);
-  if(statusId) decisions=decisions.filter(item=>item.statusId===statusId);
   if(tagId) decisions=decisions.filter(item=>(item.reasonTagId||item.subReasonId)===tagId);
   if(!kindFilter||kindFilter==="decision"){
     decisions.forEach(decision=>entries.push({kind:"decision",time:decisionTime(decision),decision}));
   }
-  // 売買・EXC：状態/タグの絞り込み中は出さない（判断専用の条件のため）。銘柄絞り込みは名前で当てる
-  const mdAllowed=!statusId&&!tagId;
+  // 売買・EXC：タグ絞り込み中は出さない（判断専用の条件のため）。銘柄絞り込みは名前で当てる
+  const mdAllowed=!tagId;
   if(mdAllowed&&(!kindFilter||kindFilter==="trade")){
     (EXTRA_STATE?.tradeLog||[]).forEach(row=>{
       if(stockName&&!(row.name.includes(stockName)||stockName.includes(row.name))) return;
@@ -1687,8 +1683,8 @@ function renderLog(){
   $$(".revoke-decision",$("#logList")).forEach(button=>button.addEventListener("click",()=>revokeDecision(button.dataset.id)));
 }
 
+/* 状態マスターは2026-07-23の状態廃止で編集UIから撤去（データは過去ログの表示用に温存） */
 const MASTER_META={
-  statuses:{title:"状態（ボードの列）",prefix:"status",extra:"color"},
   reasonTags:{title:"理由タグ",prefix:"tag"},
   reviewPresets:{title:"次回確認",prefix:"review",extra:"days"},
 };
@@ -1863,8 +1859,8 @@ function bindEvents(){
   $("#stockForm").addEventListener("submit",submitStock);
   $("#sAssetClass").addEventListener("change",toggleFundFields);
   $("#instrumentQuery").addEventListener("input",renderInstrumentResults);
-  [$("#fKind"),$("#fStock"),$("#fStatus"),$("#fTag")].forEach(select=>select.addEventListener("change",renderLog));
-  $("#clearFilters").addEventListener("click",()=>{$("#fKind").value="";$("#fStock").value="";$("#fStatus").value="";$("#fTag").value="";renderLog();});
+  [$("#fKind"),$("#fStock"),$("#fTag")].forEach(select=>select.addEventListener("change",renderLog));
+  $("#clearFilters").addEventListener("click",()=>{$("#fKind").value="";$("#fStock").value="";$("#fTag").value="";renderLog();});
   $("#recordModalClose").addEventListener("click",closeRecordModal);
   $("#recordModal").addEventListener("click",event=>{if(event.target===$("#recordModal")) closeRecordModal();});
   document.addEventListener("keydown",event=>{
@@ -1915,11 +1911,6 @@ function bindEvents(){
   });
   $("#ghSyncNowBtn").addEventListener("click",async()=>{await store.syncNow();await loadPriceData();});
   $("#ghDisconnectBtn").addEventListener("click",()=>{if(confirm("この端末からGitHub同期を切断しますか？")){store.disconnect();PRICE_DATA=null;SBI_PRICE_DATA=null;renderBoard();renderStockTable();}});
-  $("#btnFullCheck").addEventListener("click",()=>{
-    DB.reviews.push({id:uid("review"),checkedAt:new Date().toISOString()});
-    save();renderBoard();
-    showToast("全体確認を記録しました。変わった銘柄だけ個別に判断を記録してください");
-  });
   $("#btnCopyBookmarklet").addEventListener("click",async()=>{
     try{
       const response=await fetch("sbi-bookmarklet.js",{cache:"no-cache"});
