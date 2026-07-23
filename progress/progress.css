@@ -624,3 +624,6 @@ button.hb-row:hover{background:#f8f8f6}
 .pf-bar-row{display:flex;align-items:center;gap:8px;min-width:0}
 .pf-bar-label{flex:0 0 44px;font-size:10px;color:var(--sub);font-weight:700;text-align:right;white-space:nowrap}
 .pf-bar-row .portfolio-bar{flex:1;margin-bottom:0;min-width:0}
+
+/* 評価損益タイルの「iDeCo除き」並記 2026-07-23 */
+.summary-card .summary-ex{font-weight:700;font-size:12px;margin-top:2px}

@@ -471,10 +471,16 @@ function renderAssets(){
   }).filter(Boolean).join("　");
   const plDirection=totalPl>0?"up":totalPl<0?"down":"flat";
   const dayDirection=totalDay>0?"up":totalDay<0?"down":"flat";
+  // iDeCo除きの評価損益（2026-07-23ヨシアキ指示：iDeCoは機能が違いすぎるので分けても見る）
+  const exList=converted.filter(item=>item.block!=="ideco");
+  const exPl=sumOrNull(exList,item=>item.profitLossJpy);
+  const exCost=exPl==null?null:exList.reduce((sum,item)=>sum+item.valueJpy,0)-exPl;
+  const exPlPct=exCost>0?exPl/exCost*100:null;
+  const exDirection=exPl>0?"up":exPl<0?"down":"flat";
 
   const tiles=`<div class="portfolio-summary">
     <div class="summary-card"><span class="summary-label">総資産（円換算・iDeCo込み）</span><span class="summary-value">${esc(formatMoney(Math.round(totalJpy),"JPY"))}</span><span class="summary-sub">${esc(breakdown)}</span></div>
-    <div class="summary-card"><span class="summary-label">評価損益</span><span class="summary-value pf-num ${plDirection}">${esc(formatMoney(totalPl==null?null:Math.round(totalPl),"JPY",true))}</span><span class="summary-sub">${totalPlPct!=null?`取得額比 ${esc(formatSignedPercent(totalPlPct))}`:"—"}</span></div>
+    <div class="summary-card"><span class="summary-label">評価損益（iDeCo込み）</span><span class="summary-value pf-num ${plDirection}">${esc(formatMoney(totalPl==null?null:Math.round(totalPl),"JPY",true))}</span><span class="summary-sub">${totalPlPct!=null?`取得額比 ${esc(formatSignedPercent(totalPlPct))}`:"—"}</span><span class="summary-sub summary-ex pf-num ${exDirection}">iDeCo除き ${esc(formatMoney(exPl==null?null:Math.round(exPl),"JPY",true))}${exPlPct!=null?`（${esc(formatSignedPercent(exPlPct))}）`:""}</span></div>
     <div class="summary-card"><span class="summary-label">今日の動き</span><span class="summary-value pf-num ${dayDirection}">${esc(formatMoney(totalDay==null?null:Math.round(totalDay),"JPY",true))}</span><span class="summary-sub">${totalDayPct!=null?`前営業日比 ${esc(formatSignedPercent(totalDayPct))}`:"—"}</span></div>
   </div>`;
 
