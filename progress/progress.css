@@ -637,3 +637,6 @@ button.hb-row:hover{background:#f8f8f6}
 .card-phase.phase-ok{background:var(--accent-soft);color:var(--accent)}
 .stock-card .stock-card-top{flex-direction:row;justify-content:space-between;align-items:flex-start;gap:4px}
 .status-board .dd-grid{grid-column:1/-1}
+
+/* カードの基準値・現在値表示（%がいつの・いくらの話かを明示）2026-07-23 */
+.card-price{display:block;font-size:8.5px;line-height:1.35;color:var(--sub);font-variant-numeric:tabular-nums;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

@@ -1332,6 +1332,13 @@ function parseTile(sec){
     t.notify=line;
   }
   if((m=b.match(/DDが\s*(-?\d+(?:\.\d+)?%)\s*以内へ回復/)))t.recover=m[1]+"回復で局面解除";
+  // 18:30監視時点の基準値（円建て／ドル建て。ドルは日付付きなら添える）
+  if((m=b.match(/現在[：:]?\s*\*{0,2}([\d,.]+)\s*円/)))t.price=m[1]+"円";
+  else if((m=b.match(/現在[：:]?\s*\*{0,2}\$\s*([\d,.]+)([^\n]*)/))){
+    t.price="$"+m[1];
+    const dm=m[2].match(/(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2})[^）\n]*終値/);
+    if(dm){let d=dm[1];const iso=d.match(/^\d{4}-(\d{2})-(\d{2})$/);if(iso)d=(+iso[1])+"/"+(+iso[2]);t.price+="（"+d+" NY終値）";}
+  }
   // 下落理由メモ（4色＝重さ分類）
   if((m=b.match(/理由[：:]\s*(🔴|🟡|🟢|🔵)\s*(.+)/)))
     t.reason={sev:{"🔴":"red","🟡":"yellow","🟢":"green","🔵":"blue"}[m[1]],text:m[2].replace(/\*/g,"").trim()};
@@ -1407,7 +1414,11 @@ function parseExtraDocs(ec,sp){
     try{
       state.stkTiles=docSections(doc.status).map(parseTile);
       const stamp=parseStamp(doc.status);
-      if(stamp) state.stamps.push(`個別株：${stamp}`);
+      if(stamp){
+        state.stamps.push(`個別株：${stamp}`);
+        const dm=stamp.match(/(\d{4})-(\d{2})-(\d{2})/);
+        if(dm) state.stockStampDate=`${+dm[2]}/${+dm[3]}`;
+      }
     }catch(error){console.warn("銘柄別ルール状態のタイル化に失敗",error);}
   }
   return state;
@@ -1533,10 +1544,23 @@ function stockCard(stock,decision){
     if(bits.length) excInfo+=`<span class="card-exc">${bits.join("")}</span>`;
     if(tile.reason) excInfo+=`<span class="card-reason rs-${tile.reason.sev}" title="下落理由メモ（18:30自動更新）">${esc(tile.reason.text)}</span>`;
   }
+  // %の物差しがいつの・いくらの話か（2026-07-23ヨシアキ指示）：基準＝18:30監視時点の値／今＝参考株価（時刻付き）
+  const quote=quoteFor(stock);
+  const priceBits=[];
+  if(tile&&tile.price){
+    const hasOwnDate=/（/.test(tile.price);
+    priceBits.push(`基準 ${esc(tile.price)}${hasOwnDate?"":(EXTRA_STATE?.stockStampDate?`（${esc(EXTRA_STATE.stockStampDate)} 18:30）`:"")}`);
+  }
+  if(quote&&Number.isFinite(Number(quote.price))){
+    const pct=Number.isFinite(Number(quote.changePct))?`・前日比${esc(formatSignedPercent(Number(quote.changePct)))}`:"";
+    priceBits.push(`今 ${esc(formatQuotePrice(quote))}（${esc(formatMarketTime(quote.marketTime||quote.fetchedAt))}${pct}）`);
+  }
+  const priceInfo=priceBits.length?`<span class="card-price">${priceBits.join("　")}</span>`:"";
   return `<button type="button" class="stock-card" data-stock="${esc(stock.id)}" title="タップしてメモを記録">
     <span class="stock-card-top"><span class="stock-identity"><span class="stock-name" title="${esc(stock.name)}">${esc(stock.name)}</span><span class="stock-symbol">${esc(stock.ticker)}</span></span>${phasePill}</span>
     <span class="stock-card-memo">${esc(memo)}</span>
     ${excInfo}
+    ${priceInfo}
     <span class="stock-card-bottom"><span class="stock-card-date">${stock.note?'<span class="note-flag" role="button" title="ノートを開く">📝</span>':""}${decision?`メモ ${esc(formatDate(decision.decidedAt))}`:""}${decision?.nextReviewDate?`・次回 ${formatDate(`${decision.nextReviewDate}T12:00:00`)}`:""}</span></span>
   </button>`;
 }
