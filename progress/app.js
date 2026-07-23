@@ -574,6 +574,7 @@ function renderAssets(){
     unconverted.length?`<p class="pf-note">※ ${esc(unconverted.map(item=>item.stock.name).join("・"))} は円換算レート未取得のため合計・構成比に含めていません</p>`:"",
     noQuote.length?`<p class="pf-note">※ ${esc(noQuote.map(item=>item.stock.name).join("・"))} は現在値未取得のため取得単価で表示しています（損益・前日は非表示）</p>`:"",
     positions.some(item=>item.stock.assetClass==="fund")?'<p class="pf-note">※ 投信の基準価額は投信協会公表値（前営業日分・夕方更新）。iDeCoの取得単価は購入金額÷口数から算出</p>':"",
+    '<p class="pf-note">※ 現在値は参考株価（日本株は約20分遅延）＝場中はSBIアプリのリアルタイム値と数円ズレます。引け後は一致。判断の物差しは18:30終値なので運用への影響なし</p>',
   ].join("");
 
   $("#assetsMeta").textContent=holdingsMetaText(positions,quoteSources,usdJpy,usTotalUsd);
