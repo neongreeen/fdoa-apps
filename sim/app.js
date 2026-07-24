@@ -87,6 +87,9 @@ function normalize(data){
         buyReason:String(t.buyReason||""),
         buyFx:Number.isFinite(Number(t.buyFx))?Number(t.buyFx):null,
         buyBench:sanitizeBench(t.buyBench),
+        // 撤退ライン（3行テストの②。銘柄と同じ通貨・任意）
+        stopLine:Number(t.stopLine)>0?Number(t.stopLine):null,
+        targetLine:Number(t.targetLine)>0?Number(t.targetLine):null,
         sellPrice:sold?Number(t.sellPrice):null,
         sellDate:sold?String(t.sellDate).slice(0,10):null,
         sellReason:sold?String(t.sellReason||""):null,
@@ -350,12 +353,21 @@ function renderPositions(){
     const pnlPct=cost?pnl/cost*100:0;
     const twinT=twinPnl(t,"topix");
     const days=Math.max(0,Math.round((new Date(todayJst())-new Date(t.buyDate))/86400000));
+    // 撤退ライン到達の判定は参考株価がある時だけ（買値フォールバックで誤発火させない）
+    const hitStop=now.hasQuote&&t.stopLine!=null&&now.price<=t.stopLine;
+    const hitTarget=now.hasQuote&&t.targetLine!=null&&now.price>=t.targetLine;
+    const lineBadge=hitStop?'<span class="badge stb-ss line-hit">損切りライン到達</span>'
+      :hitTarget?'<span class="badge stb-s line-hit">利確検討ライン到達</span>':"";
+    const lineText=(t.stopLine==null&&t.targetLine==null)
+      ?'<span class="muted">未設定</span>'
+      :`${t.stopLine!=null?`損 ${fmtPrice(t.stopLine,t.currency)}`:""}${t.stopLine!=null&&t.targetLine!=null?"<br>":""}${t.targetLine!=null?`利 ${fmtPrice(t.targetLine,t.currency)}`:""}`;
     return`<tr>
-      <td><div class="trade-name">${esc(t.name)}<small>${esc(t.ticker)}</small></div>
+      <td><div class="trade-name">${esc(t.name)}<small>${esc(t.ticker)}</small>${lineBadge}</div>
         <div class="trade-reason"><b>買</b> ${esc(t.buyReason)}</div></td>
       <td class="num">${t.quantity.toLocaleString("ja-JP")}株</td>
       <td class="num">${fmtPrice(t.buyPrice,t.currency)}<br><span class="muted">${fmtDate(t.buyDate)}・${days}日</span></td>
       <td class="num">${now.hasQuote?fmtPrice(now.price,t.currency):"<span class='muted'>取得待ち</span>"}${now.changePct!=null?`<br><span class="muted ${cls(now.changePct)}">前日${pctSigned(now.changePct)}</span>`:""}</td>
+      <td class="num line-cell" data-lines="${esc(t.id)}" title="タップでライン変更">${lineText}</td>
       <td class="num"><span class="${cls(pnl)}">${yenSigned(pnl)}</span><br><span class="muted ${cls(pnl)}">${pctSigned(pnlPct)}</span></td>
       <td class="num">${twinT!=null?`<span class="${cls(pnl-twinT)}">${yenSigned(pnl-twinT)}</span>`:"—"}</td>
       <td><div class="row-actions"><button type="button" class="btn sec sm" data-sell="${esc(t.id)}">売る</button>
@@ -363,10 +375,11 @@ function renderPositions(){
     </tr>`;
   }).join("");
   $("#positionsBody").innerHTML=`<table><thead><tr>
-    <th>銘柄・買った理由</th><th class="num">株数</th><th class="num">買値</th><th class="num">現在値</th><th class="num">損益</th><th class="num">対TOPIX</th><th></th>
+    <th>銘柄・買った理由</th><th class="num">株数</th><th class="num">買値</th><th class="num">現在値</th><th class="num">撤退ライン</th><th class="num">損益</th><th class="num">対TOPIX</th><th></th>
   </tr></thead><tbody>${rows}</tbody></table>`;
   $$("#positionsBody [data-sell]").forEach(b=>b.addEventListener("click",()=>openSellModal(b.dataset.sell)));
   $$("#positionsBody [data-revoke]").forEach(b=>b.addEventListener("click",()=>revokeTrade(b.dataset.revoke)));
+  $$("#positionsBody [data-lines]").forEach(cell=>cell.addEventListener("click",()=>openLineModal(cell.dataset.lines)));
 }
 
 function renderClosed(){
@@ -460,6 +473,10 @@ function renderBuyPanel(){
 
 function updateBuyPreview(){
   const preview=$("#buyCostPreview");
+  // 撤退ラインのplaceholderは買値から自動計算した目安（-5%/+10%）を出す。入力は自由
+  const basePrice=Number($("#buyPrice").value);
+  $("#buyStop").placeholder=basePrice>0?`例：-5%なら${(basePrice*0.95).toFixed(basePrice<50?2:0)}`:"任意";
+  $("#buyTarget").placeholder=basePrice>0?`例：+10%なら${(basePrice*1.10).toFixed(basePrice<50?2:0)}`:"任意";
   if(!selectedInstrument){preview.textContent="";return;}
   const qty=Number($("#buyQty").value),price=Number($("#buyPrice").value);
   if(!Number.isFinite(qty)||qty<=0||!Number.isFinite(price)||price<=0){preview.textContent="";return;}
@@ -481,6 +498,8 @@ function submitBuy(event){
   if(!selectedInstrument){showToast("先に銘柄を検索して選んでください","error");return;}
   const qty=Math.floor(Number($("#buyQty").value));
   const price=Number($("#buyPrice").value);
+  const stopLine=Number($("#buyStop").value)>0?Number($("#buyStop").value):null;
+  const targetLine=Number($("#buyTarget").value)>0?Number($("#buyTarget").value):null;
   const reason=$("#buyReason").value.trim();
   if(!Number.isFinite(qty)||qty<=0){showToast("株数は1以上の整数で","error");return;}
   if(!Number.isFinite(price)||price<=0){showToast("買値を入れてください（現在値未取得の銘柄は手入力）","error");return;}
@@ -498,19 +517,50 @@ function submitBuy(event){
     currency:selectedInstrument.currency==="USD"?"USD":"JPY",
     market:selectedInstrument.market||"",
     quantity:qty,buyPrice:price,buyDate:todayJst(),buyReason:reason,
-    buyFx:fx,buyBench:bench,
+    buyFx:fx,buyBench:bench,stopLine,targetLine,
     sellPrice:null,sellDate:null,sellReason:null,sellFx:null,sellBench:null,
     createdAt:new Date().toISOString(),revokedAt:null,
   });
   if(!db.settings.startedAt) db.settings.startedAt=todayJst();
   save();
   selectedInstrument=null;
-  $("#buyQty").value="";$("#buyPrice").value="";$("#buyReason").value="";
+  $("#buyQty").value="";$("#buyPrice").value="";$("#buyStop").value="";$("#buyTarget").value="";$("#buyReason").value="";
   renderAll();
   showToast(`買いを記録しました：${qty}株・${yen(cost)}`);
   // 初取引の銘柄はsim.jsonのpushで株価取得が走る（prices.ymlトリガー）→数分後に取り込む
   if(!hadQuote){setTimeout(loadPriceData,50000);setTimeout(loadPriceData,110000);}
 }
+
+/* ---------- 撤退ラインの変更（保有中のみ・変更履歴は持たない＝現在の作戦だけを保存） ---------- */
+
+let lineTradeId=null;
+
+function openLineModal(tradeId){
+  const t=db.trades.find(item=>item.id===tradeId);
+  if(!t||t.sellDate) return;
+  lineTradeId=tradeId;
+  $("#lineModalTitle").textContent=`${t.name} の撤退ライン`;
+  $("#lineModalSub").textContent=`買値${fmtPrice(t.buyPrice,t.currency)}（目安：-5%＝${(t.buyPrice*0.95).toFixed(t.buyPrice<50?2:0)}・+10%＝${(t.buyPrice*1.10).toFixed(t.buyPrice<50?2:0)}）`;
+  $("#lineStopUnit").textContent=t.currency==="USD"?"（ドル）":"（円）";
+  $("#lineTargetUnit").textContent=t.currency==="USD"?"（ドル）":"（円）";
+  $("#lineStop").value=t.stopLine??"";
+  $("#lineTarget").value=t.targetLine??"";
+  $("#lineModal").hidden=false;
+  $("#lineStop").focus();
+}
+
+function submitLines(){
+  const t=db.trades.find(item=>item.id===lineTradeId);
+  if(!t) return;
+  t.stopLine=Number($("#lineStop").value)>0?Number($("#lineStop").value):null;
+  t.targetLine=Number($("#lineTarget").value)>0?Number($("#lineTarget").value):null;
+  save();
+  closeLineModal();
+  renderPositions();
+  showToast("撤退ラインを保存しました");
+}
+
+function closeLineModal(){lineTradeId=null;$("#lineModal").hidden=true;}
 
 /* ---------- 売る ---------- */
 
@@ -714,6 +764,9 @@ $("#sellPrice").addEventListener("input",updateSellPreview);
 $("#sellSave").addEventListener("click",submitSell);
 $("#sellModalClose").addEventListener("click",closeSellModal);
 $("#sellModal").addEventListener("click",event=>{if(event.target===$("#sellModal")) closeSellModal();});
+$("#lineSave").addEventListener("click",submitLines);
+$("#lineModalClose").addEventListener("click",closeLineModal);
+$("#lineModal").addEventListener("click",event=>{if(event.target===$("#lineModal")) closeLineModal();});
 $("#navSync").addEventListener("click",()=>$("#syncPanel").scrollIntoView({behavior:"smooth"}));
 $("#chartWrap").addEventListener("pointermove",chartPointer);
 $("#chartWrap").addEventListener("pointerdown",chartPointer);

@@ -7,7 +7,7 @@
   <title>Trade Sim</title>
   <link rel="icon" href="../jikyu/favicon.ico" sizes="any">
   <link rel="stylesheet" href="../shared/base.css?v=20260719-1042">
-  <link rel="stylesheet" href="sim.css?v=20260724-0001">
+  <link rel="stylesheet" href="sim.css?v=20260724-0002">
 </head>
 <body>
 <header>
@@ -71,6 +71,14 @@
       <label class="field">
         <span>買値 <em id="buyPriceUnit"></em></span>
         <input id="buyPrice" type="number" min="0" step="any" inputmode="decimal" placeholder="現在値が自動で入る">
+      </label>
+      <label class="field">
+        <span>損切りライン</span>
+        <input id="buyStop" type="number" min="0" step="any" inputmode="decimal">
+      </label>
+      <label class="field">
+        <span>利確検討ライン</span>
+        <input id="buyTarget" type="number" min="0" step="any" inputmode="decimal">
       </label>
       <label class="field sim-reason-field">
         <span>買った理由（必須）</span>
@@ -140,6 +148,29 @@
   </section>
 </main>
 
+<div class="modal-overlay" id="lineModal" hidden>
+  <div class="record-modal" role="dialog" aria-modal="true" aria-labelledby="lineModalTitle">
+    <div class="record-modal-head">
+      <div>
+        <h2 id="lineModalTitle"></h2>
+        <p id="lineModalSub"></p>
+      </div>
+      <button type="button" class="modal-close" id="lineModalClose" aria-label="閉じる">×</button>
+    </div>
+    <label class="field">
+      <span>損切りライン <em id="lineStopUnit"></em></span>
+      <input id="lineStop" type="number" min="0" step="any" inputmode="decimal" placeholder="空欄＝ラインなし">
+    </label>
+    <label class="field">
+      <span>利確検討ライン <em id="lineTargetUnit"></em></span>
+      <input id="lineTarget" type="number" min="0" step="any" inputmode="decimal" placeholder="空欄＝ラインなし">
+    </label>
+    <div class="record-actions">
+      <button type="button" class="btn" id="lineSave">保存</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="sellModal" hidden>
   <div class="record-modal" role="dialog" aria-modal="true" aria-labelledby="sellModalTitle">
     <div class="record-modal-head">
@@ -167,6 +198,6 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../shared/store.js?v=20260720"></script>
-<script src="app.js?v=20260724-0002"></script>
+<script src="app.js?v=20260724-0003"></script>
 </body>
 </html>
