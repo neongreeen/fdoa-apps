@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f5f5f3">
+  <title>Trade Sim</title>
+  <link rel="icon" href="../jikyu/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="../shared/base.css?v=20260719-1042">
+  <link rel="stylesheet" href="sim.css?v=20260724-0001">
+</head>
+<body>
+<header>
+  <div class="head-in">
+    <div class="logo">Trade Sim <small id="syncBadge">ローカル保存</small></div>
+    <nav aria-label="メインメニュー">
+      <a class="applink" href="../progress/" target="_blank" rel="noopener noreferrer">Progress Portfolio ↗</a>
+      <button type="button" id="navSync">同期</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p class="sim-lead">仮想資金50万円のペーパートレード。実弾は1円も動かない。同じ日に同額をTOPIX・S&amp;P500に入れて放置した「分身」と、いつも隣で比べる。</p>
+
+  <section class="panel" id="summaryPanel">
+    <div class="panel-heading">
+      <div>
+        <h2>成績</h2>
+        <p id="summaryMeta"></p>
+      </div>
+    </div>
+    <div class="sim-tiles" id="summaryTiles"></div>
+  </section>
+
+  <section class="panel" id="chartPanel">
+    <div class="panel-heading">
+      <div>
+        <h2>資産の推移</h2>
+        <p id="chartMeta">自分の裁量 vs 何もしないで指数に入れた場合</p>
+      </div>
+    </div>
+    <div class="sim-legend" id="chartLegend"></div>
+    <div class="sim-chart-wrap" id="chartWrap">
+      <div id="chartBody"></div>
+      <div class="sim-tooltip" id="chartTooltip" hidden></div>
+    </div>
+  </section>
+
+  <section class="panel" id="buyPanel">
+    <div class="panel-heading">
+      <div>
+        <h2>買う</h2>
+        <p>買った理由の言語化がこのアプリの魂。理由なしでは買えません</p>
+      </div>
+      <strong class="sim-cash" id="cashLabel"></strong>
+    </div>
+    <div class="instrument-search">
+      <label class="field">
+        <span>銘柄検索</span>
+        <input id="instrumentQuery" type="search" maxlength="80" placeholder="銘柄名またはコード／ティッカー" autocomplete="off">
+      </label>
+      <div id="instrumentResults" class="instrument-results" aria-live="polite"></div>
+    </div>
+    <div class="sim-selected" id="selectedBox" hidden></div>
+    <form id="buyForm" class="sim-buy-form" novalidate>
+      <label class="field">
+        <span>株数</span>
+        <input id="buyQty" type="number" min="1" step="1" inputmode="numeric" placeholder="例：10">
+      </label>
+      <label class="field">
+        <span>買値 <em id="buyPriceUnit"></em></span>
+        <input id="buyPrice" type="number" min="0" step="any" inputmode="decimal" placeholder="現在値が自動で入る">
+      </label>
+      <label class="field sim-reason-field">
+        <span>買った理由（必須）</span>
+        <textarea id="buyReason" maxlength="1000" rows="2" placeholder="なぜ今この銘柄を買うのか。あとで自分が読んで検証する"></textarea>
+      </label>
+      <div class="sim-buy-foot">
+        <span class="muted" id="buyCostPreview"></span>
+        <button class="btn" type="submit" id="buyBtn">この内容で買う</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel" id="positionsPanel">
+    <div class="panel-heading">
+      <div>
+        <h2>保有中</h2>
+        <p>損益は参考株価（約20分遅延）で計算。売る時も理由が要ります</p>
+      </div>
+      <span class="count-label" id="positionsCount"></span>
+    </div>
+    <div class="tblwrap" id="positionsBody"></div>
+  </section>
+
+  <section class="panel" id="closedPanel">
+    <div class="panel-heading">
+      <div>
+        <h2>売買の記録</h2>
+        <p>決済済みの取引。分身との差＝同じ期間その金額を指数に入れていたら</p>
+      </div>
+      <span class="count-label" id="closedCount"></span>
+    </div>
+    <div class="tblwrap" id="closedBody"></div>
+  </section>
+
+  <section class="panel" id="quarterPanel">
+    <div class="panel-heading">
+      <div>
+        <h2>四半期サマリー</h2>
+        <p>勝率・平均損益・ベンチマーク差。四半期ごとに自分のデータが答えを出す</p>
+      </div>
+    </div>
+    <div class="tblwrap" id="quarterBody"></div>
+  </section>
+
+  <section class="panel" id="syncPanel">
+    <div class="panel-heading">
+      <div>
+        <h2>GitHub同期</h2>
+        <p><span id="repoLabel"></span> に自動保存</p>
+      </div>
+      <strong id="syncStatus" class="sync-status">未接続</strong>
+    </div>
+    <div class="sync-form">
+      <label class="field token-field">
+        <span>アクセストークン</span>
+        <input type="password" id="ghTokenInput" placeholder="github_pat_…" autocomplete="off">
+      </label>
+      <button type="button" class="btn" id="ghConnectBtn">接続</button>
+      <button type="button" class="btn sec" id="ghSyncNowBtn">今すぐ同期</button>
+      <button type="button" class="btn warn" id="ghDisconnectBtn">切断</button>
+    </div>
+    <p class="note">Progress Portfolioと同じトークン。接続済みの端末なら開くだけで繋がります。</p>
+    <div class="backup-actions">
+      <button type="button" class="btn sec" id="btnJsonExport">JSONを書き出す</button>
+      <label class="btn sec file-button">JSONから復元<input type="file" id="jsonImport" accept=".json,application/json"></label>
+    </div>
+  </section>
+</main>
+
+<div class="modal-overlay" id="sellModal" hidden>
+  <div class="record-modal" role="dialog" aria-modal="true" aria-labelledby="sellModalTitle">
+    <div class="record-modal-head">
+      <div>
+        <h2 id="sellModalTitle"></h2>
+        <p id="sellModalSub"></p>
+      </div>
+      <button type="button" class="modal-close" id="sellModalClose" aria-label="閉じる">×</button>
+    </div>
+    <label class="field">
+      <span>売値 <em id="sellPriceUnit"></em></span>
+      <input id="sellPrice" type="number" min="0" step="any" inputmode="decimal">
+    </label>
+    <label class="field sim-reason-field">
+      <span>売った理由（必須）</span>
+      <textarea id="sellReason" maxlength="1000" rows="2" placeholder="なぜ今売るのか。利確か損切りか、根拠は"></textarea>
+    </label>
+    <p class="muted" id="sellPreview"></p>
+    <div class="record-actions">
+      <button type="button" class="btn" id="sellSave">この内容で売る</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="../shared/store.js?v=20260720"></script>
+<script src="app.js?v=20260724-0001"></script>
+</body>
+</html>

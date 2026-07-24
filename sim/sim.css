@@ -1,0 +1,108 @@
+/* Trade Sim（ペーパートレード）固有スタイル。共通部分はshared/base.cssが正本 */
+
+.sim-lead{font-size:13px;color:var(--sub);margin:0 0 16px;line-height:1.7}
+
+.panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.panel-heading p{font-size:12px;color:var(--sub);margin-top:2px}
+.count-label{font-size:12px;color:var(--sub);font-weight:600;white-space:nowrap}
+.sync-status{font-size:13px;color:var(--sub);white-space:nowrap}
+
+/* ---------- 成績タイル ---------- */
+.sim-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sim-tile{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fafaf8}
+.sim-tile .t-label{font-size:11px;color:var(--sub);font-weight:600;display:flex;align-items:center;gap:6px}
+.sim-tile .t-value{font-size:21px;font-weight:700;letter-spacing:.01em;margin-top:2px;font-variant-numeric:tabular-nums}
+.sim-tile .t-sub{font-size:11px;color:var(--sub);margin-top:2px;font-variant-numeric:tabular-nums}
+.sim-tile.me{background:#f2f7fd;border-color:#d7e5f6}
+.pos{color:#2f6f5e}
+.neg{color:#b4533b}
+
+/* ---------- チャート ---------- */
+.sim-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--sub);margin-bottom:6px}
+.sim-legend .lg{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.sim-legend .lg i{display:inline-block;width:16px;height:3px;border-radius:2px}
+.sim-chart-wrap{position:relative}
+.sim-chart-wrap svg{display:block;width:100%;height:auto}
+.sim-chart-wrap svg text{font-family:inherit}
+.sim-tooltip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.12);padding:8px 11px;font-size:12px;line-height:1.6;
+  white-space:nowrap;z-index:5;font-variant-numeric:tabular-nums}
+.sim-tooltip .tt-date{font-weight:700;margin-bottom:2px}
+.sim-tooltip .tt-row{display:flex;align-items:center;gap:6px}
+.sim-tooltip .tt-row i{display:inline-block;width:10px;height:3px;border-radius:2px}
+.chart-empty{padding:26px;text-align:center;color:var(--sub);font-size:13px}
+
+/* ---------- 買うフォーム ---------- */
+.sim-cash{font-size:14px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.sim-selected{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  border:1px solid #d7e5f6;background:#f2f7fd;border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.sim-selected .sel-name{font-weight:700}
+.sim-selected .sel-name small{font-weight:400;color:var(--sub);margin-left:6px;font-size:11px}
+.sim-selected .sel-quote{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+.sim-selected .sel-clear{border:none;background:transparent;color:var(--sub);cursor:pointer;font-size:12px;text-decoration:underline}
+.sim-buy-form{display:grid;grid-template-columns:130px 170px 1fr;gap:10px;align-items:start}
+.sim-buy-form .field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--sub);font-weight:600;min-width:0}
+.sim-buy-form .field em{font-style:normal;font-weight:400}
+.sim-buy-form input,.sim-buy-form textarea{width:100%;min-width:0}
+.sim-buy-form textarea{resize:vertical;min-height:44px}
+.sim-buy-foot{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.instrument-search{position:relative;margin-bottom:12px;max-width:680px}
+.instrument-search .field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--sub);font-weight:600}
+.instrument-search input{width:100%}
+.instrument-results{margin-top:6px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.instrument-results:empty{display:none}
+.instrument-result{width:100%;border:0;border-top:1px solid #eeeeeb;background:#fff;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;color:var(--ink);cursor:pointer}
+.instrument-result:first-child{border-top:0}
+.instrument-result:hover,.instrument-result:focus-visible{background:#f7f8f7}
+.instrument-result span:first-child{display:flex;flex-direction:column;min-width:0}
+.instrument-result strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.instrument-result small,.instrument-country{font-size:11px;color:var(--sub)}
+.instrument-empty{padding:11px 12px;color:var(--sub);font-size:13px}
+
+/* ---------- 表（保有中・売買の記録・四半期） ---------- */
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.trade-name{font-weight:700;white-space:nowrap}
+.trade-name small{font-weight:400;color:var(--sub);margin-left:5px;font-size:11px}
+.trade-reason{font-size:12px;color:var(--sub);line-height:1.5;max-width:420px;white-space:normal;margin-top:2px}
+.trade-reason b{color:var(--ink);font-weight:600}
+.row-actions{display:flex;gap:6px;align-items:center;white-space:nowrap}
+.link-danger{border:none;background:transparent;color:var(--sub);font-size:11px;cursor:pointer;text-decoration:underline;padding:2px}
+.link-danger:hover{color:var(--danger)}
+
+/* ---------- 同期・モーダル ---------- */
+.sync-form{display:flex;gap:9px;flex-wrap:wrap;align-items:flex-end;margin-bottom:9px}
+.sync-form .field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--sub);font-weight:600}
+.token-field input{width:300px}
+.backup-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.file-button{position:relative;overflow:hidden}
+.file-button input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.modal-overlay[hidden]{display:none}
+.modal-overlay{position:fixed;inset:0;z-index:90;background:rgba(29,29,31,.42);display:flex;align-items:center;justify-content:center;padding:18px}
+.record-modal{width:min(520px,100%);max-height:min(86vh,720px);overflow-y:auto;background:var(--card,#fff);
+  border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.22);padding:16px 18px 18px}
+.record-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.record-modal-head h2{font-size:16px;line-height:1.25;margin:0}
+.record-modal-head p{font-size:11px;color:var(--sub);margin-top:2px}
+.modal-close{flex:0 0 auto;width:28px;height:28px;border:none;border-radius:50%;background:#efefec;color:var(--sub);font-size:15px;line-height:1;cursor:pointer}
+.record-modal .field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--sub);font-weight:600;margin-bottom:10px}
+.record-modal .field em{font-style:normal;font-weight:400}
+.record-modal textarea{resize:vertical;min-height:44px}
+.record-actions{display:flex;justify-content:flex-end;margin-top:12px}
+
+/* ---------- トースト ---------- */
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);opacity:0;
+  background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;
+  pointer-events:none;transition:.25s;z-index:99;max-width:92vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.error{background:var(--danger)}
+
+/* ---------- スマホ ---------- */
+@media(max-width:720px){
+  .sim-tiles{grid-template-columns:1fr}
+  .sim-tile .t-value{font-size:19px}
+  .sim-buy-form{grid-template-columns:1fr 1fr}
+  .sim-reason-field{grid-column:1/-1}
+  .sim-buy-foot .btn{width:100%;justify-content:center}
+  .token-field input{width:100%}
+  .trade-reason{max-width:240px}
+}
