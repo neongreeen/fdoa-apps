@@ -1474,18 +1474,23 @@ function renderExc(){
   }
   const LIVE_KEY={"TOPIX":"TOPIX","S&P500":"GSPC"};
   const tiles=sortTiles(EXTRA_STATE.idxTiles).map(t=>{
+    const live=PRICE_DATA?.quotes?.[LIVE_KEY[t.name]];
+    // 高値の値段・日付：mdに書いてあればそれ、無ければprices.jsonの半年高値（126営業日終値・fetch-prices計算）
+    const hy=live?.halfYearHigh;
+    const peakPrice=t.peak?.price||(hy?`${Number(hy.price).toLocaleString("ja-JP")}${t.name==="TOPIX"?"（1306終値）":""}`:"");
+    const peakDate=t.peak?.date||(hy?`${+String(hy.date).slice(5,7)}/${+String(hy.date).slice(8,10)}`:"");
+    const subLabel=(peakPrice||peakDate)?`${t.bigLabel.replace(/比$/,"")} ${[peakPrice,peakDate].filter(Boolean).join("・")} 比`:t.bigLabel;
     const rows=[];
     if(t.env)rows.push('<span class="lbl">封筒</span>'+t.env.map((e,i)=>`<span class="${e.fired?"env-fired":""}">${["①","②","③","④"][i]}${esc(e.amt)}${e.fired?"🎯":""}</span>`).join(" "));
     if(t.envNote)rows.push('<span class="lbl">封筒</span>'+esc(t.envNote));
     if(t.next)rows.push('<span class="lbl">次</span>'+esc(t.next));
-    const live=PRICE_DATA?.quotes?.[LIVE_KEY[t.name]];
     if(live&&Number.isFinite(Number(live.changePct))){
       const pct=(live.changePct>0?"+":"")+live.changePct+"%";
       rows.push('<span class="lbl">今日</span>'+esc(pct)+`<small>（${esc(formatPriceTime(live.marketTime||live.fetchedAt))}）</small>`);
     }
     return `<div class="exc-tile phase-${t.phaseClass||"none"}">
       <div class="exc-tile-top"><span class="exc-tile-name">${esc(t.name)}</span>${t.emoji||t.phase?`<span class="exc-pill">${esc((t.emoji?t.emoji+" ":"")+t.phase)}</span>`:""}</div>
-      ${t.big?`<div class="exc-big">${esc(t.big)}</div><div class="exc-sub">${esc(t.peak?`${t.bigLabel.replace(/比$/,"")}${t.peak.price?" "+t.peak.price+"・":"（"}${t.peak.date}${t.peak.price?" ":"）"}比`:t.bigLabel)}</div>`:""}
+      ${t.big?`<div class="exc-big">${esc(t.big)}</div><div class="exc-sub">${esc(subLabel)}</div>`:""}
       <div class="exc-rows">${rows.map(row=>`<div class="exc-row">${row}</div>`).join("")}</div>
     </div>`;
   }).join("");
