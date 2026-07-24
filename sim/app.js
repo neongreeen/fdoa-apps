@@ -650,9 +650,9 @@ async function loadPriceData(){
 }
 
 /* リロード時の株価更新依頼：fdoa-app-dataのprice-request.txtへ合図をpush→Actionsが即取得。
-   PPと同じ合図ファイル・同じ10分スロットル（連続リロードで無駄にワークフローを回さない） */
+   スロットルのlocalStorageキーはPPと共有（同一オリジン）＝PPとSimを続けて開いても合図は10分に1回 */
 const PRICE_REQUEST_PATH="price-request.txt";
-const PRICE_REQUEST_THROTTLE_KEY="sim_price_request_at";
+const PRICE_REQUEST_THROTTLE_KEY="pp_price_request_at";
 async function requestFreshPrices(){
   try{
     const token=localStorage.getItem(CONFIG.tokenKey);
