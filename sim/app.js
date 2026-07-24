@@ -483,7 +483,13 @@ function renderBuyPanel(){
   box.innerHTML=`<div><span class="sel-name">${esc(selectedInstrument.name)}<small>${esc(selectedInstrument.ticker)}・${esc(selectedInstrument.market||"市場未設定")}・${esc(selectedInstrument.currency)}</small></span></div>
     <span class="sel-quote">${quote?`現在値 ${fmtPrice(quote.price,selectedInstrument.currency)}（20分遅延）`:"現在値なし（買うと自動取得が始まる）"}</span>
     <button type="button" class="sel-clear" id="selClear">選び直す</button>`;
-  $("#selClear").addEventListener("click",()=>{selectedInstrument=null;$("#buyPrice").value="";renderBuyPanel();});
+  // 選び直す＝銘柄前提の4欄（株数・買値・損切り%・利確%）をリセット。購入動機は残す（同じ動機で銘柄を選び直せる）
+  $("#selClear").addEventListener("click",()=>{
+    selectedInstrument=null;
+    $("#buyQty").value="";$("#buyPrice").value="";$("#buyStop").value="";$("#buyTarget").value="";
+    renderBuyPanel();
+    $("#instrumentQuery").focus();
+  });
   $("#buyPriceUnit").textContent=selectedInstrument.currency==="USD"?"（ドル）":"（円）";
   if(quote&&!$("#buyPrice").value) $("#buyPrice").value=quote.price;
   updateBuyPreview();
