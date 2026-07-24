@@ -7,7 +7,7 @@
   <title>Trade Sim</title>
   <link rel="icon" href="../jikyu/favicon.ico" sizes="any">
   <link rel="stylesheet" href="../shared/base.css?v=20260719-1042">
-  <link rel="stylesheet" href="sim.css?v=20260724-0002">
+  <link rel="stylesheet" href="sim.css?v=20260724-0004">
 </head>
 <body>
 <header>
@@ -73,12 +73,14 @@
         <input id="buyPrice" type="number" min="0" step="any" inputmode="decimal" placeholder="現在値が自動で入る">
       </label>
       <label class="field">
-        <span>損切りライン（必須）</span>
-        <input id="buyStop" type="number" min="0" step="any" inputmode="decimal">
+        <span>損切りライン：買値の−％（必須）</span>
+        <input id="buyStop" type="number" min="0" step="any" inputmode="decimal" placeholder="例：5">
+        <small class="pct-price" id="buyStopPrice"></small>
       </label>
       <label class="field">
-        <span>利確検討ライン（必須）</span>
-        <input id="buyTarget" type="number" min="0" step="any" inputmode="decimal">
+        <span>利確検討ライン：買値の＋％（必須）</span>
+        <input id="buyTarget" type="number" min="0" step="any" inputmode="decimal" placeholder="例：10">
+        <small class="pct-price" id="buyTargetPrice"></small>
       </label>
       <label class="field sim-reason-field">
         <span>購入動機（必須）</span>
@@ -167,12 +169,14 @@
         <input id="fixPrice" type="number" min="0" step="any" inputmode="decimal">
       </label>
       <label class="field">
-        <span>損切りライン（必須）</span>
+        <span>損切りライン：買値の−％（必須）</span>
         <input id="fixStop" type="number" min="0" step="any" inputmode="decimal">
+        <small class="pct-price" id="fixStopPrice"></small>
       </label>
       <label class="field">
-        <span>利確検討ライン（必須）</span>
+        <span>利確検討ライン：買値の＋％（必須）</span>
         <input id="fixTarget" type="number" min="0" step="any" inputmode="decimal">
+        <small class="pct-price" id="fixTargetPrice"></small>
       </label>
       <label class="field">
         <span>購入動機（必須）</span>
@@ -205,12 +209,14 @@
       <button type="button" class="modal-close" id="lineModalClose" aria-label="閉じる">×</button>
     </div>
     <label class="field">
-      <span>損切りライン <em id="lineStopUnit"></em></span>
+      <span>損切りライン：買値の−％</span>
       <input id="lineStop" type="number" min="0" step="any" inputmode="decimal" placeholder="空欄＝ラインなし">
+      <small class="pct-price" id="lineStopPrice"></small>
     </label>
     <label class="field">
-      <span>利確検討ライン <em id="lineTargetUnit"></em></span>
+      <span>利確検討ライン：買値の＋％</span>
       <input id="lineTarget" type="number" min="0" step="any" inputmode="decimal" placeholder="空欄＝ラインなし">
+      <small class="pct-price" id="lineTargetPrice"></small>
     </label>
     <div class="record-actions">
       <button type="button" class="btn" id="lineSave">保存</button>
@@ -245,6 +251,6 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../shared/store.js?v=20260720"></script>
-<script src="app.js?v=20260724-0004"></script>
+<script src="app.js?v=20260724-0005"></script>
 </body>
 </html>

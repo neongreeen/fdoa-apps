@@ -45,6 +45,20 @@ const todayJst=()=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tokyo",year:"
 const fmtDate=d=>{const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${Number(m[2])}/${Number(m[3])}`:String(d||"");};
 const fmtPrice=(v,currency)=>currency==="USD"?"$"+Number(v).toLocaleString("en-US",{maximumFractionDigits:2}):Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1})+"円";
 
+/* 撤退ラインは%で入力し、金額に換算して保存する（表示・バッジ判定は金額のまま）。
+   丸め＝円は整数（100円未満の低位株のみ小数1桁）・ドルは小数2桁 */
+const pctToPrice=(basePrice,pct,direction,currency)=>{
+  const raw=basePrice*(1+direction*pct/100);
+  if(currency==="USD") return +raw.toFixed(2);
+  return basePrice<100?+raw.toFixed(1):Math.round(raw);
+};
+const priceToPct=(basePrice,linePrice)=>+Math.abs((linePrice/basePrice-1)*100).toFixed(2);
+/* %入力欄の下に出す換算表示。入力が正の数の間だけ「＝◯円」を出す */
+function showPctPrice(el,basePrice,pctValue,direction,currency){
+  const pct=Number(pctValue);
+  el.textContent=basePrice>0&&pct>0&&(direction>0||pct<100)?`＝${fmtPrice(pctToPrice(basePrice,pct,direction,currency),currency)}`:"";
+}
+
 /* ---------- データ ---------- */
 
 function seed(){
@@ -477,10 +491,11 @@ function renderBuyPanel(){
 
 function updateBuyPreview(){
   const preview=$("#buyCostPreview");
-  // 撤退ラインのplaceholderは買値から自動計算した目安（-5%/+10%）を出す。入力は自由
+  // %入力の下に円/ドル換算をライブ表示
   const basePrice=Number($("#buyPrice").value);
-  $("#buyStop").placeholder=basePrice>0?`例：-5%なら${(basePrice*0.95).toFixed(basePrice<50?2:0)}`:"任意";
-  $("#buyTarget").placeholder=basePrice>0?`例：+10%なら${(basePrice*1.10).toFixed(basePrice<50?2:0)}`:"任意";
+  const currency=selectedInstrument?.currency==="USD"?"USD":"JPY";
+  showPctPrice($("#buyStopPrice"),basePrice,$("#buyStop").value,-1,currency);
+  showPctPrice($("#buyTargetPrice"),basePrice,$("#buyTarget").value,+1,currency);
   if(!selectedInstrument){preview.textContent="";return;}
   const qty=Number($("#buyQty").value),price=Number($("#buyPrice").value);
   if(!Number.isFinite(qty)||qty<=0||!Number.isFinite(price)||price<=0){preview.textContent="";return;}
@@ -502,17 +517,19 @@ function submitBuy(event){
   if(!selectedInstrument){showToast("先に銘柄を検索して選んでください","error");return;}
   const qty=Math.floor(Number($("#buyQty").value));
   const price=Number($("#buyPrice").value);
-  const stopLine=Number($("#buyStop").value)>0?Number($("#buyStop").value):null;
-  const targetLine=Number($("#buyTarget").value)>0?Number($("#buyTarget").value):null;
+  const stopPct=Number($("#buyStop").value);
+  const targetPct=Number($("#buyTarget").value);
   const reason=$("#buyReason").value.trim();
   if(!Number.isFinite(qty)||qty<=0){showToast("株数は1以上の整数で","error");return;}
   if(!Number.isFinite(price)||price<=0){showToast("買値を入れてください（現在値未取得の銘柄は手入力）","error");return;}
-  // 3点セット必須（2026-07-24ヨシアキ指示）：動機・損切り・利確が揃わないと買えない
-  if(stopLine==null){showToast("損切りラインが空。撤退の考えを先に決めるのがルールです","error");$("#buyStop").focus();return;}
-  if(stopLine>=price){showToast("損切りラインは買値より下に置いてください","error");$("#buyStop").focus();return;}
-  if(targetLine==null){showToast("利確検討ラインが空。出口の目安まで決めてから買います","error");$("#buyTarget").focus();return;}
-  if(targetLine<=price){showToast("利確検討ラインは買値より上に置いてください","error");$("#buyTarget").focus();return;}
+  // 3点セット必須（2026-07-24ヨシアキ指示）：動機・損切り・利確が揃わないと買えない。ラインは%で入力→金額で保存
+  if(!(stopPct>0)){showToast("損切りラインが空。撤退の考えを先に決めるのがルールです（買値の−%で入力）","error");$("#buyStop").focus();return;}
+  if(stopPct>=100){showToast("損切り-100%以上は株価がマイナスになっちゃう。%を見直して","error");$("#buyStop").focus();return;}
+  if(!(targetPct>0)){showToast("利確検討ラインが空。出口の目安まで決めてから買います（買値の＋%で入力）","error");$("#buyTarget").focus();return;}
   if(!reason){showToast("購入動機がまだ空。理由の言語化がこのアプリの魂です","error");$("#buyReason").focus();return;}
+  const lineCurrency=selectedInstrument.currency==="USD"?"USD":"JPY";
+  const stopLine=pctToPrice(price,stopPct,-1,lineCurrency);
+  const targetLine=pctToPrice(price,targetPct,+1,lineCurrency);
   const bench=benchSnapshot();
   if(!bench){showToast("ベンチマーク（TOPIX・S&P500・為替）が未取得のため記録できません。同期接続を確認して","error");return;}
   const fx=selectedInstrument.currency==="USD"?bench.usdJpy:null;
@@ -567,11 +584,19 @@ function openFixModal(tradeId){
     $("#fixPriceUnit").textContent=unit;
     $("#fixQty").value=t.quantity;
     $("#fixPrice").value=t.buyPrice;
-    $("#fixStop").value=t.stopLine??"";
-    $("#fixTarget").value=t.targetLine??"";
+    $("#fixStop").value=t.stopLine!=null?priceToPct(t.buyPrice,t.stopLine):"";
+    $("#fixTarget").value=t.targetLine!=null?priceToPct(t.buyPrice,t.targetLine):"";
     $("#fixReason").value=t.buyReason||"";
+    updateFixPreview();
   }
   $("#fixModal").hidden=false;
+}
+
+function updateFixPreview(){
+  const t=db.trades.find(item=>item.id===fixTradeId);
+  if(!t||t.sellDate) return;
+  showPctPrice($("#fixStopPrice"),Number($("#fixPrice").value),$("#fixStop").value,-1,t.currency);
+  showPctPrice($("#fixTargetPrice"),Number($("#fixPrice").value),$("#fixTarget").value,+1,t.currency);
 }
 
 function submitFix(){
@@ -586,14 +611,16 @@ function submitFix(){
   }else if(fixableBuy(t)){
     const qty=Math.floor(Number($("#fixQty").value));
     const price=Number($("#fixPrice").value);
-    const stopLine=Number($("#fixStop").value)>0?Number($("#fixStop").value):null;
-    const targetLine=Number($("#fixTarget").value)>0?Number($("#fixTarget").value):null;
+    const stopPct=Number($("#fixStop").value);
+    const targetPct=Number($("#fixTarget").value);
     const reason=$("#fixReason").value.trim();
     if(!Number.isFinite(qty)||qty<=0){showToast("株数は1以上の整数で","error");return;}
     if(!Number.isFinite(price)||price<=0){showToast("買値を入れてください","error");return;}
-    if(stopLine==null||stopLine>=price){showToast("損切りラインは買値より下の値で必須です","error");return;}
-    if(targetLine==null||targetLine<=price){showToast("利確検討ラインは買値より上の値で必須です","error");return;}
+    if(!(stopPct>0)||stopPct>=100){showToast("損切りラインは買値の−%（0〜100）で必須です","error");return;}
+    if(!(targetPct>0)){showToast("利確検討ラインは買値の＋%で必須です","error");return;}
     if(!reason){showToast("購入動機が空です","error");return;}
+    const stopLine=pctToPrice(price,stopPct,-1,t.currency);
+    const targetLine=pctToPrice(price,targetPct,+1,t.currency);
     const fx=t.currency==="USD"?t.buyFx||0:1;
     const newCost=qty*price*fx;
     // 現金チェック：この取引の旧コストを戻した上で新コストが収まるか
@@ -617,20 +644,29 @@ function openLineModal(tradeId){
   if(!t||t.sellDate) return;
   lineTradeId=tradeId;
   $("#lineModalTitle").textContent=`${t.name} の撤退ライン`;
-  $("#lineModalSub").textContent=`買値${fmtPrice(t.buyPrice,t.currency)}（目安：-5%＝${(t.buyPrice*0.95).toFixed(t.buyPrice<50?2:0)}・+10%＝${(t.buyPrice*1.10).toFixed(t.buyPrice<50?2:0)}）`;
-  $("#lineStopUnit").textContent=t.currency==="USD"?"（ドル）":"（円）";
-  $("#lineTargetUnit").textContent=t.currency==="USD"?"（ドル）":"（円）";
-  $("#lineStop").value=t.stopLine??"";
-  $("#lineTarget").value=t.targetLine??"";
+  $("#lineModalSub").textContent=`買値${fmtPrice(t.buyPrice,t.currency)}からの%で入力（例：5＝${fmtPrice(pctToPrice(t.buyPrice,5,-1,t.currency),t.currency)}で損切り）`;
+  $("#lineStop").value=t.stopLine!=null?priceToPct(t.buyPrice,t.stopLine):"";
+  $("#lineTarget").value=t.targetLine!=null?priceToPct(t.buyPrice,t.targetLine):"";
+  updateLinePreview();
   $("#lineModal").hidden=false;
   $("#lineStop").focus();
+}
+
+function updateLinePreview(){
+  const t=db.trades.find(item=>item.id===lineTradeId);
+  if(!t) return;
+  showPctPrice($("#lineStopPrice"),t.buyPrice,$("#lineStop").value,-1,t.currency);
+  showPctPrice($("#lineTargetPrice"),t.buyPrice,$("#lineTarget").value,+1,t.currency);
 }
 
 function submitLines(){
   const t=db.trades.find(item=>item.id===lineTradeId);
   if(!t) return;
-  t.stopLine=Number($("#lineStop").value)>0?Number($("#lineStop").value):null;
-  t.targetLine=Number($("#lineTarget").value)>0?Number($("#lineTarget").value):null;
+  const stopPct=Number($("#lineStop").value);
+  const targetPct=Number($("#lineTarget").value);
+  if(stopPct>=100){showToast("損切り-100%以上は入力できません","error");return;}
+  t.stopLine=stopPct>0?pctToPrice(t.buyPrice,stopPct,-1,t.currency):null;
+  t.targetLine=targetPct>0?pctToPrice(t.buyPrice,targetPct,+1,t.currency):null;
   save();
   closeLineModal();
   renderPositions();
@@ -837,6 +873,10 @@ $("#instrumentQuery").addEventListener("input",renderInstrumentResults);
 $("#buyForm").addEventListener("submit",submitBuy);
 $("#buyQty").addEventListener("input",updateBuyPreview);
 $("#buyPrice").addEventListener("input",updateBuyPreview);
+$("#buyStop").addEventListener("input",updateBuyPreview);
+$("#buyTarget").addEventListener("input",updateBuyPreview);
+["fixPrice","fixStop","fixTarget"].forEach(id=>$("#"+id).addEventListener("input",updateFixPreview));
+["lineStop","lineTarget"].forEach(id=>$("#"+id).addEventListener("input",updateLinePreview));
 $("#sellPrice").addEventListener("input",updateSellPreview);
 $("#sellSave").addEventListener("click",submitSell);
 $("#sellModalClose").addEventListener("click",closeSellModal);
