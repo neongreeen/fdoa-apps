@@ -1485,13 +1485,14 @@ function renderExc(){
     if(t.envNote)rows.push('<span class="lbl">封筒</span>'+esc(t.envNote));
     if(t.next)rows.push('<span class="lbl">次</span>'+esc(t.next));
     // 今の値段を出す（2026-07-25ヨシアキ指示：指数だけ%しか無く、個別株カードと情報量が揃っていなかった）
-    // 表記は同じタイル内の高値と揃えて通貨記号なしの素の数値（TOPIX＝1306終値・S&P500＝指数値）
+    // 表記は同じタイル内の高値と揃えて通貨記号なしの素の数値。TOPIXは物差しがETF 1306（EXC規定）＝
+    // TOPIX指数そのもの（4,011等）とは桁が違うため、高値と同じ「1306終値」注記を必ず添える（2026-07-25ヨシアキ指摘）
     if(live&&(Number.isFinite(Number(live.price))||Number.isFinite(Number(live.changePct)))){
       const price=Number.isFinite(Number(live.price))?Number(live.price).toLocaleString("ja-JP"):"";
       const pct=Number.isFinite(Number(live.changePct))?`前日比${formatSignedPercent(Number(live.changePct))}`:"";
       const time=formatPriceTime(live.marketTime||live.fetchedAt);
-      const meta=[time,pct].filter(Boolean).join("・");
-      rows.push('<span class="lbl">今</span>'+esc(price||pct)+(price&&meta?`<small>（${esc(meta)}）</small>`:time?`<small>（${esc(time)}）</small>`:""));
+      const meta=[t.name==="TOPIX"?"1306終値":"",time,pct].filter(Boolean).join("・");
+      rows.push('<span class="lbl">今</span>'+esc(price||pct)+(meta?`<small>（${esc(meta)}）</small>`:""));
     }
     return `<div class="exc-tile phase-${t.phaseClass||"none"}">
       <div class="exc-tile-top"><span class="exc-tile-name">${esc(t.name)}</span>${t.emoji||t.phase?`<span class="exc-pill">${esc((t.emoji?t.emoji+" ":"")+t.phase)}</span>`:""}</div>
