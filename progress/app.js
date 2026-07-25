@@ -1333,12 +1333,19 @@ function parseTile(sec){
   }
   if((m=b.match(/DDが\s*(-?\d+(?:\.\d+)?%)\s*以内へ回復/)))t.recover=m[1]+"回復で局面解除";
   // 物差しの高値そのもの（いつの・いくらの高値か。2026-07-23ヨシアキ指示）
+  // 指数（TOPIX・S&P500）はポイント表示＝円もドルも付けない。個別株は円/ドル建て
+  const isIndex=name==="TOPIX"||name==="S&P500";
   if((m=b.match(/(?:90日|126日|半年)高値\s*\*{0,2}(\$?[\d,.]+)(?:\s*円)?\*{0,2}\s*（(\d{4})-(\d{2})-(\d{2})）/)))
-    t.peak={price:m[1].startsWith("$")?m[1]:m[1]+"円",date:`${+m[3]}/${+m[4]}`};
+    t.peak={price:m[1].startsWith("$")||isIndex?m[1]:m[1]+"円",date:`${+m[3]}/${+m[4]}`};
   else if((m=b.match(/高値は(\d{2})-(\d{2})/)))
     t.peak={date:`${+m[1]}/${+m[2]}`};
-  // 18:30監視時点の基準値（円建て／ドル建て。ドルは日付付きなら添える）
-  if((m=b.match(/現在[：:]?\s*\*{0,2}([\d,.]+)\s*円/)))t.price=m[1]+"円";
+  // 18:30監視時点の基準値（指数＝素の数値／個別株＝円建て・ドル建て。ドルは日付付きなら添える）
+  if(isIndex&&(m=b.match(/現在[：:]?\s*\*{0,2}([\d,][\d,.]*)\*{0,2}\s*（([^）]*)）/))){
+    t.price=m[1];
+    // 「2026-07-24終値・前日比-1.05%」→「7/24終値・前日比-1.05%」
+    t.priceNote=m[2].replace(/(\d{4})-(\d{2})-(\d{2})/,(_,y,mo,d)=>`${+mo}/${+d}`);
+  }
+  else if((m=b.match(/現在[：:]?\s*\*{0,2}([\d,.]+)\s*円/)))t.price=m[1]+"円";
   else if((m=b.match(/現在[：:]?\s*\*{0,2}\$\s*([\d,.]+)([^\n]*)/))){
     t.price="$"+m[1];
     const dm=m[2].match(/(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2})[^）\n]*終値/);
@@ -1475,9 +1482,10 @@ function renderExc(){
   const LIVE_KEY={"TOPIX":"TOPIX","S&P500":"GSPC"};
   const tiles=sortTiles(EXTRA_STATE.idxTiles).map(t=>{
     const live=PRICE_DATA?.quotes?.[LIVE_KEY[t.name]];
-    // 高値の値段・日付：mdに書いてあればそれ、無ければprices.jsonの半年高値（126営業日終値・fetch-prices計算）
-    const hy=live?.halfYearHigh;
-    const peakPrice=t.peak?.price||(hy?`${Number(hy.price).toLocaleString("ja-JP")}${t.name==="TOPIX"?"（1306終値）":""}`:"");
+    // 高値・現在値はEXC規定md（＝18:30監視が指数998405.T／^GSPCで書いた正本）を最優先。
+    // prices.jsonのTOPIXはETF 1306代理＝指数と桁が違うので、mdが読めた時は混ぜない（2026-07-25スレ050）
+    const hy=t.peak?null:live?.halfYearHigh;
+    const peakPrice=t.peak?.price||(hy?Number(hy.price).toLocaleString("ja-JP"):"");
     const peakDate=t.peak?.date||(hy?`${+String(hy.date).slice(5,7)}/${+String(hy.date).slice(8,10)}`:"");
     const subLabel=(peakPrice||peakDate)?`${t.bigLabel.replace(/比$/,"")} ${[peakPrice,peakDate].filter(Boolean).join("・")} 比`:t.bigLabel;
     const rows=[];
@@ -1485,13 +1493,15 @@ function renderExc(){
     if(t.envNote)rows.push('<span class="lbl">封筒</span>'+esc(t.envNote));
     if(t.next)rows.push('<span class="lbl">次</span>'+esc(t.next));
     // 今の値段を出す（2026-07-25ヨシアキ指示：指数だけ%しか無く、個別株カードと情報量が揃っていなかった）
-    // 表記は同じタイル内の高値と揃えて通貨記号なしの素の数値。TOPIXは物差しがETF 1306（EXC規定）＝
-    // TOPIX指数そのもの（4,011等）とは桁が違うため、高値と同じ「1306終値」注記を必ず添える（2026-07-25ヨシアキ指摘）
-    if(live&&(Number.isFinite(Number(live.price))||Number.isFinite(Number(live.changePct)))){
+    // mdの「現在」行（18:30監視が書いた指数そのものの終値）を優先し、無い時だけprices.jsonの参考値を使う。
+    // 高値・次のラインと同じ指数スケールに揃える＝1306スケールとの混在をなくす（2026-07-25スレ050）
+    if(t.price){
+      rows.push('<span class="lbl">今</span>'+esc(t.price)+(t.priceNote?`<small>（${esc(t.priceNote)}）</small>`:""));
+    }else if(live&&(Number.isFinite(Number(live.price))||Number.isFinite(Number(live.changePct)))){
       const price=Number.isFinite(Number(live.price))?Number(live.price).toLocaleString("ja-JP"):"";
       const pct=Number.isFinite(Number(live.changePct))?`前日比${formatSignedPercent(Number(live.changePct))}`:"";
       const time=formatPriceTime(live.marketTime||live.fetchedAt);
-      const meta=[t.name==="TOPIX"?"1306終値":"",time,pct].filter(Boolean).join("・");
+      const meta=[live.symbol&&live.symbol!=="^GSPC"?`${live.symbol}参考`:"",time,pct].filter(Boolean).join("・");
       rows.push('<span class="lbl">今</span>'+esc(price||pct)+(meta?`<small>（${esc(meta)}）</small>`:""));
     }
     return `<div class="exc-tile phase-${t.phaseClass||"none"}">
