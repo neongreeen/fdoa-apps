@@ -1484,9 +1484,14 @@ function renderExc(){
     if(t.env)rows.push('<span class="lbl">封筒</span>'+t.env.map((e,i)=>`<span class="${e.fired?"env-fired":""}">${["①","②","③","④"][i]}${esc(e.amt)}${e.fired?"🎯":""}</span>`).join(" "));
     if(t.envNote)rows.push('<span class="lbl">封筒</span>'+esc(t.envNote));
     if(t.next)rows.push('<span class="lbl">次</span>'+esc(t.next));
-    if(live&&Number.isFinite(Number(live.changePct))){
-      const pct=(live.changePct>0?"+":"")+live.changePct+"%";
-      rows.push('<span class="lbl">今日</span>'+esc(pct)+`<small>（${esc(formatPriceTime(live.marketTime||live.fetchedAt))}）</small>`);
+    // 今の値段を出す（2026-07-25ヨシアキ指示：指数だけ%しか無く、個別株カードと情報量が揃っていなかった）
+    // 表記は同じタイル内の高値と揃えて通貨記号なしの素の数値（TOPIX＝1306終値・S&P500＝指数値）
+    if(live&&(Number.isFinite(Number(live.price))||Number.isFinite(Number(live.changePct)))){
+      const price=Number.isFinite(Number(live.price))?Number(live.price).toLocaleString("ja-JP"):"";
+      const pct=Number.isFinite(Number(live.changePct))?`前日比${formatSignedPercent(Number(live.changePct))}`:"";
+      const time=formatPriceTime(live.marketTime||live.fetchedAt);
+      const meta=[time,pct].filter(Boolean).join("・");
+      rows.push('<span class="lbl">今</span>'+esc(price||pct)+(price&&meta?`<small>（${esc(meta)}）</small>`:time?`<small>（${esc(time)}）</small>`:""));
     }
     return `<div class="exc-tile phase-${t.phaseClass||"none"}">
       <div class="exc-tile-top"><span class="exc-tile-name">${esc(t.name)}</span>${t.emoji||t.phase?`<span class="exc-pill">${esc((t.emoji?t.emoji+" ":"")+t.phase)}</span>`:""}</div>
