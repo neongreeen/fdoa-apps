@@ -512,7 +512,7 @@ function recordRow(r, opts){
     '<td>'+esc(r.date)+(r.endDate&&r.endDate!==r.date?'<div class="muted" style="font-size:11px">→'+esc(r.endDate)+'</div>':'')+'</td>'+
     '<td>'+(p?esc(p.name):'<span class="muted">削除済</span>')+'</td>'+
     '<td class="muted">'+(c?esc(c.name):"")+'</td>'+
-    '<td class="num">'+fmtMin(r.minutes)+'</td>'+
+    '<td class="num">'+fmtMin(r.minutes)+(r.start&&r.end?'<div class="muted" style="font-size:11px">'+esc(r.start)+'〜'+esc(r.end)+'</div>':'')+'</td>'+
     '<td class="num">'+yen(displayAmount(r))+'</td>'+
     '<td>'+(esc(r.content)||'<span class="muted">—</span>')+'</td>'+
     '<td>'+pill+'</td>'+
