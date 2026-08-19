@@ -1500,39 +1500,51 @@ function marketLocalDate(iso,timeZone){
   const [y,mo,d]=parts.split("-").map(Number);
   return new Date(y,mo-1,d);
 }
-function intradayRow(t,live){
-  if(!t||!live||!t.price)return "";
+function intradayCalc(t,live){
+  if(!t||!live||!t.price)return null;
   const isTopix=t.name==="TOPIX";
   const isSpx=t.name==="S&P500";
-  if(!isTopix&&!isSpx)return "";
+  if(!isTopix&&!isSpx)return null;
   const mdDate=parseMdCloseDate(t.priceNote);
   const liveDate=marketLocalDate(live.marketTime||live.fetchedAt,isTopix?"Asia/Tokyo":"America/New_York");
-  if(!mdDate||!liveDate||liveDate<=mdDate)return "";
+  if(!mdDate||!liveDate||liveDate<=mdDate)return null;
   const gapDays=(liveDate-mdDate)/86400000;
-  if(gapDays>4)return "";
+  if(gapDays>4)return null;
   const mdClose=Number(String(t.price).replace(/,/g,""));
   const peak=t.peak?.price?Number(String(t.peak.price).replace(/[^\d.]/g,"")):NaN;
   let est,label,how;
   if(isTopix){
     const pct=Number(live.changePct);
-    if(!Number.isFinite(mdClose)||!Number.isFinite(pct))return "";
+    if(!Number.isFinite(mdClose)||!Number.isFinite(pct))return null;
     const mo=liveDate.getMonth()+1,dd=liveDate.getDate();
-    if(mo===7&&dd>=7&&dd<=12)return ""; // 1306の分配金落ち窓＝前日比が物差しにならない
+    if(mo===7&&dd>=7&&dd<=12)return null; // 1306の分配金落ち窓＝前日比が物差しにならない
     est=mdClose*(1+pct/100);
     label="場中";
     how=`推定＝1306連動・${formatPriceTime(live.marketTime||live.fetchedAt)}・前日比${formatSignedPercent(pct)}`;
   }else{
     est=Number(live.price);
-    if(!Number.isFinite(est))return "";
+    if(!Number.isFinite(est))return null;
     const pct=Number(live.changePct);
     label="最新";
     const nyTime=new Intl.DateTimeFormat("ja-JP",{timeZone:"America/New_York",hour:"2-digit",minute:"2-digit"}).format(new Date(live.marketTime||live.fetchedAt));
     how=`${liveDate.getMonth()+1}/${liveDate.getDate()} NY ${nyTime}`+(Number.isFinite(pct)?`・前日比${formatSignedPercent(pct)}`:"");
   }
-  const dd=Number.isFinite(peak)&&peak>0?(est/peak-1)*100:NaN;
-  const ddText=Number.isFinite(dd)?` 半年高値比 <strong>${formatSignedPercent(+dd.toFixed(2))}</strong>${isTopix?"<small>（推定）</small>":""}`:"";
-  const estText=est.toLocaleString("ja-JP",{minimumFractionDigits:isTopix?0:2,maximumFractionDigits:isTopix?0:2});
-  return `<span class="lbl">${label}</span>${esc(estText)}<small>（${esc(how)}）</small>${ddText}`;
+  const dd=Number.isFinite(peak)&&peak>0?+((est/peak-1)*100).toFixed(2):NaN;
+  return {label,est,how,dd,isTopix};
+}
+function intradayRow(t,live){
+  const c=intradayCalc(t,live);
+  if(!c)return "";
+  const ddText=Number.isFinite(c.dd)?` 半年高値比 <strong>${formatSignedPercent(c.dd)}</strong>${c.isTopix?"<small>（推定）</small>":""}`:"";
+  const estText=c.est.toLocaleString("ja-JP",{minimumFractionDigits:c.isTopix?0:2,maximumFractionDigits:c.isTopix?0:2});
+  return `<span class="lbl">${c.label}</span>${esc(estText)}<small>（${esc(c.how)}）</small>${ddText}`;
+}
+// 大きい数字（18:30終値の半年高値比＝判断の物差し）の横に、場中の推定DDを小さく添える（2026-08-19）
+// 判断は終値ベース（規定）なので大きい数字は差し替えない。「今どこまで来てるか」を一目で見るためだけ
+function intradayBigNote(t,live){
+  const c=intradayCalc(t,live);
+  if(!c||!Number.isFinite(c.dd))return "";
+  return `<small class="exc-big-live" style="font-size:.42em;font-weight:600;opacity:.75;margin-left:.4em;white-space:nowrap">→ ${c.label} ${formatSignedPercent(c.dd)}${c.isTopix?"（推定）":""}</small>`;
 }
 
 function renderExc(){
@@ -1573,7 +1585,7 @@ function renderExc(){
     if(liveRow)rows.push(liveRow);
     return `<div class="exc-tile phase-${t.phaseClass||"none"}">
       <div class="exc-tile-top"><span class="exc-tile-name">${esc(t.name)}</span>${t.emoji||t.phase?`<span class="exc-pill">${esc((t.emoji?t.emoji+" ":"")+t.phase)}</span>`:""}</div>
-      ${t.big?`<div class="exc-big">${esc(t.big)}</div><div class="exc-sub">${esc(subLabel)}</div>`:""}
+      ${t.big?`<div class="exc-big">${esc(t.big)}${intradayBigNote(t,live)}</div><div class="exc-sub">${esc(subLabel)}</div>`:""}
       <div class="exc-rows">${rows.map(row=>`<div class="exc-row">${row}</div>`).join("")}</div>
     </div>`;
   }).join("");
