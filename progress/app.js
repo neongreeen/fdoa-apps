@@ -1310,7 +1310,7 @@ function parseTile(sec){
     const fired={};let f;const fre=/第([1-4])弾[：:][^\n]*発射済み/g;
     while((f=fre.exec(b)))fired[f[1]]=true;
     t.env=[m[1],m[2],m[3],m[4]].map((amt,i)=>({amt,fired:!!fired[i+1]}));
-  }else if(/封筒未作成/.test(b))t.envNote="封筒未作成";
+  }else if(/封筒未作成/.test(b))t.envNote="未作成（-5%割れで局面入り→弾薬庫から4枚作る）"; // 2026-08-19：「封筒 封筒未作成」の二重表記を解消＋意味を添える
   // 次のライン（DDが取れていれば残り距離ptを添える）
   if((m=b.match(/次のライン[：:]\s*(.+)/))){
     let line=m[1].replace(/\*/g,"").trim();
