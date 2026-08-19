@@ -1476,6 +1476,65 @@ function tileForStock(stock){
 }
 
 /* 観察タブ上段＝機械（EXC）：指数DD・封筒残弾・次ライン距離。金額の明細は出さない（保有ボードの仕事） */
+
+/* 場中の最新値（2026-08-19 ★投資スレ003・ヨシアキ指摘「判断するためのページの値だけ昨日の終値なのは意味がない」）
+   mdの「今」＝18:30監視が書いた終値は物差しとして残す（判断の正本・変えない）。
+   その下に prices.json（GitHub Actions・場中30分毎）から作った最新値を1行足す。
+   - TOPIX：指数そのもの（998405.T）は30分毎に引けない（Yahoo Japanのbot制限）ので、
+     md終値 × (1 + ETF 1306の前日比%) の推定値。1306は指数と±0.2pt以内で連動（2026-07-25実測）。
+     例外＝1306の分配金落ち（毎年7月上旬）は前日比が偽の下落になるので 7/7〜7/12 は出さない。
+   - S&P500：^GSPCは指数そのものなので、そのまま出す。
+   出す条件＝liveの市場日付がmdの終値日付より新しい時だけ（同じ日＝18:30更新後は二重表示しない）。
+   mdが4日以上古い時（監視の欠落）は推定の土台が壊れているので出さない。 */
+function parseMdCloseDate(note){
+  const m=String(note||"").match(/(\d{1,2})\/(\d{1,2})/);
+  if(!m)return null;
+  const now=new Date();let y=now.getFullYear();
+  const d=new Date(y,+m[1]-1,+m[2]);
+  if(d>now)d.setFullYear(y-1); // 年跨ぎ（1月に12月の終値を見る時）
+  return d;
+}
+function marketLocalDate(iso,timeZone){
+  if(!iso)return null;
+  const parts=new Intl.DateTimeFormat("en-CA",{timeZone,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(iso));
+  const [y,mo,d]=parts.split("-").map(Number);
+  return new Date(y,mo-1,d);
+}
+function intradayRow(t,live){
+  if(!t||!live||!t.price)return "";
+  const isTopix=t.name==="TOPIX";
+  const isSpx=t.name==="S&P500";
+  if(!isTopix&&!isSpx)return "";
+  const mdDate=parseMdCloseDate(t.priceNote);
+  const liveDate=marketLocalDate(live.marketTime||live.fetchedAt,isTopix?"Asia/Tokyo":"America/New_York");
+  if(!mdDate||!liveDate||liveDate<=mdDate)return "";
+  const gapDays=(liveDate-mdDate)/86400000;
+  if(gapDays>4)return "";
+  const mdClose=Number(String(t.price).replace(/,/g,""));
+  const peak=t.peak?.price?Number(String(t.peak.price).replace(/[^\d.]/g,"")):NaN;
+  let est,label,how;
+  if(isTopix){
+    const pct=Number(live.changePct);
+    if(!Number.isFinite(mdClose)||!Number.isFinite(pct))return "";
+    const mo=liveDate.getMonth()+1,dd=liveDate.getDate();
+    if(mo===7&&dd>=7&&dd<=12)return ""; // 1306の分配金落ち窓＝前日比が物差しにならない
+    est=mdClose*(1+pct/100);
+    label="場中";
+    how=`推定＝1306連動・${formatPriceTime(live.marketTime||live.fetchedAt)}・前日比${formatSignedPercent(pct)}`;
+  }else{
+    est=Number(live.price);
+    if(!Number.isFinite(est))return "";
+    const pct=Number(live.changePct);
+    label="最新";
+    const nyTime=new Intl.DateTimeFormat("ja-JP",{timeZone:"America/New_York",hour:"2-digit",minute:"2-digit"}).format(new Date(live.marketTime||live.fetchedAt));
+    how=`${liveDate.getMonth()+1}/${liveDate.getDate()} NY ${nyTime}`+(Number.isFinite(pct)?`・前日比${formatSignedPercent(pct)}`:"");
+  }
+  const dd=Number.isFinite(peak)&&peak>0?(est/peak-1)*100:NaN;
+  const ddText=Number.isFinite(dd)?` 半年高値比 <strong>${formatSignedPercent(+dd.toFixed(2))}</strong>${isTopix?"<small>（推定）</small>":""}`:"";
+  const estText=est.toLocaleString("ja-JP",{minimumFractionDigits:isTopix?0:2,maximumFractionDigits:isTopix?0:2});
+  return `<span class="lbl">${label}</span>${esc(estText)}<small>（${esc(how)}）</small>${ddText}`;
+}
+
 function renderExc(){
   const panel=$("#excPanel");
   if(!panel) return;
@@ -1509,6 +1568,9 @@ function renderExc(){
       const meta=[live.symbol&&live.symbol!=="^GSPC"?`${live.symbol}参考`:"",time,pct].filter(Boolean).join("・");
       rows.push('<span class="lbl">今</span>'+esc(price||pct)+(meta?`<small>（${esc(meta)}）</small>`:""));
     }
+    // 場中の最新値（mdの終値より新しいprices.jsonがある時だけ1行足す。2026-08-19）
+    const liveRow=intradayRow(t,live);
+    if(liveRow)rows.push(liveRow);
     return `<div class="exc-tile phase-${t.phaseClass||"none"}">
       <div class="exc-tile-top"><span class="exc-tile-name">${esc(t.name)}</span>${t.emoji||t.phase?`<span class="exc-pill">${esc((t.emoji?t.emoji+" ":"")+t.phase)}</span>`:""}</div>
       ${t.big?`<div class="exc-big">${esc(t.big)}</div><div class="exc-sub">${esc(subLabel)}</div>`:""}
@@ -1522,7 +1584,7 @@ function renderExc(){
     EXTRA_STATE.ruleHtml?`<details class="exc-fold"><summary>発動規定（全文）</summary><div class="md">${EXTRA_STATE.ruleHtml}</div></details>`:"",
     EXTRA_STATE.stockRuleHtml?`<details class="exc-fold"><summary>銘柄別ルール（全文）</summary><div class="md">${EXTRA_STATE.stockRuleHtml}</div></details>`:"",
   ].join("");
-  $("#excMeta").textContent=EXTRA_STATE.stamps.length?`最終チェック — ${EXTRA_STATE.stamps.join("／")}（物差しは18:30終値）`:"";
+  $("#excMeta").textContent=EXTRA_STATE.stamps.length?`最終チェック — ${EXTRA_STATE.stamps.join("／")}（物差しは18:30終値・「場中」「最新」行は参考値）`:"";
   $("#excBody").innerHTML=`<div class="exc-tiles">${tiles}</div>`+ammo+folds;
   panel.hidden=false;
 }
