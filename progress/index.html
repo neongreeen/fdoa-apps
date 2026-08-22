@@ -7,7 +7,7 @@
   <title>Progress Portfolio</title>
   <link rel="icon" href="../jikyu/favicon.ico" sizes="any">
   <link rel="stylesheet" href="../shared/base.css?v=20260719-1042">
-  <link rel="stylesheet" href="progress.css?v=20260723-0015">
+  <link rel="stylesheet" href="progress.css?v=20260822-2130">
 </head>
 <body>
 <header>
@@ -16,6 +16,7 @@
     <nav id="nav" aria-label="メインメニュー">
       <button type="button" data-view="assets" class="active">資産</button>
       <button type="button" data-view="observe">観察・判断</button>
+      <button type="button" data-view="rules">早見表</button>
       <button type="button" data-view="log">ログ</button>
       <button type="button" data-view="stocks">銘柄マスター</button>
       <button type="button" data-view="master">項目マスター</button>
@@ -60,6 +61,18 @@
         </div>
       </div>
       <div id="statusBoard" class="status-board"></div>
+    </div>
+  </section>
+
+  <section id="view-rules" class="view compact-admin-view">
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2 id="rulesTitle">投資 組体制（4組）＋早見表</h2>
+          <p id="rulesMeta">正本＝_MOMO/投資_早見表.md（Macから自動公開・ここは閲覧専用）</p>
+        </div>
+      </div>
+      <div id="rulesBody" class="md-doc"></div>
     </div>
   </section>
 
@@ -295,6 +308,6 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../shared/store.js?v=20260720"></script>
-<script src="app.js?v=20260819-0003"></script>
+<script src="app.js?v=20260822-2130"></script>
 </body>
 </html>

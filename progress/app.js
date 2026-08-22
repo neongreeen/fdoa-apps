@@ -1228,6 +1228,7 @@ function saveRecord(){
 function mdInline(text){
   return esc(text)
     .replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>")
+    .replace(/~~([^~]+)~~/g,"<s>$1</s>")
     .replace(/`([^`]+)`/g,"<code>$1</code>");
 }
 
@@ -1240,6 +1241,20 @@ function mdToHtml(md){
     if(/^---+\s*$/.test(ln)){html+="<hr>";i++;continue;}
     let m;
     if((m=ln.match(/^(#{1,4})\s+(.*)$/))){html+=`<h${m[1].length}>${mdInline(m[2])}</h${m[1].length}>`;i++;continue;}
+    if(/^```/.test(ln)){ // フェンスコード（早見表の組変え経路図など・そのまま等幅で出す）
+      i++;const code=[];
+      while(i<lines.length&&!/^```/.test(lines[i])){code.push(lines[i]);i++;}
+      i++;html+=`<pre>${esc(code.join("\n"))}</pre>`;continue;
+    }
+    if(/^>\s?/.test(ln)){ // 引用（注記ブロック）
+      const q=[];while(i<lines.length&&/^>\s?/.test(lines[i])){q.push(lines[i].replace(/^>\s?/,""));i++;}
+      html+=`<blockquote>${q.map(l=>/^\s*$/.test(l)?"":`<p>${mdInline(l)}</p>`).join("")}</blockquote>`;continue;
+    }
+    if(/^\s*\d+\.\s+/.test(ln)){
+      let list="<ol>";
+      while(i<lines.length&&/^\s*\d+\.\s+/.test(lines[i])){list+=`<li>${mdInline(lines[i].replace(/^\s*\d+\.\s+/,""))}</li>`;i++;}
+      html+=list+"</ol>";continue;
+    }
     if(/^\|/.test(ln)){
       const rows=[];while(i<lines.length&&/^\|/.test(lines[i])){rows.push(lines[i]);i++;}
       const cells=row=>row.replace(/^\||\|$/g,"").split("|").map(cell=>mdInline(cell.trim()));
@@ -1445,11 +1460,13 @@ async function loadExtraDocs(){
   if(extraLoading||!extraReader.hasToken()) return;
   extraLoading=true;
   try{
-    const [ec,sp]=await Promise.all([
+    const [ec,sp,hy]=await Promise.all([
       extraReader.fetchText("extra-charge.md"),
       extraReader.fetchText("stock-rules.md"),
+      extraReader.fetchText("hayamihyo.md"),
     ]);
     EXTRA_STATE=parseExtraDocs(ec,sp);
+    HAYAMI_MD=hy||"";
   }catch(error){
     console.warn("EXC文書の読み込みに失敗",error);
   }
@@ -1458,6 +1475,29 @@ async function loadExtraDocs(){
   renderExc();
   renderBoard();
   renderLog();
+  renderRules();
+}
+
+/* 早見表タブ（2026-08-22 ☆本スレ079）：正本＝_MOMO/投資_早見表.md → publishスクリプトが fdoa-app-data/hayamihyo.md へ。
+   組の定義と3つのルール（全体・組内・組変え）だけを持つ参照専用の1枚＝Appleメモへの手動コピーを廃止してここに一本化。
+   読むだけ・パースしない（壊れていても生Markdownのまま全文が出る＝真っ白にはならない）。 */
+let HAYAMI_MD="";
+function renderRules(){
+  const body=$("#rulesBody");
+  if(!body) return;
+  if(!extraReader.hasToken()){
+    body.innerHTML=`<p class="note">GitHub未接続のため表示できません。「同期・バックアップ」タブでトークンを接続すると読めます。</p>`;
+    return;
+  }
+  if(!HAYAMI_MD){
+    body.innerHTML=`<p class="note">${extraLoading?"読み込み中…":"hayamihyo.md が見つかりません（Mac側のpublishスクリプト未実行の可能性）"}</p>`;
+    return;
+  }
+  const titleLine=HAYAMI_MD.match(/^# (.*)$/m);
+  if(titleLine) $("#rulesTitle").textContent=titleLine[1].trim();
+  const dateLine=HAYAMI_MD.match(/^起草：.*$/m);
+  $("#rulesMeta").textContent=`正本＝_MOMO/投資_早見表.md（Macから自動公開・閲覧専用）${dateLine?"　"+dateLine[0].split("（")[0]:""}`;
+  body.innerHTML=mdToHtml(HAYAMI_MD.replace(/^# .*$/m,""));
 }
 
 /* 局面色：18:30自動更新の🔴🟡🟢（手動の判断状態の後継・2026-07-23状態廃止に伴い資産タブの個別株色もこれに） */
@@ -1908,6 +1948,7 @@ function addMasterItem(section){
 function renderAll(){
   const view=currentView();
   renderExc();
+  renderRules();
   renderBoard();
   renderAssets();
   renderStockTable();
