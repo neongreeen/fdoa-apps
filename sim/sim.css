@@ -112,3 +112,15 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:now
   .token-field input{width:100%}
   .trade-reason{max-width:240px}
 }
+
+/* ---------- 📚スタディ（2026-08-24 ★投資スレ007） ---------- */
+.study-body{line-height:1.75;font-size:14px;}
+.study-body h2{margin:20px 0 8px;font-size:16px;border-bottom:1px solid var(--line,#ddd);padding-bottom:4px;}
+.study-body h3{margin:14px 0 6px;font-size:14px;}
+.study-body ul,.study-body ol{padding-left:20px;margin:6px 0;}
+.study-body li{margin:3px 0;}
+.study-body blockquote{margin:10px 0;padding:8px 12px;border-left:3px solid var(--accent,#888);background:rgba(128,128,128,.08);border-radius:4px;}
+.study-body blockquote p{margin:2px 0;}
+.study-body table{font-size:13px;}
+.study-body hr{border:none;border-top:1px solid var(--line,#ddd);margin:14px 0;}
+.study-body code{background:rgba(128,128,128,.15);padding:1px 4px;border-radius:3px;font-size:12px;}
