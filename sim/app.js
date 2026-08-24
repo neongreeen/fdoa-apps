@@ -18,11 +18,12 @@ const CONFIG={
   file:"sim.json",
   priceFile:"prices.json",
   historyFile:"history.json",
+  studyFile:"study.md",
   tokenKey:"fdoa_gh_token",
   legacyTokenKeys:["fdoa_bukken_gh_token"],
   storageKey:"fdoa_sim_v1",
   schemaVersion:1,
-  startCash:500000,
+  startCash:700000, // 2026-08-24 スイング関門＝仮想元本70万（★投資スレ007）
   instrumentFiles:["../progress/data/instruments-curated.json","../progress/data/instruments-jp.json","../progress/data/instruments-us.json"],
 };
 
@@ -893,6 +894,79 @@ $("#lineModal").addEventListener("click",event=>{if(event.target===$("#lineModal
 $("#fixSave").addEventListener("click",submitFix);
 $("#fixModalClose").addEventListener("click",closeFixModal);
 $("#fixModal").addEventListener("click",event=>{if(event.target===$("#fixModal")) closeFixModal();});
+/* ---------- 📚スタディ（正本＝_MOMO/投資_スタディ.md → fdoa-app-data/study.md。閲覧専用） ---------- */
+const studyReader=createCloudReader({
+  owner:CONFIG.github.owner,repo:CONFIG.github.repo,branch:CONFIG.github.branch,
+  tokenKey:CONFIG.tokenKey,legacyTokenKeys:CONFIG.legacyTokenKeys,
+});
+function mdInline(text){
+  return esc(text)
+    .replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>")
+    .replace(/~~([^~]+)~~/g,"<s>$1</s>")
+    .replace(/`([^`]+)`/g,"<code>$1</code>");
+}
+function mdToHtml(md){ // PPのextra統合と同じ最小レンダラ（見出し・表・箇条書き・引用・区切り線・段落）
+  const lines=String(md||"").split("\n");let html="",i=0;
+  while(i<lines.length){
+    const ln=lines[i];
+    if(/^\s*$/.test(ln)){i++;continue;}
+    if(/^---+\s*$/.test(ln)){html+="<hr>";i++;continue;}
+    let m;
+    if((m=ln.match(/^(#{1,4})\s+(.*)$/))){html+=`<h${m[1].length}>${mdInline(m[2])}</h${m[1].length}>`;i++;continue;}
+    if(/^```/.test(ln)){
+      i++;const code=[];
+      while(i<lines.length&&!/^```/.test(lines[i])){code.push(lines[i]);i++;}
+      i++;html+=`<pre>${esc(code.join("\n"))}</pre>`;continue;
+    }
+    if(/^>\s?/.test(ln)){
+      const q=[];while(i<lines.length&&/^>\s?/.test(lines[i])){q.push(lines[i].replace(/^>\s?/,""));i++;}
+      html+=`<blockquote>${q.map(l=>/^\s*$/.test(l)?"":`<p>${mdInline(l)}</p>`).join("")}</blockquote>`;continue;
+    }
+    if(/^\s*\d+\.\s+/.test(ln)){
+      let list="<ol>";
+      while(i<lines.length&&/^\s*\d+\.\s+/.test(lines[i])){list+=`<li>${mdInline(lines[i].replace(/^\s*\d+\.\s+/,""))}</li>`;i++;}
+      html+=list+"</ol>";continue;
+    }
+    if(/^\|/.test(ln)){
+      const rows=[];while(i<lines.length&&/^\|/.test(lines[i])){rows.push(lines[i]);i++;}
+      const cells=row=>row.replace(/^\||\|$/g,"").split("|").map(cell=>mdInline(cell.trim()));
+      let table='<div class="tblwrap"><table>';
+      rows.forEach((row,rowIndex)=>{
+        if(/^\|[\s:|-]+\|?$/.test(row))return;
+        const tag=rowIndex===0?"th":"td";
+        table+="<tr>"+cells(row).map(cell=>`<${tag}>${cell}</${tag}>`).join("")+"</tr>";
+      });
+      html+=table+"</table></div>";continue;
+    }
+    if(/^\s*-\s+/.test(ln)){
+      let list="<ul>";
+      while(i<lines.length&&/^\s*-\s+/.test(lines[i])){list+=`<li>${mdInline(lines[i].replace(/^\s*-\s+/,""))}</li>`;i++;}
+      html+=list+"</ul>";continue;
+    }
+    html+=`<p>${mdInline(ln)}</p>`;i++;
+  }
+  return html;
+}
+let studyLoaded=false;
+async function loadStudy(){
+  const body=$("#studyBody");
+  if(!studyReader.hasToken()){body.innerHTML='<p class="muted">GitHub同期を接続すると表示されます（下の同期パネルからトークンを設定）</p>';return;}
+  try{
+    const md=await studyReader.fetchText(CONFIG.studyFile);
+    if(!md){body.innerHTML='<p class="muted">study.md が見つかりません（Mac側のpublishスクリプト未実行の可能性）</p>';return;}
+    const dateLine=md.match(/^最終更新：.*$/m);
+    if(dateLine)$("#studyMeta").textContent=`正本＝_MOMO/投資_スタディ.md（百が更新・閲覧専用）　${dateLine[0]}`;
+    body.innerHTML=mdToHtml(md.replace(/^# .*$/m,"").replace(/^最終更新：.*$/m,""));
+    studyLoaded=true;
+  }catch(error){
+    body.innerHTML='<p class="muted">読み込みに失敗（'+esc(error.message||error)+'）。リロードで再試行</p>';
+  }
+}
+$("#navStudy").addEventListener("click",()=>{
+  $("#studyPanel").scrollIntoView({behavior:"smooth"});
+  if(!studyLoaded)loadStudy();
+});
+
 $("#navSync").addEventListener("click",()=>$("#syncPanel").scrollIntoView({behavior:"smooth"}));
 $("#chartWrap").addEventListener("pointermove",chartPointer);
 $("#chartWrap").addEventListener("pointerdown",chartPointer);
@@ -934,6 +1008,7 @@ $("#jsonImport").addEventListener("change",event=>{
 
 renderAll();
 store.init().then(loadPriceData).then(requestFreshPrices);
+loadStudy();
 loadInstrumentData().then(()=>{}).catch(error=>console.warn("銘柄一覧の読込に失敗",error));
 window.addEventListener("focus",()=>{if(Date.now()-priceLoadedAt>5*60*1000) loadPriceData();});
 setInterval(loadPriceData,15*60*1000);
