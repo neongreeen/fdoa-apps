@@ -1,7 +1,7 @@
 "use strict";
 
 /* Trade Sim（ペーパートレード）
-   仮想資金50万円で裁量トレードを「禁止でなく測定」するためのアプリ。
+   仮想資金（元本はsettings.startCash）で裁量トレードを「禁止でなく測定」するためのアプリ。
    実弾のProgress Portfolioとはデータも画面も完全分離（仮想と実弾を混ぜない）。
 
    設計の芯：
@@ -215,7 +215,7 @@ function renderSummary(){
     <div class="t-sub">${sub}</div>
   </div>`;
   $("#summaryTiles").innerHTML=
-    tile("me",total,`スタート50万比 <span class="${cls(total-start)}">${yenSigned(total-start)}（${pctSigned((total/start-1)*100)}）</span>`,true)+
+    tile("me",total,`スタート${Math.round(start/10000)}万比 <span class="${cls(total-start)}">${yenSigned(total-start)}（${pctSigned((total/start-1)*100)}）</span>`,true)+
     tile("topix",twinT,`自分との差 <span class="${cls(total-twinT)}">${yenSigned(total-twinT)}</span>`)+
     tile("gspc",twinS,`自分との差 <span class="${cls(total-twinS)}">${yenSigned(total-twinS)}</span>`);
   const priceTime=PRICE_DATA?.updatedAt?new Date(PRICE_DATA.updatedAt).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}):null;
