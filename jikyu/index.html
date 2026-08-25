@@ -134,7 +134,7 @@
         <div><label>物件</label><select id="xProperty"></select></div>
         <div style="flex:0 0 auto"><label>種別</label><select id="xType" style="width:150px"></select></div>
         <div style="flex:0 0 auto"><label>金額(円)</label><input type="number" id="xAmount" min="0" step="10" placeholder="例 3400" style="width:120px"></div>
-        <div style="flex:2"><label>メモ(任意)</label><input type="text" id="xMemo" placeholder="例 芦屋打合せ 新幹線往復"></div>
+        <div style="flex:2"><label>メモ(任意)</label><input type="text" id="xMemo" placeholder="例 現場打合せ 交通費往復"></div>
         <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="btn" id="btnExpenseAdd">追加</button></div>
       </div>
       <div class="muted" style="margin-top:8px">入力した経費は「記録一覧」ページで確認・編集できます。種別の追加は右上の「マスター ↗」で。</div>
@@ -302,11 +302,11 @@ const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&
    旧ID→統一IDの対応表。旧v1データ（端末のlocalStorage・昔のJSONバックアップ）を
    読み込んだ時に自動で付け替えるため、恒久的にアプリへ埋め込んでおく */
 const MIG_PROPS={
-  mqhm77eybwpaq:'p_mrbii9rk3lr3',   // （仮称）メディメッセ桜十字福岡 内装工事
-  mqhqptb2v4zop:'p_19f40150555ci2t',// 環境開発社宅
-  mqhrvbr2eruut:'p_mrbi8pvng7mm',   // CCU
-  mr3cudi2wfmsu:'p_mragkrhzhzq6',   // （仮称）芦屋Y邸新築工事
-  mr60t6xcvglmc:'p_mragn2wy9nvg',   // 志免ペットクリニック
+  mqhm77eybwpaq:'p_mrbii9rk3lr3',
+  mqhqptb2v4zop:'p_19f40150555ci2t',
+  mqhrvbr2eruut:'p_mrbi8pvng7mm',
+  mr3cudi2wfmsu:'p_mragkrhzhzq6',
+  mr60t6xcvglmc:'p_mragn2wy9nvg',
 };
 function seed(){ return {schemaVersion:2, records:[], expenses:[], invoices:[], running:null, meta:{}}; }
 function migrate(d){
