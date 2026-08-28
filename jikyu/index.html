@@ -137,6 +137,12 @@
         <div style="flex:2"><label>メモ(任意)</label><input type="text" id="xMemo" placeholder="例 現場打合せ 交通費往復"></div>
         <div style="flex:0 0 auto;display:flex;align-items:flex-end"><button class="btn" id="btnExpenseAdd">追加</button></div>
       </div>
+      <div class="row" id="xTransportWrap" style="display:none">
+        <div style="flex:0 0 auto"><label>交通手段</label><select id="xTransport" style="width:120px"></select></div>
+        <div><label>発</label><input type="text" id="xFrom" list="dlPlaces" placeholder="例 事務所"></div>
+        <div><label>着</label><input type="text" id="xTo" list="dlPlaces" placeholder="例 現場名・駅名"></div>
+      </div>
+      <datalist id="dlPlaces"></datalist>
       <div class="muted" style="margin-top:8px">入力した経費は「記録一覧」ページで確認・編集できます。種別の追加は右上の「マスター ↗」で。</div>
     </div>
 
@@ -497,6 +503,8 @@ function fillPropertySelects(){
   const mc=$("#mContent"), curmc=mc.value; mc.innerHTML=contentOptions(curmc); mc.value=curmc;
   const tc=$("#timerContent"), curtc=tc.value; tc.innerHTML=contentOptions(curtc); tc.value=curtc;
   const xt=$("#xType"), curxt=xt.value; xt.innerHTML=expTypeOptions(curxt); xt.value=curxt;
+  const xw=$("#xTransport"), curxw=xw.value; xw.innerHTML=transportOptions(curxw); xw.value=curxw;
+  toggleTransportWrap(); updatePlaceList();
 }
 
 /* ---------- テーブル描画 ---------- */
@@ -735,7 +743,8 @@ function printInvoice(id){
     return '<tr><td>'+esc(r.date)+'</td><td>'+(p?esc(p.name):'削除済')+'</td><td>'+(esc(r.content)||'—')+'</td>'+
       '<td class="num">'+fmtMin(r.minutes)+'</td><td class="num">'+yen(invRecAmount(r,inv))+'</td></tr>'; }).join("");
   rows+=exps.map(x=>{ const p=propById(x.propertyId);
-    return '<tr><td>'+esc(x.date)+'</td><td>'+(p?esc(p.name):'削除済')+'</td><td>'+esc(x.type||'経費')+(x.memo?'（'+esc(x.memo)+'）':'')+'</td>'+
+    const det=[routeText(x),x.memo||""].filter(Boolean).join(" ");
+    return '<tr><td>'+esc(x.date)+'</td><td>'+(p?esc(p.name):'削除済')+'</td><td>'+esc(x.type||'経費')+(det?'（'+esc(det)+'）':'')+'</td>'+
       '<td class="num">経費</td><td class="num">'+yen(x.amount||0)+'</td></tr>'; }).join("");
   $("#printSheet").innerHTML=
     '<div class="pt-head">'+
@@ -892,6 +901,29 @@ function delRecord(id){
 
 /* ---------- 経費 ---------- */
 function isBilledExp(x){ return !!(x.invoiceId || x.billed); }
+/* 交通費の手段・発着（固定リスト＝マスター不要。発着は過去入力からサジェスト） */
+const TRANSPORTS=["電車","バス","タクシー","新幹線","飛行機","自家用車","その他"];
+function isTransportType(t){ return (t||"").indexOf("交通")>=0; }
+function transportOptions(sel){
+  let names=TRANSPORTS.slice();
+  if(sel && names.indexOf(sel)<0) names=[sel].concat(names);   // 既存経費の値が未登録でも表示
+  return '<option value="">—</option>'+names.map(n=>'<option'+(n===sel?' selected':'')+'>'+esc(n)+'</option>').join("");
+}
+function routeText(x){
+  const way=(x.transport||"").trim(), fr=(x.from||"").trim(), to=(x.to||"").trim();
+  const rt=(fr||to)? fr+"→"+to : "";
+  return [way,rt].filter(Boolean).join(" ");
+}
+function updatePlaceList(){
+  const seen={}, opts=[];
+  DB.expenses.slice().sort((a,b)=>b.createdAt-a.createdAt).forEach(x=>{
+    [(x.from||"").trim(),(x.to||"").trim()].forEach(v=>{ if(v && !seen[v]){ seen[v]=1; opts.push(v); } });
+  });
+  $("#dlPlaces").innerHTML=opts.slice(0,30).map(v=>'<option value="'+esc(v)+'">').join("");
+}
+function toggleTransportWrap(){
+  $("#xTransportWrap").style.display=isTransportType($("#xType").value)?"":"none";
+}
 function expenseRow(x, opts){
   opts=opts||{};
   const p=propById(x.propertyId); const c=custOfProp(p);
@@ -906,7 +938,7 @@ function expenseRow(x, opts){
     '<td class="muted">'+(c?esc(c.name):"")+'</td>'+
     '<td class="num"><span class="chip">'+esc(x.type||"経費")+'</span></td>'+
     '<td class="num">'+yen(x.amount||0)+'</td>'+
-    '<td>'+(esc(x.memo)||'<span class="muted">—</span>')+'</td>'+
+    '<td>'+(routeText(x)?'<span class="chip" style="font-size:11px">'+esc(routeText(x))+'</span> ':'')+(esc(x.memo)||(routeText(x)?'':'<span class="muted">—</span>'))+'</td>'+
     '<td>'+pill+'</td>'+
     '<td class="num" style="white-space:nowrap">'+
       '<button class="btn ghost sm" onclick="editExpense(\''+x.id+'\')">編集</button>'+
@@ -932,10 +964,13 @@ function expenseAdd(){
   if(!pid){ toast("物件を選んでください"); return; }
   const amt=parseInt($("#xAmount").value||"0",10);
   if(!amt||amt<=0){ toast("金額を入力してください"); return; }
+  const xtype=$("#xType").value.trim()||"経費", isTr=isTransportType(xtype);
   DB.expenses.push({id:uid(),propertyId:pid,date:$("#xDate").value||todayStr(),
-    type:$("#xType").value.trim()||"経費",amount:amt,memo:$("#xMemo").value.trim(),billed:false,invoiceId:null,createdAt:Date.now()});
+    type:xtype,amount:amt,memo:$("#xMemo").value.trim(),
+    transport:isTr?$("#xTransport").value.trim():"",from:isTr?$("#xFrom").value.trim():"",to:isTr?$("#xTo").value.trim():"",
+    billed:false,invoiceId:null,createdAt:Date.now()});
   save();
-  $("#xAmount").value=""; $("#xMemo").value="";
+  $("#xAmount").value=""; $("#xMemo").value=""; $("#xFrom").value=""; $("#xTo").value="";
   renderAll(); toast("経費を追加しました");
 }
 function editExpense(id){
@@ -946,6 +981,10 @@ function editExpense(id){
       '<div><label>物件</label><select id="x_prop">'+opts+'</select></div></div>'+
     '<div class="row"><div><label>種別</label><select id="x_type">'+expTypeOptions(x.type)+'</select></div>'+
       '<div><label>金額(円)</label><input type="number" id="x_amount" value="'+(x.amount||0)+'" step="10"></div></div>'+
+    '<div class="row" id="x_transportWrap" style="'+(isTransportType(x.type)?'':'display:none')+'">'+
+      '<div style="flex:0 0 auto"><label>交通手段</label><select id="x_transport">'+transportOptions(x.transport||"")+'</select></div>'+
+      '<div><label>発</label><input id="x_from" list="dlPlaces" value="'+esc(x.from||"")+'" placeholder="例 事務所"></div>'+
+      '<div><label>着</label><input id="x_to" list="dlPlaces" value="'+esc(x.to||"")+'" placeholder="例 現場名・駅名"></div></div>'+
     '<div class="row"><div><label>メモ(任意)</label><input id="x_memo" value="'+esc(x.memo||"")+'"></div></div>'+
     '<div class="row"><div><label>請求状態</label><select id="x_billed">'+
       '<option value="0" '+(!isBilledExp(x)?"selected":"")+'>未請求</option>'+
@@ -953,11 +992,14 @@ function editExpense(id){
       ((x.invoiceId&&invoiceById(x.invoiceId))?'<div class="muted" style="margin-top:6px">請求［'+esc(invoiceById(x.invoiceId).date)+(invoiceById(x.invoiceId).label?' '+esc(invoiceById(x.invoiceId).label):'')+'］に含まれています。「未請求」に戻すとこの請求から外れます。</div>':'')+
       '</div></div>'+
     '<div class="modal-actions"><button class="btn sec" onclick="closeModal()">キャンセル</button><button class="btn" id="x_save">保存</button></div>');
+  $("#x_type").onchange=()=>{ $("#x_transportWrap").style.display=isTransportType($("#x_type").value)?"":"none"; };
   $("#x_save").onclick=()=>{
     x.date=$("#x_date").value||x.date; x.propertyId=$("#x_prop").value;
     x.type=$("#x_type").value.trim()||"経費";
     x.amount=Math.max(0,parseInt($("#x_amount").value||"0",10));
     x.memo=$("#x_memo").value.trim();
+    const isTr=isTransportType(x.type);
+    x.transport=isTr?$("#x_transport").value.trim():""; x.from=isTr?$("#x_from").value.trim():""; x.to=isTr?$("#x_to").value.trim():"";
     if($("#x_billed").value==="1"){ x.billed=true; } else { x.billed=false; x.invoiceId=null; }
     save(); closeModal(); renderAll(); toast("保存しました");
   };
@@ -1028,10 +1070,10 @@ function buildInvoicesCsv(){
   return {name:"請求_"+todayStr()+".csv", text:toCsv(head,rows)};
 }
 function buildExpensesCsv(){
-  const head=["日付","顧客","物件","種別","金額(円)","メモ","請求状態","請求日","請求ラベル"];
+  const head=["日付","顧客","物件","種別","交通手段","発","着","金額(円)","メモ","請求状態","請求日","請求ラベル"];
   const rows=DB.expenses.slice().sort((a,b)=>a.date<b.date?-1:1).map(x=>{
     const p=propById(x.propertyId), c=custOfProp(p), inv=x.invoiceId?invoiceById(x.invoiceId):null;
-    return [x.date, c?c.name:"", p?p.name:"(削除済)", x.type||"経費", x.amount||0, x.memo||"",
+    return [x.date, c?c.name:"", p?p.name:"(削除済)", x.type||"経費", x.transport||"", x.from||"", x.to||"", x.amount||0, x.memo||"",
       isBilledExp(x)?"請求済":"未請求", inv?inv.date:"", inv?inv.label:""];
   });
   return {name:"経費_"+todayStr()+".csv", text:toCsv(head,rows)};
@@ -1094,6 +1136,7 @@ $("#btnStart").onclick=startTimer;
 $("#btnStop").onclick=stopTimer;
 $("#btnManualAdd").onclick=manualAdd;
 $("#btnExpenseAdd").onclick=expenseAdd;
+$("#xType").onchange=toggleTransportWrap;
 ["#mStartH","#mStartM","#mEndH","#mEndM","#mEndDate"].forEach(s=>$(s).addEventListener("change",recalcManual));
 $("#mDate").addEventListener("change",()=>{ $("#mEndDate").value=$("#mDate").value; recalcManual(); });
 ["#fProperty","#fBilled","#fMonth"].forEach(s=>$(s).addEventListener("change",renderList));
