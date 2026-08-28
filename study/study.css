@@ -1,0 +1,42 @@
+/* 投資スタディ（独立ページ）固有スタイル。共通部はshared/base.css */
+.study-lead{color:var(--sub);font-size:13px;line-height:1.7;margin-bottom:16px}
+
+/* 目次 */
+.study-toc{display:flex;flex-direction:column;gap:2px}
+.study-toc a{color:var(--ink);text-decoration:none;padding:6px 10px;border-radius:8px;font-size:14px;line-height:1.5}
+.study-toc a:hover{background:var(--accent-soft)}
+.study-toc a.toc-part{font-weight:700;margin-top:8px;font-size:15px}
+.study-toc a.toc-part:first-child{margin-top:0}
+.study-toc a.toc-chapter{padding-left:26px;color:var(--sub)}
+.study-toc a.toc-chapter:hover{color:var(--ink)}
+
+/* 本文（Simのスタディタブから移植＋リンク対応） */
+.study-body{line-height:1.85;font-size:14px}
+.study-body h1{margin:26px 0 10px;font-size:19px;padding-bottom:6px;border-bottom:2px solid var(--ink)}
+.study-body h1:first-child{margin-top:0}
+.study-body h2{margin:22px 0 8px;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.study-body h3{margin:14px 0 6px;font-size:14px}
+.study-body ul,.study-body ol{padding-left:20px;margin:6px 0}
+.study-body li{margin:3px 0}
+.study-body blockquote{margin:10px 0;padding:8px 12px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:4px}
+.study-body blockquote p{margin:2px 0}
+.study-body table{font-size:13px}
+.study-body hr{border:none;border-top:1px solid var(--line);margin:14px 0}
+.study-body code{background:rgba(128,128,128,.15);padding:1px 4px;border-radius:3px;font-size:12px}
+.study-body pre{background:rgba(128,128,128,.1);padding:10px 12px;border-radius:8px;font-size:12px;overflow-x:auto}
+.study-body a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+.study-body p{margin:6px 0}
+
+/* 章見出しへ飛んだ時、固定ヘッダーに隠れないように */
+.study-body h1[id],.study-body h2[id]{scroll-margin-top:72px}
+
+/* ページ先頭へ */
+.study-top{position:fixed;right:16px;bottom:16px;width:42px;height:42px;border-radius:50%;
+  background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;
+  text-decoration:none;font-size:14px;box-shadow:var(--shadow);opacity:.85}
+.study-top:hover{opacity:1}
+
+@media(max-width:720px){
+  .study-body{font-size:14px}
+  .study-toc a{padding:8px 10px}
+}

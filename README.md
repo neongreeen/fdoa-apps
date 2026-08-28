@@ -7,5 +7,6 @@ FDOAの業務アプリ置き場（GitHub Pages配信）。利用者が入力し�
 - `jikyu/` — 時給プロジェクト管理
 - `progress/` — Progress Portfolio（投資判断ログ）
 - `sim/` — Trade Sim（仮想資金50万のペーパートレード。実弾のPPとはデータ・画面とも分離）
+- `study/` — 投資スタディ（叩き込み教本の閲覧ページ。正本＝Mac側md→fdoa-app-data/study.md）
 
 このリポジトリが正本。ローカル（iCloudの物件進捗管理.html）は編集用ミラー。

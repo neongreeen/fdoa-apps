@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f5f5f3">
+  <title>投資スタディ｜FDOA</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+  <link rel="stylesheet" href="../shared/base.css?v=20260719-1042">
+  <link rel="stylesheet" href="study.css?v=20260828-0001">
+</head>
+<body>
+<header>
+  <div class="head-in">
+    <div class="logo">📚 投資スタディ <small>叩き込み教本（閲覧専用）</small></div>
+    <nav aria-label="メインメニュー">
+      <a class="applink" href="../sim/" target="_blank" rel="noopener noreferrer">Trade Sim ↗</a>
+      <a class="applink" href="../progress/" target="_blank" rel="noopener noreferrer">Progress Portfolio ↗</a>
+      <button type="button" id="btnReload">再読込</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p class="study-lead" id="studyMeta">正本＝Mac（百指導員が更新）。ここは読む専用——11:30に「今日どの計器が振れてる？」から該当章へ。</p>
+
+  <section class="panel" id="tokenPanel" hidden>
+    <h2>GitHub同期の接続</h2>
+    <p class="note">教本データは非公開リポジトリにあります。他のFDOAアプリ（Sim・PP・物件・時給）で接続済みの端末なら、この画面は出ません。</p>
+    <div class="frm">
+      <label>アクセストークン<input type="password" id="tokenInput" autocomplete="off" placeholder="ghp_…"></label>
+      <button class="btn" type="button" id="tokenConnect">接続</button>
+    </div>
+  </section>
+
+  <section class="panel" id="tocPanel" hidden>
+    <h2>目次</h2>
+    <nav class="study-toc" id="tocBody" aria-label="目次"></nav>
+  </section>
+
+  <section class="panel">
+    <div class="study-body" id="studyBody"><p class="muted">読み込み中…</p></div>
+  </section>
+</main>
+
+<a class="study-top" href="#top" id="btnTop" aria-label="ページ先頭へ">▲</a>
+
+<script src="../shared/store.js?v=20260719-1042"></script>
+<script src="study.js?v=20260828-0001"></script>
+</body>
+</html>
