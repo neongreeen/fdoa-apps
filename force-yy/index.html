@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f5f5f3">
+<title>FORCE TYPE YY｜FDOA</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛰️</text></svg>">
+<link rel="stylesheet" href="../shared/base.css?v=20260719-1042">
+<style>
+main{max-width:var(--content-w,960px);margin:0 auto;padding:16px}
+.card{margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 10px}
+.alive{padding:10px 14px;border-radius:var(--radius,12px);margin-bottom:14px;font-size:14px}
+.alive.ok{background:var(--st-c-soft);color:var(--st-c)}
+.alive.ng{background:var(--st-ss-soft);color:var(--st-ss);font-weight:700}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.kv div{background:var(--panel,#f5f5f3);border-radius:10px;padding:10px 12px}
+.kv small{display:block;color:var(--sub);font-size:11px;margin-bottom:2px}
+.kv b{font-size:16px}
+.row{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:none}
+.row .t{font-weight:600}
+.row .s{color:var(--sub);font-size:12px;word-break:break-all}
+.steps{list-style:none;margin:0;padding:0}
+.steps li{padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+.steps li:first-child{border-top:none}
+.steps li.done{color:var(--sub)}
+.steps li::before{content:'□ ';color:var(--sub)}
+.steps li.done::before{content:'■ ';color:var(--st-c)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td{padding:7px 6px;border-top:1px solid var(--line);vertical-align:top}
+td:first-child{font-weight:600;width:34%}
+td code{font-size:12px;word-break:break-all;color:var(--sub)}
+.swap{font-size:13px;color:var(--sub);margin-top:10px}
+</style>
+</head>
+<body>
+<header>
+  <div class="head-in">
+    <h1>FORCE TYPE YY <small>百とリタの先回りの状況</small></h1>
+    <nav>
+      <button type="button" id="btnReload">再読込</button>
+      <a class="applink" href="../bukken/">物件ページ ↗</a>
+    </nav>
+  </div>
+</header>
+<main id="root"><div class="card"><p class="note">読み込み中…</p></div></main>
+<script>
+'use strict';
+const GH={owner:'neongreeen',repo:'fdoa-app-data',branch:'main',path:'force-yy/status.json'};
+const root=document.getElementById('root');
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const token=()=>{try{return localStorage.getItem('fdoa_gh_token')||'';}catch(e){return'';}};
+const badge=(cls,txt)=>'<span class="badge stb-'+cls+'">'+esc(txt)+'</span>';
+const STATE={new:['s','処理待ち'],claimed:['b','処理中'],done:['c','済み'],failed:['ss','失敗']};
+const DRAFT={ok:['c','最新'],stale:['ss','要更新'],'不明':['s','不明']};
+
+async function load(){
+  const local=new URLSearchParams(location.search).get('src'); // 手元の試験用：?src=status.json
+  if(local){const r=await fetch(local,{cache:'no-store'});return r.json();}
+  if(!token())throw new Error('この端末はまだGitHubにつながっていない。物件進捗管理の「データ管理」タブでトークンを接続すると見られる。');
+  const r=await fetch('https://api.github.com/repos/'+GH.owner+'/'+GH.repo+'/contents/'+GH.path+'?ref='+GH.branch+'&_='+Date.now(),
+    {cache:'no-store',headers:{'Authorization':'Bearer '+token(),'Accept':'application/vnd.github.raw'}});
+  if(r.status===404)throw new Error('状況がまだ載っていない（miniの見張りが最初の1周を回すと出る）');
+  if(!r.ok)throw new Error('GitHub応答 '+r.status);
+  return r.json();
+}
+
+function render(d){
+  const age=(Date.now()-new Date(d.generatedAt.replace(' ','T')+':00+09:00'))/60000;
+  const alive=age<=70
+    ?'<div class="alive ok">この表示は '+esc(d.generatedAt)+' 時点（'+Math.round(age)+'分前）。見張りは生きている。</div>'
+    :'<div class="alive ng">この表示は '+esc(d.generatedAt)+' のまま '+Math.round(age/60)+'時間以上止まっている。miniの見張りが止まっているかも。</div>';
+  const r=d.roles,run=d.running;
+  const check=Object.entries(r.check||{}).map(([k,v])=>'<div class="row"><span class="t">'+esc(k)+'</span>'+
+    (v==='OK'?badge('c','裏から呼べる'):badge('s','呼べない'))+(v==='OK'?'':'<span class="s">'+esc(v)+'</span>')+'</div>').join('')
+    ||'<p class="note">まだ確かめていない（python3 -m fyy check）</p>';
+  const watches=d.watches.map(w=>{const [c,t]=DRAFT[w.draft.state]||['s',w.draft.state];
+    return '<div class="row"><span class="t">'+esc(w.label)+'</span><span>'+esc(w.what)+'</span>'+badge(c,'下書き：'+t)+
+    '<span class="s" style="flex-basis:100%">正本：'+esc(w.current||'なし')+(w.draft.basis?'／下書きの根拠：'+esc(w.draft.basis)+'（'+esc(w.draft.madeBy)+'・'+esc(w.draft.madeAt)+'）':'／まだ見張りで作り直したことはない')+
+    '<br>最後に確認：'+esc(w.lastOk||'—')+(w.lastError?'／<b style="color:var(--st-ss)">失敗：'+esc(w.lastError)+'（'+esc(w.lastErrorAt)+'）</b>':'')+
+    '<br>見ている場所：★Project/'+esc(w.folder)+'／'+esc(w.match)+'</span></div>';}).join('');
+  const cnt=d.inbox.counts,items=d.inbox.recent.map(i=>{const [c,t]=STATE[i.state]||['s',i.state];
+    return '<div class="row">'+badge(c,t)+'<span class="t">'+esc(i.key)+'</span><span class="s">'+esc(i.updated)+(i.by?'・'+esc(i.by):'')+
+    (i.steps.length?'・済んだ段階：'+esc(i.steps.join('→')):'')+(i.error?'・'+esc(i.error):'')+'</span></div>';}).join('')
+    ||'<p class="note">まだ何も来ていない（見積書が差し替わるとここに出る）</p>';
+  const notices=d.notices.map(n=>'<div class="row"><span class="s">'+esc(n.split('\t')[0])+'</span><span>'+esc(n.split('\t')[1]||n)+'</span></div>').join('')
+    ||'<p class="note">まだ通知は出ていない</p>';
+  root.innerHTML=alive+
+  '<div class="card"><h2>いまの担当</h2><div class="kv">'+
+    '<div><small>判断（下書きを作る）</small><b>'+esc(r.judge)+'</b></div>'+
+    '<div><small>控え（呼べない時に代わる）</small><b>'+esc(r.fallback)+'</b></div>'+
+    '<div><small>検収</small><b>'+esc(r.reviewer)+'</b></div></div>'+
+    '<h2 style="margin-top:14px">裏から呼べるか <small class="muted">'+esc(r.checkedAt)+'</small></h2>'+check+
+    '<p class="swap">交代＝fdoa-force-yy/config/roles.json の judge を1語書き換えるだけ（claude＝百／codex＝リタ）。控えと検収は自動でもう片方になる。</p></div>'+
+  '<div class="card"><h2>運転</h2><div class="kv">'+
+    '<div><small>見張り（5分ごと）</small><b>'+(run.launchd?'動いている':'止まっている')+'</b></div>'+
+    '<div><small>最後に回った</small><b>'+esc((run.lastRun||'—').slice(5,16))+'</b></div>'+
+    '<div><small>今日AIを起こした回数</small><b>'+run.aiToday+' / '+run.aiMax+'</b></div>'+
+    '<div><small>いまAIを起こせるか</small><b>'+(run.aiNow?'起こせる':'休み')+'</b>'+(run.aiNow?'':'<br><span class="s">'+esc(run.aiWhy)+'</span>')+'</div></div>'+
+    '<p class="swap">AIは'+run.aiIntervalMin+'分に1回まとめて・1日'+run.aiMax+'回まで・夜0:00〜4:30は休み。【要更新】の表示は休みの間も止めない。</p></div>'+
+  '<div class="card"><h2>見張っている物</h2>'+watches+'</div>'+
+  '<div class="card"><h2>受信箱 <small class="muted">済み'+(cnt.done||0)+'・待ち'+(cnt.new||0)+'・失敗'+(cnt.failed||0)+'</small></h2>'+items+'</div>'+
+  '<div class="card"><h2>最近の通知</h2>'+notices+'</div>'+
+  '<div class="card"><h2>段階1の進み具合</h2><ul class="steps">'+d.stage.map(s=>'<li class="'+(s.done?'done':'')+'">'+esc(s.text)+'</li>').join('')+'</ul></div>'+
+  '<div class="card"><h2>まだ決めていないこと</h2><ul class="steps">'+d.open.map(s=>'<li>'+esc(s.replace(/`/g,''))+'</li>').join('')+'</ul></div>'+
+  '<div class="card"><h2>どこに何があるか</h2><table>'+d.places.map(p=>'<tr><td>'+esc(p.what)+'</td><td>'+esc(p.where)+(p.local?'<br><code>'+esc(p.local)+'</code>':'')+'</td></tr>').join('')+'</table>'+
+    '<p class="swap">この表示を作った人：'+esc(d.generatedBy)+'。中身は全部ファイルから自動で作る（百でもリタでも同じ表示）。</p></div>';
+}
+async function start(){
+  try{render(await load());}catch(e){root.innerHTML='<div class="card"><h2>FORCE TYPE YY</h2><p class="note">'+esc(e.message)+'</p></div>';}
+}
+document.getElementById('btnReload').onclick=start;
+start();
+</script>
+</body>
+</html>
