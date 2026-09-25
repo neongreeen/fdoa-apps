@@ -99,6 +99,12 @@ function render(d){
     '<div><small>最後に回った</small><b>'+esc((run.lastRun||'—').slice(5,16))+'</b></div>'+
     '<div><small>今日AIを起こした回数</small><b>'+run.aiToday+' / '+run.aiMax+'</b></div>'+
     '<div><small>いまAIを起こせるか</small><b>'+(run.aiNow?'起こせる':'休み')+'</b>'+(run.aiNow?'':'<br><span class="s">'+esc(run.aiWhy)+'</span>')+'</div></div>'+
+    (run.power?'<h2 style="margin-top:14px">出張中に止まらないか</h2><div class="kv">'+
+      '<div><small>スリープしない設定</small><b>'+(run.power.noSleep?badge('c','OK'):badge('ss','スリープする'))+'</b></div>'+
+      '<div><small>停電の後に自動で起動</small><b>'+(run.power.autoRestart?badge('c','OK'):badge('s','しない'))+'</b></div>'+
+      '<div><small>再起動の後に自動でログイン</small><b>'+(run.power.autoLogin?badge('c','OK'):badge('ss','しない＝再起動で見張りが止まる'))+'</b></div>'+
+      '<div><small>最後に起動した時刻</small><b>'+esc(run.power.bootedAt)+'</b></div></div>'+
+      '<p class="swap">止まって90分たつと、miniの外（GitHub）から「Run failed: fyy-alive」のメールがGmailに1通届く。</p>':'')+
     '<p class="swap">AIは'+run.aiIntervalMin+'分に1回まとめて・1日'+run.aiMax+'回まで・夜0:00〜4:30は休み。【要更新】の表示は休みの間も止めない。</p></div>'+
   '<div class="card"><h2>見張っている物</h2>'+watches+'</div>'+
   '<div class="card"><h2>受信箱 <small class="muted">済み'+(cnt.done||0)+'・待ち'+(cnt.new||0)+'・失敗'+(cnt.failed||0)+'</small></h2>'+items+'</div>'+
