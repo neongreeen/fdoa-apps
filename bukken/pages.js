@@ -28,7 +28,9 @@ async function json(path){const r=await gh(path);return r?r.json():null;}
 async function blobUrl(path){
   if(blobCache[path])return blobCache[path];
   const r=await gh(path);if(!r)throw new Error('ファイルが無い：'+path);
-  const u=URL.createObjectURL(await r.blob());blobCache[path]=u;return u;
+  const raw=await r.blob();
+  const type=/\.pdf$/i.test(path)?'application/pdf':/\.png$/i.test(path)?'image/png':/\.jpe?g$/i.test(path)?'image/jpeg':raw.type;
+  const u=URL.createObjectURL(new Blob([raw],{type}));blobCache[path]=u;return u;
 }
 function b64(s){const b=new TextEncoder().encode(s);let bin='';for(let i=0;i<b.length;i+=0x8000)bin+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(bin);}
 
@@ -108,11 +110,11 @@ function bind(pid,p){
   const det=document.getElementById('pgImgs');
   if(det)det.addEventListener('toggle',async()=>{
     if(!det.open)return;
-    for(const btn of det.querySelectorAll('.pg-img')){
-      const img=btn.querySelector('img');if(img.src)continue;
+    await Promise.all([...det.querySelectorAll('.pg-img')].map(async btn=>{
+      const img=btn.querySelector('img');if(img.src)return;
       try{img.src=await blobUrl(base+btn.dataset.file);}catch(e){img.alt='読み込めない';}
       btn.onclick=()=>window.open(img.src,'_blank');
-    }
+    }));
   });
   document.querySelectorAll('#pgBody .pg-copy').forEach(b=>b.onclick=async()=>{
     const pre=document.getElementById('pgDraft'+b.dataset.i);
