@@ -3,10 +3,13 @@
 FDOAの業務アプリ置き場（GitHub Pages配信）。利用者が入力したデータは含まない。
 個人データは非公開リポジトリ `fdoa-app-data` に保存される（アプリ内でトークン設定）。Progress Portfolioの銘柄検索用に、JPX・SECの公開情報から生成した静的JSONのみ同梱する。
 
-- `bukken/` — 物件進捗管理
+- `bukken/` — 物件進捗管理（先頭タブ＝物件ページ：`pages.js`・`pages.css`）
+- `master/` — マスター管理（物件・クライアントの名簿＝物件IDの正本）
 - `jikyu/` — 時給プロジェクト管理
 - `progress/` — Progress Portfolio（投資判断ログ）
+- `extra/` — エクストラチャージ規定・銘柄別ルールの閲覧
 - `sim/` — Trade Sim（仮想資金50万のペーパートレード。実弾のPPとはデータ・画面とも分離）
 - `study/` — 投資スタディ（叩き込み教本の閲覧ページ。正本＝Mac側md→fdoa-app-data/study.md）
 
-このリポジトリが正本。ローカル（iCloudの物件進捗管理.html）は編集用ミラー。
+このリポジトリが正本。ローカル（iCloudの物件進捗管理.html）は編集用ミラー（引退予定）。
+運用手順（全体の構成・物件ページの更新・鍵の扱い）の正本は、非公開の `fdoa-app-data` のREADME。
