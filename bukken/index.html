@@ -9,6 +9,7 @@
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="../shared/base.css">
+<link rel="stylesheet" href="pages.css?v=20260925">
 <style>
 /* 見た目の共通部分は ../shared/base.css（正本）。ここはこのアプリ固有のUIだけ */
 textarea{width:100%;min-height:40px;resize:vertical}
@@ -92,7 +93,8 @@ textarea{width:100%;min-height:40px;resize:vertical}
   <div class="head-in">
     <h1>物件進捗管理 <small id="syncBadge" title="クラウド同期の状態"></small></h1>
     <nav>
-      <button data-tab="schedule" class="active">スケジュール確認</button>
+      <button data-tab="pages" class="active">物件ページ</button>
+      <button data-tab="schedule">スケジュール確認</button>
       <button data-tab="input">スケジュール入力</button>
       <button data-tab="check">チェックリスト</button>
       <button data-tab="data">データ管理<span id="bakDot" style="display:none;color:#ff6b6b"> ●</span></button>
@@ -104,7 +106,10 @@ textarea{width:100%;min-height:40px;resize:vertical}
 <main>
 
 <!-- ===== スケジュール確認 ===== -->
-<section class="tab active" id="tab-schedule">
+<!-- ===== 物件ページ（pages.js） ===== -->
+<section class="tab active" id="tab-pages"><div id="pagesRoot"></div></section>
+
+<section class="tab" id="tab-schedule">
   <div class="card">
     <div id="dlBoard"></div>
     <div class="gtoolbar">
@@ -230,6 +235,7 @@ textarea{width:100%;min-height:40px;resize:vertical}
 </main>
 <div id="printSheet" aria-hidden="true"></div>
 <script src="../shared/store.js?v=20260720"></script>
+<script src="pages.js?v=20260925"></script>
 <script>
 'use strict';
 /* ========== 設定（直書き禁止・ここに集約） ========== */
@@ -622,7 +628,7 @@ $('ghConnectBtn').onclick=async()=>{
   const t=$('ghTokenInput').value.trim();
   if(!t)return alert('トークンを貼り付けて');
   $('ghTokenInput').value='';
-  await store.connect(t);renderAll();loadMasters();
+  await store.connect(t);renderAll();loadMasters();if(window.fdoaPagesStart)window.fdoaPagesStart();
 };
 $('ghSyncNowBtn').onclick=()=>{
   if(!store.hasToken())return alert('先にトークンを設定して');
