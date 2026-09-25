@@ -76,7 +76,13 @@ function render(d){
   const check=Object.entries(r.check||{}).map(([k,v])=>'<div class="row"><span class="t">'+esc(k)+'</span>'+
     (v==='OK'?badge('c','裏から呼べる'):badge('s','呼べない'))+(v==='OK'?'':'<span class="s">'+esc(v)+'</span>')+'</div>').join('')
     ||'<p class="note">まだ確かめていない（python3 -m fyy check）</p>';
-  const watches=d.watches.map(w=>{const [c,t]=DRAFT[w.draft.state]||['s',w.draft.state];
+  const KIND={added:'増えた',changed:'変わった',deleted:'消えた'};
+  const watches=d.watches.map(w=>{
+    if(w.kind==='folder')return '<div class="row"><span class="t">'+esc(w.label)+'</span><span>'+esc(w.what)+'</span>'+badge('b',(w.files||0)+'ファイル')+
+      '<span class="s" style="flex-basis:100%">'+(w.changes&&w.changes.length?'最近：'+w.changes.map(c=>esc(c.at.slice(5))+' '+(KIND[c.kind]||c.kind)+' '+esc(c.key)).join('<br>'):'まだ変化なし')+
+      '<br>最後に確認：'+esc(w.lastOk||'—')+(w.lastError?'／<b style="color:var(--st-ss)">失敗：'+esc(w.lastError)+'（'+esc(w.lastErrorAt)+'）</b>':'')+
+      '<br>見ている場所：★Project/'+esc(w.folder)+'（下のフォルダも全部）</span></div>';
+    const [c,t]=DRAFT[(w.draft||{}).state]||['s','不明'];
     return '<div class="row"><span class="t">'+esc(w.label)+'</span><span>'+esc(w.what)+'</span>'+badge(c,'下書き：'+t)+
     '<span class="s" style="flex-basis:100%">正本：'+esc(w.current||'なし')+(w.draft.basis?'／下書きの根拠：'+esc(w.draft.basis)+'（'+esc(w.draft.madeBy)+'・'+esc(w.draft.madeAt)+'）':'／まだ見張りで作り直したことはない')+
     '<br>最後に確認：'+esc(w.lastOk||'—')+(w.lastError?'／<b style="color:var(--st-ss)">失敗：'+esc(w.lastError)+'（'+esc(w.lastErrorAt)+'）</b>':'')+
